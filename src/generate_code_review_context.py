@@ -257,6 +257,10 @@ def get_changed_files(project_path: str) -> List[Dict[str, str]]:
         
         changed_files = []
         max_lines = int(os.getenv('MAX_FILE_CONTENT_LINES', '500'))
+        debug_mode = os.getenv('DEBUG_MODE', 'false').lower() == 'true'
+        
+        if debug_mode:
+            logger.info(f"Debug mode enabled. Processing max {max_lines} lines per file.")
         
         for line in result.stdout.strip().split('\n'):
             if not line:
