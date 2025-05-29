@@ -38,4 +38,19 @@ jobs:
         
     - name: Test entry points
       run: |
-        python -c "import pkg_resources; eps = [ep for ep in pkg_resources.iter_entry_points('console_scripts') if 'task-list' in ep.name]; print(f'Found {len(eps)} entry points')"
+        python -c "
+        try:
+            from importlib.metadata import entry_points
+            eps = entry_points()
+            console_scripts = eps.get('console_scripts', [])
+            our_eps = [ep for ep in console_scripts if 'task-list' in ep.name or 'generate-code' in ep.name or 'review-with' in ep.name]
+            print(f'✅ Found {len(our_eps)} entry points: {[ep.name for ep in our_eps]}')
+            assert len(our_eps) >= 3, f'Expected at least 3 entry points, found {len(our_eps)}'
+        except ImportError:
+            # Fallback for older Python
+            import pkg_resources
+            eps = list(pkg_resources.iter_entry_points('console_scripts'))
+            our_eps = [ep for ep in eps if 'task-list' in ep.name or 'generate-code' in ep.name or 'review-with' in ep.name]
+            print(f'✅ Found {len(our_eps)} entry points: {[ep.name for ep in our_eps]}')
+            assert len(our_eps) >= 3, f'Expected at least 3 entry points, found {len(our_eps)}'
+        "
