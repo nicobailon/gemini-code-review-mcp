@@ -64,7 +64,8 @@ def load_model_config() -> Dict[str, Any]:
         },
         "defaults": {
             "model": "gemini-2.0-flash",
-            "summary_model": "gemini-2.0-flash-lite"
+            "summary_model": "gemini-2.0-flash-lite",
+            "default_prompt": "Generate comprehensive code review for recent development changes focusing on code quality, security, performance, and best practices."
         }
     }
     
@@ -385,6 +386,35 @@ def detect_current_phase(phases: List[Dict]) -> Dict[str, Any]:
         'next_phase': next_phase,
         'subtasks_completed': review_phase['subtasks_completed']
     }
+
+
+def generate_prd_summary_from_task_list(task_data: Dict[str, Any]) -> str:
+    """
+    Generate a PRD-style summary from task list content.
+    
+    Args:
+        task_data: Parsed task list data
+        
+    Returns:
+        Generated project summary string
+    """
+    phases = task_data.get('phases', [])
+    if not phases:
+        return "Development project focused on code quality and feature implementation."
+    
+    # Extract high-level goals from phase descriptions
+    phase_descriptions = [p.get('description', '') for p in phases]
+    
+    # Create a coherent summary
+    if len(phases) == 1:
+        summary = f"Development project focused on {phase_descriptions[0].lower()}."
+    elif len(phases) <= 3:
+        summary = f"Development project covering: {', '.join(phase_descriptions[:-1]).lower()}, and {phase_descriptions[-1].lower()}."
+    else:
+        key_phases = phase_descriptions[:3]
+        summary = f"Multi-phase development project including {', '.join(key_phases).lower()}, and {len(phases)-3} additional phases."
+    
+    return summary
 
 
 def extract_prd_summary(content: str) -> str:
@@ -759,91 +789,80 @@ Based on the PRD, the completed phase, all subtasks that were finished in that p
     return template
 
 
-def find_project_files(project_path: str) -> tuple[Optional[str], Optional[str]]:
+def find_project_files(project_path: str, task_list_name: Optional[str] = None) -> tuple[Optional[str], Optional[str]]:
     """
-    Find PRD and task list files in the project.
+    Find PRD and task list files in the project. PRD files are now optional.
     
     Args:
         project_path: Path to project root
+        task_list_name: Optional specific task list file name (e.g., 'tasks-feature-x.md')
         
     Returns:
-        Tuple of (prd_file_path, task_list_path)
+        Tuple of (prd_file_path, task_list_path). prd_file_path may be None.
     """
     tasks_dir = os.path.join(project_path, 'tasks')
     
+    # Create tasks directory if it doesn't exist (for new projects)
     if not os.path.exists(tasks_dir):
-        error_msg = f"""Tasks directory not found: {tasks_dir}
-
-The project path should contain a 'tasks/' directory with PRD and task list files.
-
-Working examples:
-  # Use current directory if it has tasks/ folder
-  generate-code-review .
-  
-  # Point to project root
-  generate-code-review /path/to/your/project
-  
-  # Auto-detect project from current location
-  generate-code-review
-
-Expected structure:
-  your-project/
-  ├── tasks/
-  │   ├── prd-*.md       (Product Requirements Documents)
-  │   └── tasks-prd-*.md (Task lists)
-  └── ... (other project files)"""
-        raise FileNotFoundError(error_msg)
+        logger.info(f"Tasks directory not found: {tasks_dir}. This is OK - the tool can work without task lists.")
+        return None, None
     
-    # Find PRD files
+    # Find PRD files (optional)
+    prd_file = None
     prd_files = glob.glob(os.path.join(tasks_dir, 'prd-*.md'))
     if not prd_files:
         # Also check root directory
         prd_files = glob.glob(os.path.join(project_path, 'prd.md'))
     
-    if not prd_files:
-        error_msg = f"""No PRD files found in {tasks_dir}
-
-Expected files: prd-*.md or prd.md
-
-Working examples:
-  # Create a PRD file first
-  echo "# My Feature PRD" > tasks/prd-my-feature.md
-  generate-code-review .
-  
-  # Or use generic PRD name
-  echo "# Project PRD" > tasks/prd.md
-  generate-code-review .
-
-Found files in tasks/: {os.listdir(tasks_dir) if os.path.exists(tasks_dir) else 'directory not accessible'}"""
-        raise FileNotFoundError(error_msg)
-    
-    # Use most recently modified if multiple
-    prd_file = max(prd_files, key=os.path.getmtime)
+    if prd_files:
+        # Use most recently modified if multiple
+        prd_file = max(prd_files, key=os.path.getmtime)
+        logger.info(f"Found PRD file: {os.path.basename(prd_file)}")
+    else:
+        logger.info("No PRD files found. Will generate project summary from task list or use default prompt.")
     
     # Find task list files
-    task_files = glob.glob(os.path.join(tasks_dir, 'tasks-prd-*.md'))
-    if not task_files:
-        task_files = glob.glob(os.path.join(tasks_dir, 'tasks-*.md'))
+    task_file = None
     
-    if not task_files:
-        error_msg = f"""No task list files found in {tasks_dir}
+    if task_list_name:
+        # User specified exact task list file
+        if not task_list_name.endswith('.md'):
+            task_list_name += '.md'
+        
+        specified_path = os.path.join(tasks_dir, task_list_name)
+        if os.path.exists(specified_path):
+            task_file = specified_path
+            logger.info(f"Using specified task list: {task_list_name}")
+        else:
+            # Try to find similar files
+            available_files = [f for f in os.listdir(tasks_dir) if f.startswith('tasks-') and f.endswith('.md')]
+            error_msg = f"""Specified task list not found: {task_list_name}
 
-Expected files: tasks-prd-*.md
+Available task lists in {tasks_dir}:
+{chr(10).join(f'  - {f}' for f in available_files) if available_files else '  (no task list files found)'}
 
 Working examples:
-  # Create a task list file matching your PRD
-  echo "## Tasks\n- [ ] 1.0 First Task" > tasks/tasks-prd-my-feature.md
-  generate-code-review .
+  # Use specific task list
+  generate-code-review . --task-list tasks-feature-auth.md
   
-  # Task list filename should match PRD pattern:
-  # PRD: prd-user-profile.md → Task list: tasks-prd-user-profile.md
-  # PRD: prd.md → Task list: tasks-prd.md
-
-Found files in tasks/: {os.listdir(tasks_dir) if os.path.exists(tasks_dir) else 'directory not accessible'}"""
-        raise FileNotFoundError(error_msg)
-    
-    # Use most recently modified if multiple
-    task_file = max(task_files, key=os.path.getmtime)
+  # Let tool auto-select most recent task list
+  generate-code-review ."""
+            raise FileNotFoundError(error_msg)
+    else:
+        # Auto-discover task list files
+        task_files = glob.glob(os.path.join(tasks_dir, 'tasks-*.md'))
+        
+        if task_files:
+            # Use most recently modified if multiple
+            task_file = max(task_files, key=os.path.getmtime)
+            if len(task_files) > 1:
+                available_files = [os.path.basename(f) for f in task_files]
+                logger.info(f"Multiple task lists found: {', '.join(available_files)}")
+                logger.info(f"Auto-selected most recent: {os.path.basename(task_file)}")
+            else:
+                logger.info(f"Found task list: {os.path.basename(task_file)}")
+        else:
+            logger.info("No task list files found. Will use default prompt for code review.")
     
     return prd_file, task_file
 
@@ -1039,7 +1058,8 @@ Focus on being specific and actionable. When referencing files, include line num
 
 
 def main(project_path: str = None, phase: str = None, output: str = None, enable_gemini_review: bool = True, 
-         scope: str = "recent_phase", phase_number: str = None, task_number: str = None, temperature: float = 0.5) -> str:
+         scope: str = "recent_phase", phase_number: str = None, task_number: str = None, temperature: float = 0.5,
+         task_list: str = None, default_prompt: str = None) -> str:
     """
     Main function to generate code review context with enhanced scope support.
     
@@ -1123,19 +1143,46 @@ Working examples:
             raise ValueError(error_msg)
     
     try:
-        # Find project files
-        prd_file, task_file = find_project_files(project_path)
+        # Load model config for default prompt
+        config = load_model_config()
         
-        # Read files
-        with open(prd_file, 'r', encoding='utf-8') as f:
-            prd_content = f.read()
+        # Find project files (PRD is now optional)
+        prd_file, task_file = find_project_files(project_path, task_list)
         
-        with open(task_file, 'r', encoding='utf-8') as f:
-            task_content = f.read()
+        # Handle different scenarios
+        prd_summary = None
+        task_data = None
         
-        # Parse data
-        prd_summary = extract_prd_summary(prd_content)
-        task_data = parse_task_list(task_content)
+        if task_file:
+            # We have a task list - read and parse it
+            with open(task_file, 'r', encoding='utf-8') as f:
+                task_content = f.read()
+            task_data = parse_task_list(task_content)
+            
+            if prd_file:
+                # We have both PRD and task list - use PRD summary
+                with open(prd_file, 'r', encoding='utf-8') as f:
+                    prd_content = f.read()
+                prd_summary = extract_prd_summary(prd_content)
+            else:
+                # Generate summary from task list
+                prd_summary = generate_prd_summary_from_task_list(task_data)
+        else:
+            # No task list - use default prompt
+            if default_prompt:
+                prd_summary = default_prompt
+            else:
+                prd_summary = config['defaults']['default_prompt']
+            
+            # Create minimal task data for template
+            task_data = {
+                'current_phase_number': 'General Review',
+                'current_phase_description': 'Code review without specific task context',
+                'previous_phase_completed': '',
+                'next_phase': '',
+                'subtasks_completed': [],
+                'phases': []
+            }
         
         # Handle scope-based review logic
         if scope == "recent_phase":
@@ -1424,12 +1471,29 @@ def cli_main():
   # Override temperature via environment
   GEMINI_TEMPERATURE=0.3 generate-code-review .
 
-📁 PROJECT STRUCTURE REQUIRED:
+📁 PROJECT STRUCTURE OPTIONS:
+  
+  # With task list (recommended)
   your-project/
   ├── tasks/
-  │   ├── prd-feature.md       # Product Requirements Document
-  │   └── tasks-prd-feature.md # Task list file
+  │   ├── prd-feature.md       # Optional: Product Requirements Document  
+  │   └── tasks-feature.md     # Task list file (auto-selected if multiple)
   └── ... (your source code)
+  
+  # Without task lists (uses default prompt)
+  your-project/
+  └── ... (your source code)
+
+📋 TASK LIST DISCOVERY:
+  # Auto-selects most recent tasks-*.md file
+  generate-code-review .
+  
+  # Use specific task list
+  generate-code-review . --task-list tasks-auth-system.md
+  
+  # Multiple task lists found? Tool shows which was selected:
+  # "Multiple task lists found: tasks-auth.md, tasks-payment.md"
+  # "Auto-selected most recent: tasks-payment.md"
 
 🌐 GET API KEY: https://ai.google.dev/gemini-api/docs/api-key
         """,
@@ -1451,6 +1515,8 @@ def cli_main():
                       help="Review scope: recent_phase (default), full_project, specific_phase, specific_task")
     parser.add_argument("--phase-number", help="Phase number for specific_phase scope (e.g., '2.0')")
     parser.add_argument("--task-number", help="Task number for specific_task scope (e.g., '1.2')")
+    parser.add_argument("--task-list", help="Specify which task list file to use (e.g., 'tasks-feature-x.md')")
+    parser.add_argument("--default-prompt", help="Custom default prompt when no task list exists")
     parser.add_argument("--temperature", type=float, default=0.5,
                       help="Temperature for AI model (default: 0.5, range: 0.0-2.0)")
     
@@ -1562,7 +1628,9 @@ Working examples:
             scope=args.scope,
             phase_number=getattr(args, 'phase_number'),
             task_number=getattr(args, 'task_number'),
-            temperature=temperature
+            temperature=temperature,
+            task_list=getattr(args, 'task_list'),
+            default_prompt=getattr(args, 'default_prompt')
         )
         print(f"Review context generated: {output_path}")
     except Exception as e:
