@@ -26,7 +26,7 @@ AI Agent: "✅ Phase 2.0 complete! Review context generated at: code-review-cont
 
 ## Compatible Format Specifications
 
-This tool works with standardized PRD and task list formats from the [AI Dev Tasks](https://github.com/snarktank/ai-dev-tasks) repository:
+This tool works with standardized PRD and task list formats from the [Task List Code Review](https://github.com/snarktank/ai-dev-tasks) repository:
 
 - **PRDs**: Based on [create-prd.mdc](https://github.com/snarktank/ai-dev-tasks/blob/main/create-prd.mdc) specification
   - Structured markdown with required sections (Goals, User Stories, Functional Requirements, etc.)
