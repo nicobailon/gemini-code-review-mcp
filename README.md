@@ -1,4 +1,4 @@
-# AI Dev Tasks MCP Server
+# Task List Code Review MCP Server
 
 An MCP server tool designed for **AI coding agents** (Cursor, Claude Code, etc.) to automatically generate comprehensive code review context when completing development phases.
 
@@ -69,10 +69,10 @@ In addition to generating review context, the tool can now automatically generat
 
 ```bash
 # Run directly without installing anything (uvx handles everything)
-uvx ai-dev-tasks-mcp /path/to/your/project
+uvx task-list-code-review-mcp /path/to/your/project
 
 # With specific options
-uvx ai-dev-tasks-mcp /path/to/your/project --phase 2.0 --no-gemini
+uvx task-list-code-review-mcp /path/to/your/project --phase 2.0 --no-gemini
 ```
 
 **Benefits of uvx approach:**
@@ -87,10 +87,10 @@ After trying with uvx, install globally if you want it permanently available:
 
 ```bash
 # Install from PyPI
-pip install ai-dev-tasks-mcp
+pip install task-list-code-review-mcp
 
 # Now available as a command
-ai-dev-tasks-mcp /path/to/your/project
+task-list-code-review-mcp /path/to/your/project
 ```
 
 ### 🛠️ Development Installation
@@ -100,7 +100,7 @@ For development or local testing:
 ```bash
 # Clone and install in development mode
 git clone <repository-url>
-cd ai-dev-tasks-mcp
+cd task-list-code-review-mcp
 pip install -e .
 ```
 
@@ -114,47 +114,47 @@ The tool is designed as an MCP server that AI coding agents (Cursor, Claude Code
 **With uvx (Recommended - No Installation Required):**
 ```bash
 # Auto-detect most recently completed phase (generates timestamped files)
-uvx ai-dev-tasks-mcp /path/to/project
+uvx task-list-code-review-mcp /path/to/project
 # Output: code-review-context-20250528-143052.md
 # Output: code-review-comprehensive-feedback-20250528-143052.md (Gemini review)
 
 # Disable Gemini AI review (context only)
-uvx ai-dev-tasks-mcp /path/to/project --no-gemini
+uvx task-list-code-review-mcp /path/to/project --no-gemini
 # Output: code-review-context-20250528-143052.md (only)
 
 # Specify a particular phase for review
-uvx ai-dev-tasks-mcp /path/to/project --phase 2.0
+uvx task-list-code-review-mcp /path/to/project --phase 2.0
 # Output: code-review-context-20250528-143052.md + AI feedback file
 
 # Custom output file location (overrides automatic naming)
-uvx ai-dev-tasks-mcp /path/to/project --output /custom/path/review.md
+uvx task-list-code-review-mcp /path/to/project --output /custom/path/review.md
 
 # Use Gemini 2.5 Pro instead of Flash (via environment variable)
-GEMINI_MODEL=gemini-2.5-pro-preview-05-06 uvx ai-dev-tasks-mcp /path/to/project
+GEMINI_MODEL=gemini-2.5-pro-preview-05-06 uvx task-list-code-review-mcp /path/to/project
 ```
 
 **With Global Installation:**
 ```bash
-# After installing with: pip install ai-dev-tasks-mcp
+# After installing with: pip install task-list-code-review-mcp
 
 # Auto-detect most recently completed phase (generates timestamped files)
-ai-dev-tasks-mcp /path/to/project
+task-list-code-review-mcp /path/to/project
 # Output: code-review-context-20250528-143052.md
 # Output: code-review-comprehensive-feedback-20250528-143052.md (Gemini review)
 
 # Disable Gemini AI review (context only)
-ai-dev-tasks-mcp /path/to/project --no-gemini
+task-list-code-review-mcp /path/to/project --no-gemini
 # Output: code-review-context-20250528-143052.md (only)
 
 # Specify a particular phase for review
-ai-dev-tasks-mcp /path/to/project --phase 2.0
+task-list-code-review-mcp /path/to/project --phase 2.0
 # Output: code-review-context-20250528-143052.md + AI feedback file
 
 # Custom output file location (overrides automatic naming)
-ai-dev-tasks-mcp /path/to/project --output /custom/path/review.md
+task-list-code-review-mcp /path/to/project --output /custom/path/review.md
 
 # Use Gemini 2.5 Pro instead of Flash (via environment variable)
-GEMINI_MODEL=gemini-2.5-pro-preview-05-06 ai-dev-tasks-mcp /path/to/project
+GEMINI_MODEL=gemini-2.5-pro-preview-05-06 task-list-code-review-mcp /path/to/project
 ```
 
 **Output File Naming:**
@@ -182,7 +182,7 @@ After installing the package, you can use the dedicated MCP server entry point:
 uvx install .
 
 # Use the MCP server entry point
-ai-dev-tasks-mcp
+task-list-code-review-mcp
 ```
 
 ### Option 2: Claude Code CLI
@@ -191,11 +191,11 @@ Install the MCP server using Claude Code's built-in commands:
 
 ```bash
 # Option A: Using entry point (recommended)
-claude mcp add task-list-reviewer ai-dev-tasks-mcp \
+claude mcp add task-list-reviewer task-list-code-review-mcp \
   -e GEMINI_API_KEY=your_gemini_api_key_here
 
 # Option B: Direct Python execution
-claude mcp add task-list-reviewer python /path/to/ai-dev-tasks-mcp/src/server.py \
+claude mcp add task-list-reviewer python /path/to/task-list-code-review-mcp/src/server.py \
   -e GEMINI_API_KEY=your_gemini_api_key_here
 
 # List configured servers
@@ -218,7 +218,7 @@ Add this configuration to your `claude_desktop_config.json` or Cursor's MCP sett
 {
   "mcpServers": {
     "task-list-reviewer": {
-      "command": "ai-dev-tasks-mcp",
+      "command": "task-list-code-review-mcp",
       "env": {
         "GEMINI_API_KEY": "your_gemini_api_key_here"
       }
@@ -234,7 +234,7 @@ Add this configuration to your `claude_desktop_config.json` or Cursor's MCP sett
     "task-list-reviewer": {
       "command": "python",
       "args": [
-        "/path/to/ai-dev-tasks-mcp/src/server.py"
+        "/path/to/task-list-code-review-mcp/src/server.py"
       ],
       "env": {
         "GEMINI_API_KEY": "your_gemini_api_key_here"
@@ -244,7 +244,7 @@ Add this configuration to your `claude_desktop_config.json` or Cursor's MCP sett
 }
 ```
 
-**Note**: Option A requires `uvx install .` first. Option B requires replacing `/path/to/ai-dev-tasks-mcp` with your actual project path.
+**Note**: Option A requires `uvx install .` first. Option B requires replacing `/path/to/task-list-code-review-mcp` with your actual project path.
 
 ### Configuring Gemini Model Selection
 
@@ -256,7 +256,7 @@ You can choose between Gemini 2.5 Flash (default) and Pro models by setting the 
   "mcpServers": {
     "task-list-reviewer": {
       "command": "python",
-      "args": ["/path/to/ai-dev-tasks-mcp/src/server.py"],
+      "args": ["/path/to/task-list-code-review-mcp/src/server.py"],
       "env": {
         "GEMINI_API_KEY": "your_gemini_api_key_here",
         "GEMINI_MODEL": "gemini-2.5-flash-preview-05-20"
@@ -269,12 +269,12 @@ You can choose between Gemini 2.5 Flash (default) and Pro models by setting the 
 **For Claude Code CLI:**
 ```bash
 # Use Flash (default - fast, high-volume)
-claude mcp add task-list-reviewer python /path/to/ai-dev-tasks-mcp/src/server.py \
+claude mcp add task-list-reviewer python /path/to/task-list-code-review-mcp/src/server.py \
   -e GEMINI_API_KEY=your_key \
   -e GEMINI_MODEL=gemini-2.5-flash-preview-05-20
 
 # Use Pro (complex reasoning, in-depth analysis)
-claude mcp add task-list-reviewer python /path/to/ai-dev-tasks-mcp/src/server.py \
+claude mcp add task-list-reviewer python /path/to/task-list-code-review-mcp/src/server.py \
   -e GEMINI_API_KEY=your_key \
   -e GEMINI_MODEL=gemini-2.5-pro-preview-05-06
 ```

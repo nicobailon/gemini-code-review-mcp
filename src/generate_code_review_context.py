@@ -205,9 +205,10 @@ def extract_prd_summary(content: str) -> str:
             return summary
     
     # Strategy 2: Use Gemini if available and API key provided
-    if GEMINI_AVAILABLE and os.getenv('GEMINI_API_KEY'):
+    api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+    if GEMINI_AVAILABLE and api_key:
         try:
-            client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
+            client = genai.Client(api_key=api_key)
             first_2000_chars = content[:2000]
             
             response = client.models.generate_content(
@@ -552,7 +553,12 @@ def find_project_files(project_path: str) -> tuple[Optional[str], Optional[str]]
 
 def send_to_gemini_for_review(context_content: str, project_path: str) -> Optional[str]:
     """
-    Send review context to Gemini 2.5 for comprehensive code review.
+    Send review context to Gemini for comprehensive code review with advanced features.
+    
+    Features enabled by default:
+    - Thinking mode (for supported models)
+    - URL context (for supported models) 
+    - Google Search grounding (for supported models)
     
     Args:
         context_content: The formatted review context content
@@ -561,59 +567,101 @@ def send_to_gemini_for_review(context_content: str, project_path: str) -> Option
     Returns:
         Path to saved Gemini response file, or None if failed
     """
-    if not GEMINI_AVAILABLE or not os.getenv('GEMINI_API_KEY'):
-        logger.warning("Gemini API not available or API key not provided. Skipping Gemini review.")
+    # Check for API key in multiple environment variables
+    api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+    
+    if not GEMINI_AVAILABLE or not api_key:
+        logger.warning("Gemini API not available or API key not provided (GEMINI_API_KEY or GOOGLE_API_KEY). Skipping Gemini review.")
         return None
     
     try:
-        client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
+        client = genai.Client(api_key=api_key)
         
-        # Configure model selection (Flash by default)
-        model_config = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash-preview-05-20')
+        # Configure model selection (Flash by default for best feature support)
+        model_config = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
         logger.info(f"Using Gemini model: {model_config}")
         
-        # Configure tools
+        # Model capability detection
+        supports_url_context = model_config in [
+            'gemini-2.5-pro-preview-05-06', 'gemini-2.5-flash-preview-05-20',
+            'gemini-2.0-flash', 'gemini-2.0-flash-live-001', 'gemini-2.5-flash'
+        ]
+        supports_grounding = 'gemini-1.5' in model_config or 'gemini-2.5' in model_config
+        supports_thinking = 'gemini-2.5' in model_config
+        
+        # Configure tools (enabled by default with opt-out)
         tools = []
         
-        # Enable URL context tool if needed (simplified for compatibility)
-        enable_url_context = os.getenv('ENABLE_URL_CONTEXT', 'false').lower() == 'true'
-        if enable_url_context:
+        # URL Context - enabled by default for supported models
+        disable_url_context = os.getenv('DISABLE_URL_CONTEXT', 'false').lower() == 'true'
+        if supports_url_context and not disable_url_context:
             try:
                 tools.append(types.Tool(url_context=types.UrlContext()))
-            except AttributeError:
-                logger.warning("URL context not available in this API version")
+                logger.info("URL context enabled")
+            except (AttributeError, TypeError) as e:
+                logger.warning(f"URL context configuration failed: {e}")
+        elif not supports_url_context:
+            logger.info(f"URL context not supported by {model_config}")
         
-        # Configure grounding using available types
-        grounding_config = None
-        enable_grounding = os.getenv('ENABLE_GROUNDING', 'false').lower() == 'true'
-        if enable_grounding:
+        # Google Search Grounding - enabled by default for supported models
+        disable_grounding = os.getenv('DISABLE_GROUNDING', 'false').lower() == 'true'
+        grounding_threshold = float(os.getenv('GROUNDING_THRESHOLD', '0.3'))
+        
+        if supports_grounding and not disable_grounding:
             try:
-                grounding_config = types.GoogleSearchRetrieval(
-                    dynamic_retrieval_config=types.DynamicRetrievalConfig(
-                        threshold=0.3
+                if 'gemini-2.0' in model_config:
+                    # Gemini 2.0 uses "Search as a tool" approach
+                    grounding_config = types.GoogleSearchRetrieval()
+                else:
+                    # Gemini 1.5/2.5 uses dynamic retrieval
+                    grounding_config = types.GoogleSearchRetrieval(
+                        dynamic_retrieval_config=types.DynamicRetrievalConfig(
+                            threshold=grounding_threshold
+                        )
                     )
-                )
+                tools.append(types.Tool(google_search_retrieval=grounding_config))
+                logger.info(f"Google Search grounding enabled (threshold: {grounding_threshold})")
             except (AttributeError, TypeError) as e:
                 logger.warning(f"Grounding configuration failed: {e}")
+        elif not supports_grounding:
+            logger.info(f"Grounding not supported by {model_config}")
         
-        # Configure thinking and other settings
+        # Configure thinking mode - enabled by default for supported models
+        thinking_config = None
+        disable_thinking = os.getenv('DISABLE_THINKING', 'false').lower() == 'true'
+        thinking_budget = int(os.getenv('THINKING_BUDGET', '2048'))
+        include_thoughts = os.getenv('INCLUDE_THOUGHTS', 'true').lower() == 'true'
+        
+        if supports_thinking and not disable_thinking:
+            try:
+                if 'gemini-2.5-flash' in model_config:
+                    # Full thinking support with budget control
+                    thinking_config = types.ThinkingConfig(
+                        thinking_budget=min(thinking_budget, 24576),  # Max 24,576 tokens
+                        include_thoughts=include_thoughts
+                    )
+                elif 'gemini-2.5-pro' in model_config:
+                    # Pro models support summaries only
+                    thinking_config = types.ThinkingConfig(
+                        include_thoughts=include_thoughts
+                    )
+                logger.info(f"Thinking mode enabled (budget: {thinking_budget}, include_thoughts: {include_thoughts})")
+            except (AttributeError, TypeError) as e:
+                logger.warning(f"Thinking configuration failed: {e}")
+        elif not supports_thinking:
+            logger.info(f"Thinking mode not supported by {model_config}")
+        
+        # Build configuration parameters
         config_params = {
             'max_output_tokens': 8000,
-            'temperature': 0.1,
-            'thinking_config': types.ThinkingConfig(
-                include_thoughts=True,
-                thinking_budget=2048  # Enable thinking mode
-            )
+            'temperature': 0.1
         }
         
         if tools:
             config_params['tools'] = tools
             
-        # Add grounding as a tool instead of config
-        if grounding_config:
-            if not tools:
-                config_params['tools'] = []
-            config_params['tools'].append(types.Tool(google_search_retrieval=grounding_config))
+        if thinking_config:
+            config_params['thinking_config'] = thinking_config
         
         config = types.GenerateContentConfig(**config_params)
         
@@ -646,13 +694,23 @@ Focus on being specific and actionable. When referencing files, include line num
         output_file = os.path.join(project_path, f'code-review-comprehensive-feedback-{timestamp}.md')
         
         # Format the response with metadata
+        enabled_features = []
+        if supports_thinking and not disable_thinking:
+            enabled_features.append("thinking mode")
+        if supports_url_context and not disable_url_context:
+            enabled_features.append("URL context")
+        if supports_grounding and not disable_grounding:
+            enabled_features.append("web grounding")
+        
+        features_text = ", ".join(enabled_features) if enabled_features else "basic capabilities"
+        
         formatted_response = f"""# Comprehensive Code Review Feedback
 *Generated on {datetime.now().strftime("%Y-%m-%d at %H:%M:%S")} using {model_config}*
 
 {response.text}
 
 ---
-*Review conducted by Gemini AI with thinking enabled and web grounding capabilities*
+*Review conducted by Gemini AI with {features_text}*
 """
         
         with open(output_file, 'w', encoding='utf-8') as f:

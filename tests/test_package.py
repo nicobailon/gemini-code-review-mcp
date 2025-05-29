@@ -83,7 +83,7 @@ class TestPackageMetadata:
         
         # Check basic metadata
         project = config["project"]
-        assert project["name"] == "ai-dev-tasks-mcp"
+        assert project["name"] == "task-list-code-review-mcp"
         assert project["version"] == "1.0.0"
         assert "MCP server for generating code review context" in project["description"]
         assert project["requires-python"] == ">=3.8"
@@ -96,8 +96,8 @@ class TestPackageMetadata:
         
         # Check scripts
         scripts = project["scripts"]
-        assert "ai-dev-tasks-mcp" in scripts
-        assert scripts["ai-dev-tasks-mcp"] == "src.server:main"
+        assert "task-list-code-review-mcp" in scripts
+        assert scripts["task-list-code-review-mcp"] == "src.server:main"
         
         # Check build system
         build_system = config["build-system"]

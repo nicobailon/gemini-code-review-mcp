@@ -169,7 +169,7 @@ except Exception as e:
     def test_mcp_server_startup_cross_platform(self):
         """Test MCP server starts correctly on the platform"""
         # Test basic server startup
-        cmd = ["uvx", "--from", ".", "ai-dev-tasks-mcp"]
+        cmd = ["uvx", "--from", ".", "task-list-code-review-mcp"]
         
         process = subprocess.Popen(
             cmd,

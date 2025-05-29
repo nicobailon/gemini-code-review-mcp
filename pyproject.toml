@@ -22,9 +22,9 @@ exclude = [
 ]
 
 [project]
-name = "ai-dev-tasks-mcp"
-version = "1.0.0"
-description = "MCP server for generating code review context from PRDs and git changes"
+name = "task-list-code-review-mcp"
+version = "0.1.0"
+description = "MCP server for AI-powered task list code reviews with PRD context"
 authors = [
     {name = "Nico Bailon", email = "nico604@pm.me"},
 ]
@@ -49,9 +49,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/nicobailon/ai-dev-tasks-mcp"
-Repository = "https://github.com/nicobailon/ai-dev-tasks-mcp"
-Issues = "https://github.com/nicobailon/ai-dev-tasks-mcp/issues"
+Homepage = "https://github.com/nicobailon/task-list-code-review-mcp"
+Repository = "https://github.com/nicobailon/task-list-code-review-mcp"
+Issues = "https://github.com/nicobailon/task-list-code-review-mcp/issues"
 
 [project.optional-dependencies]
 dev = [
@@ -64,7 +64,7 @@ dev = [
 ]
 
 [project.scripts]
-ai-dev-tasks-mcp = "src.server:main"
+task-list-code-review-mcp = "src.server:main"
 
 [tool.black]
 line-length = 88

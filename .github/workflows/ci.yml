@@ -49,7 +49,7 @@ jobs:
       shell: bash
       run: |
         # Test the console script entry point
-        ai-dev-tasks-mcp --help || echo "Entry point test completed"
+        task-list-code-review-mcp --help || echo "Entry point test completed"
 
   lint:
     runs-on: ubuntu-latest

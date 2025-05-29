@@ -75,7 +75,7 @@ class TestUvxDependencyResolution:
         """Test that uvx resolves the entry point correctly"""
         # Test that the entry point is available
         result = subprocess.run(
-            ["uvx", "--from", ".", "ai-dev-tasks-mcp", "--help"],
+            ["uvx", "--from", ".", "task-list-code-review-mcp", "--help"],
             cwd=self.project_root,
             capture_output=True,
             text=True,
