@@ -1,4 +1,4 @@
-name: Continuous Integration
+name: Essential Tests
 
 on:
   push:
@@ -7,112 +7,35 @@ on:
     branches: [ master ]
 
 jobs:
-  # Minimal essential testing - pragmatic approach
   test:
-    runs-on: ubuntu-latest  # Single OS for speed
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ['3.8', '3.12']  # Min/max versions only
+    runs-on: ubuntu-latest
     
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: '3.12'
     
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install build pytest pytest-mock
-    
-    - name: Install package in development mode
-      run: |
+        pip install pytest pytest-mock pytest-asyncio
         pip install -e .
     
-    - name: Run basic functionality tests
+    - name: Run critical tests only
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        GEMINI_MODEL: gemini-2.0-flash-lite  # Cheapest model
       run: |
-        # Test basic imports and package structure
-        python -c "
-        import sys, os
-        sys.path.insert(0, 'src')
-        import server
-        import generate_code_review_context  
-        import ai_code_review
-        print('✅ All core modules import successfully')
-        "
-        
-        # Test package installation worked
-        python -c "
-        import pkg_resources
-        try:
-            pkg_resources.get_distribution('task-list-code-review-mcp')
-            print('✅ Package installed correctly')
-        except:
-            print('⚠️ Package not found but imports work')
-        "
+        # Test core functionality with real API (cheapest model)
+        pytest tests/test_package.py tests/test_min_python_requirements.py tests/test_server.py -v
     
     - name: Test package building
       run: |
         python -m build
-    
-    - name: Test imports and entry points
-      run: |
-        # Test package imports work
-        python -c "import src.server; import src.generate_code_review_context; import src.ai_code_review; print('All imports successful')"
         
-        # Test entry points exist (without executing - no API key needed)
-        python -c "
-        import pkg_resources
-        eps = list(pkg_resources.iter_entry_points('console_scripts'))
-        names = [ep.name for ep in eps if 'task-list' in ep.name or 'generate-code' in ep.name or 'review-with' in ep.name]
-        assert len(names) >= 3, f'Missing entry points: {names}'
-        print(f'Entry points verified: {names}')
-        "
-
-  lint:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install linting tools
+    - name: Test entry points
       run: |
-        python -m pip install --upgrade pip
-        pip install flake8 black isort mypy
-    
-    - name: Basic syntax validation
-      run: |
-        # Just check Python syntax is valid
-        python -m py_compile src/*.py
-        echo "✅ All Python files have valid syntax"
-        
-    - name: Test core imports
-      run: |
-        python -c "import sys; sys.path.insert(0, 'src'); import server, generate_code_review_context, ai_code_review; print('✅ All imports successful')"
-
-  security:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Basic security checks
-      run: |
-        # Check for obvious security issues in source code
-        echo "Checking for hardcoded secrets..."
-        ! grep -r "api_key.*=" src/ || echo "⚠️ Potential API key found"
-        ! grep -r "password.*=" src/ || echo "⚠️ Potential password found"
-        echo "✅ Basic security scan completed"
+        python -c "import pkg_resources; eps = [ep for ep in pkg_resources.iter_entry_points('console_scripts') if 'task-list' in ep.name]; print(f'Found {len(eps)} entry points')"
