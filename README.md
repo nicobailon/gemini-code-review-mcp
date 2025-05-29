@@ -2,88 +2,27 @@
 
 An MCP server tool designed for **AI coding agents** (Cursor, Claude Code, etc.) to automatically generate comprehensive code review context when completing development phases.
 
-**Version**: 1.2.0 - Enhanced with debug mode and improved file processing capabilities.
+**Version**: 0.2.1 - Enhanced with scope-based reviews, dual tool architecture, AI-powered code analysis, and configurable model management.
 
-## Workflow Integration for AI Agents
+## 🚀 Quick Start
 
-This tool integrates into the AI-driven development workflow at **phase completion checkpoints**:
-
-1. **AI Agent works through task list** - Cursor/Claude Code systematically implements features by completing tasks in phases (1.0, 2.0, 3.0, etc.)
-2. **Phase completion detected** - When all sub-tasks in a phase are marked complete (`[x]`)  
-3. **AI Agent calls MCP tool** - Automatically generates code review context for the completed phase
-4. **Review context generated** - Creates formatted markdown with git changes, progress summary, and file context
-5. **Ready for review** - Human reviewers get comprehensive context for what was just implemented
-
-## Use Case: AI Agent Integration
-
-**Typical AI agent workflow:**
-```
-AI Agent: "I've completed all sub-tasks in Phase 2.0. Let me generate a code review context."
-AI Agent calls: generate_code_review_context tool
-Output: Comprehensive markdown file with git diff, file tree, and phase summary
-AI Agent: "✅ Phase 2.0 complete! Review context generated at: code-review-context-20250528-143052.md"
-```
-
-## Compatible Format Specifications
-
-This tool works with standardized PRD and task list formats from the [Task List Code Review](https://github.com/snarktank/ai-dev-tasks) repository:
-
-- **PRDs**: Based on [create-prd.mdc](https://github.com/snarktank/ai-dev-tasks/blob/main/create-prd.mdc) specification
-  - Structured markdown with required sections (Goals, User Stories, Functional Requirements, etc.)
-  - File naming: `prd-[feature-name].md` in `/tasks/` directory
-  - Designed for AI agent comprehension and systematic implementation
-
-- **Task Lists**: Based on [generate-tasks.mdc](https://github.com/snarktank/ai-dev-tasks/blob/main/generate-tasks.mdc) specification  
-  - Hierarchical phases with numbered parent tasks (1.0, 2.0) and sub-tasks (1.1, 1.2)
-  - File naming: `tasks-[prd-file-name].md` in `/tasks/` directory
-  - Checkbox-based progress tracking (`- [ ]` / `- [x]`) for AI agents to mark completion
-  - Systematic implementation guidance for coding agents
-
-## What This Tool Generates
-
-The MCP server automatically creates comprehensive code review context including:
-- **Phase Progress Summary** - What phase was just completed and which sub-tasks were finished
-- **PRD Context** - Original feature requirements and goals (auto-summarized with Gemini 2.0 Flash Lite)
-- **Git Changes** - Detailed diff of all modified/added/deleted files since the phase started
-- **File Tree** - ASCII representation of current project structure
-- **File Content** - Full content of changed files for review
-- **Formatted Output** - Professional markdown template ready for human review
-- **Automatic Naming** - Files named with timestamp: `code-review-context-{YYYYMMDD-HHMMSS}.md`
-
-### NEW: Gemini 2.5 AI Code Review
-
-In addition to generating review context, the tool can now automatically generate comprehensive AI-powered code reviews using **Gemini 2.5 Flash** or **Gemini 2.5 Pro**:
-
-- **Automated Code Review** - Sends the generated context to Gemini 2.5 for intelligent analysis
-- **Thinking Mode Enabled** - Uses Gemini's thinking capabilities for deep reasoning about code quality
-- **Google Search Grounding** - Can lookup current best practices and technology information
-- **URL Context Support** - Can process URLs mentioned in code comments or documentation
-- **Comprehensive Analysis** - Covers code quality, architecture, security, performance, testing, and maintainability
-- **Structured Output** - Generates `code-review-comprehensive-feedback-{timestamp}.md` with detailed feedback
-
-## Installation
-
-### 🚀 Try It First (No Installation Required)
+### Try It First (No Installation Required)
 
 **Recommended**: Test the tool with uvx before deciding to install globally:
 
 ```bash
+# Set your Gemini API key (get one at https://ai.google.dev/gemini-api/docs/api-key)
+export GEMINI_API_KEY=your_key_here
+
 # Run directly without installing anything (uvx handles everything)
 uvx task-list-code-review-mcp /path/to/your/project
 
-# With specific options
-uvx task-list-code-review-mcp /path/to/your/project --phase 2.0 --no-gemini
+# Output: Generates both context and AI review files automatically
+# - code-review-context-{scope}-{timestamp}.md
+# - code-review-comprehensive-feedback-{timestamp}.md
 ```
 
-**Benefits of uvx approach:**
-- ✅ No installation needed - just run and try it
-- ✅ Automatic dependency isolation (no conflicts)
-- ✅ Always gets the latest version
-- ✅ Clean system - nothing left behind
-
-### 📦 Install Globally (If You Like It)
-
-After trying with uvx, install globally if you want it permanently available:
+### Install Globally (If You Like It)
 
 ```bash
 # Install from PyPI
@@ -93,243 +32,321 @@ pip install task-list-code-review-mcp
 task-list-code-review-mcp /path/to/your/project
 ```
 
-### 🛠️ Development Installation
+## ✨ Key Features
 
-For development or local testing:
+### Smart Scope Detection
+- **All phases complete** → Automatically generates comprehensive full-project review
+- **Phases in progress** → Reviews most recently completed phase
+- **Manual override** → Target specific phases or tasks
+
+### AI-Powered Code Review
+- **Gemini Integration**: Uses Gemini 2.5 Flash/Pro for intelligent code analysis
+- **Thinking Mode**: Deep reasoning about code quality and architecture
+- **Web Grounding**: Looks up current best practices and technology information
+- **Comprehensive Analysis**: Covers security, performance, testing, and maintainability
+
+### Flexible Architecture
+- **Context Generation**: Creates structured review context from git changes and task progress
+- **AI Review**: Separate tool for generating AI-powered feedback from context files
+- **Model Configuration**: Easy model switching and alias management via JSON config
+
+## 📖 Basic Usage
+
+### CLI Usage
+
+```bash
+# Smart Default: Auto-detects project completion status
+# - If all phases complete: Reviews entire project  
+# - If phases in progress: Reviews most recent completed phase
+uvx task-list-code-review-mcp /path/to/project
+
+# Review entire project (force full scope)
+uvx task-list-code-review-mcp /path/to/project --scope full_project
+
+# Review specific phase by number
+uvx task-list-code-review-mcp /path/to/project --scope specific_phase --phase-number 2.0
+
+# Generate context only (skip AI review)
+uvx task-list-code-review-mcp /path/to/project --context-only
+
+# Use different Gemini model
+GEMINI_MODEL=gemini-2.5-pro uvx task-list-code-review-mcp /path/to/project
+```
+
+### MCP Server Integration
+
+**Claude Desktop/Cursor Configuration** (`claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "task-list-reviewer": {
+      "command": "uvx",
+      "args": ["task-list-code-review-mcp"],
+      "env": {
+        "GEMINI_API_KEY": "your_key_here"
+      }
+    }
+  }
+}
+```
+
+**Usage in Claude Desktop:**
+```
+Human: Generate a code review context for my project at /Users/myname/projects/my-app
+
+Claude: I'll generate a code review context using smart scope detection.
+
+[Tool Use: generate_code_review_context]
+{
+  "project_path": "/Users/myname/projects/my-app"
+}
+
+[Tool Result] Successfully generated: code-review-context-full-project-20241201-143052.md
+```
+
+## 🛠 Advanced Configuration
+
+### Environment Variables
+
+**Core Configuration:**
+- `GEMINI_API_KEY`: Required for Gemini integration
+- `MAX_FILE_SIZE_MB`: Maximum file size to read in MB (default: 10)
+- `MAX_FILE_CONTENT_LINES`: Max lines per file (default: 500)
+- `MAX_FILE_TREE_DEPTH`: Tree depth limit (default: 5)
+
+**Model Configuration:**
+- `GEMINI_MODEL`: Model for code review (default: `gemini-2.0-flash`)
+  - Use aliases: `gemini-2.5-pro`, `gemini-2.5-flash`
+  - Or full names: `gemini-2.5-pro-preview-05-06`
+- `GEMINI_TEMPERATURE`: AI creativity (default: 0.5, range: 0.0-2.0)
+
+### Security Best Practices
+**API Key Protection:**
+```bash
+# Secure .env file permissions
+chmod 600 ~/.task-list-code-review-mcp.env
+chmod 600 .env
+
+# Never commit .env files to version control
+echo ".env" >> .gitignore
+```
+
+### Model Configuration File (model_config.json)
+
+The tool uses a JSON configuration file (`src/model_config.json`) to manage model aliases and capabilities, making it easy to update when Google releases new model versions:
+
+```json
+{
+  "model_aliases": {
+    "gemini-2.5-pro": "gemini-2.5-pro-preview-05-06",
+    "gemini-2.5-flash": "gemini-2.5-flash-preview-05-20"
+  },
+  "model_capabilities": {
+    "url_context_supported": [
+      "gemini-2.5-pro-preview-05-06",
+      "gemini-2.5-flash-preview-05-20",
+      "gemini-2.0-flash"
+    ],
+    "thinking_mode_supported": [
+      "gemini-2.5-pro-preview-05-06",
+      "gemini-2.5-flash-preview-05-20"
+    ]
+  },
+  "defaults": {
+    "model": "gemini-2.0-flash",
+    "summary_model": "gemini-2.0-flash-lite"
+  }
+}
+```
+
+**Capabilities Auto-Detection:**
+- **URL Context**: Enhanced web content understanding
+- **Thinking Mode**: Advanced reasoning for complex problems  
+- **Web Grounding**: Up-to-date information from search
+
+**Usage Examples:**
+```bash
+# Use simple alias names instead of complex preview model names
+review-with-ai context.md --model gemini-2.5-pro
+GEMINI_MODEL=gemini-2.5-flash uvx task-list-code-review-mcp /project
+```
+
+**Updating for New Models:**
+When Google releases new versions, simply update the JSON file:
+```json
+{
+  "model_aliases": {
+    "gemini-2.5-pro": "gemini-2.5-pro-preview-06-07"  // Updated version
+  }
+}
+```
+
+**Fallback Behavior:**
+- Missing JSON file → Uses built-in defaults
+- JSON parsing errors → Logs warning and continues
+- Invalid model names → Falls back to environment/config defaults
+
+## 🔧 MCP Tools Reference
+
+### generate_code_review_context
+
+**Primary tool for generating code review context with flexible scope options.**
+
+**Scope Options:**
+
+| Scope | Description | Output Pattern |
+|-------|-------------|----------------|
+| `recent_phase` | **Smart Default**: Reviews recent phase OR full project if all complete | `*-recent-phase-*` or `*-full-project-*` |
+| `full_project` | Reviews all completed phases | `*-full-project-*` |
+| `specific_phase` | Reviews specific phase (requires `phase_number`) | `*-phase-X-Y-*` |
+| `specific_task` | Reviews specific task (requires `task_number`) | `*-task-X-Y-*` |
+
+**MCP Usage Examples:**
+```javascript
+// Smart default - auto-detects completion status
+await use_mcp_tool({
+  server_name: "task-list-code-review-mcp",
+  tool_name: "generate_code_review_context",
+  arguments: {
+    project_path: "/absolute/path/to/project"
+  }
+});
+
+// Review specific phase
+await use_mcp_tool({
+  server_name: "task-list-code-review-mcp",
+  tool_name: "generate_code_review_context",
+  arguments: {
+    project_path: "/absolute/path/to/project",
+    scope: "specific_phase",
+    phase_number: "2.0"
+  }
+});
+```
+
+### generate_ai_code_review
+
+**Standalone tool for generating AI-powered code reviews from existing context files.**
+
+```javascript
+await use_mcp_tool({
+  server_name: "task-list-code-review-mcp",
+  tool_name: "generate_ai_code_review",
+  arguments: {
+    context_file_path: "/path/to/code-review-context-*.md",
+    model: "gemini-2.5-pro"
+  }
+});
+```
+
+## 🔄 Workflow Integration for AI Agents
+
+### Smart Completion Detection
+
+The tool automatically detects project completion status:
+
+**Project Complete Workflow:**
+```
+AI Agent: "I've completed the final phase. Let me generate a code review."
+Tool detects: All phases (1.0-7.0) complete → Full project review
+Output: code-review-context-full-project-{timestamp}.md
+```
+
+**Mid-Development Workflow:**
+```
+AI Agent: "I've completed Phase 2.0 of 5.0. Let me generate a review."
+Tool detects: Phases in progress → Recent completed phase
+Output: code-review-context-recent-phase-{timestamp}.md
+```
+
+### Compatible Format Specifications
+
+**PRDs**: Based on [create-prd.mdc](https://github.com/snarktank/ai-dev-tasks/blob/main/create-prd.mdc)
+- File naming: `prd-[feature-name].md` in `/tasks/` directory
+- Structured markdown with Goals, User Stories, Functional Requirements
+
+**Task Lists**: Based on [generate-tasks.mdc](https://github.com/snarktank/ai-dev-tasks/blob/main/generate-tasks.mdc)
+- File naming: `tasks-[prd-file-name].md` in `/tasks/` directory
+- Hierarchical phases (1.0, 2.0) with sub-tasks (1.1, 1.2)
+- Checkbox progress tracking (`- [ ]` / `- [x]`)
+
+## 🚨 Troubleshooting
+
+### Common Issues
+
+**API Key Not Found:**
+```bash
+ERROR: GEMINI_API_KEY not found
+```
+**Solution:**
+```bash
+# Get API key: https://ai.google.dev/gemini-api/docs/api-key
+export GEMINI_API_KEY=your_key_here
+# Or create ~/.task-list-code-review-mcp.env file
+```
+
+**Scope Parameter Errors:**
+```bash
+ERROR: phase_number is required when scope is 'specific_phase'
+```
+**Solution:**
+```bash
+uvx task-list-code-review-mcp /project --scope specific_phase --phase-number 2.0
+```
+
+**File Not Found:**
+```bash
+ERROR: No PRD or task list files found
+```
+**Solution:** Ensure your project has:
+- PRD file: `tasks/prd-*.md`
+- Task list: `tasks/tasks-*.md`
+
+### File Permissions
+```bash
+# Fix .env file permissions
+chmod 600 ~/.task-list-code-review-mcp.env
+
+# Fix context file permissions  
+chmod 644 /path/to/context.md
+```
+
+### Git Repository Issues
+```bash
+# Initialize git if needed
+git init
+
+# Ensure you're in a git repository
+ls -la .git
+```
+
+## 📋 What This Tool Generates
+
+- **Phase Progress Summary** - Completed phases and sub-tasks
+- **PRD Context** - Original requirements (auto-summarized with Gemini)
+- **Git Changes** - Detailed diff of all modified/added/deleted files
+- **File Tree** - ASCII project structure representation
+- **File Content** - Full content of changed files for review
+- **AI Code Review** - Comprehensive feedback using Gemini 2.5
+- **Structured Output** - Professional markdown ready for human review
+
+## 📦 Development
 
 ```bash
 # Clone and install in development mode
 git clone <repository-url>
 cd task-list-code-review-mcp
 pip install -e .
-```
 
-## Usage
-
-### Primary Use: MCP Server for AI Agents
-The tool is designed as an MCP server that AI coding agents (Cursor, Claude Code) call automatically when completing development phases.
-
-### Manual CLI Usage
-
-**With uvx (Recommended - No Installation Required):**
-```bash
-# Auto-detect most recently completed phase (generates timestamped files)
-uvx task-list-code-review-mcp /path/to/project
-# Output: code-review-context-20250528-143052.md
-# Output: code-review-comprehensive-feedback-20250528-143052.md (Gemini review)
-
-# Disable Gemini AI review (context only)
-uvx task-list-code-review-mcp /path/to/project --no-gemini
-# Output: code-review-context-20250528-143052.md (only)
-
-# Specify a particular phase for review
-uvx task-list-code-review-mcp /path/to/project --phase 2.0
-# Output: code-review-context-20250528-143052.md + AI feedback file
-
-# Custom output file location (overrides automatic naming)
-uvx task-list-code-review-mcp /path/to/project --output /custom/path/review.md
-
-# Use Gemini 2.5 Pro instead of Flash (via environment variable)
-GEMINI_MODEL=gemini-2.5-pro-preview-05-06 uvx task-list-code-review-mcp /path/to/project
-```
-
-**With Global Installation:**
-```bash
-# After installing with: pip install task-list-code-review-mcp
-
-# Auto-detect most recently completed phase (generates timestamped files)
-task-list-code-review-mcp /path/to/project
-# Output: code-review-context-20250528-143052.md
-# Output: code-review-comprehensive-feedback-20250528-143052.md (Gemini review)
-
-# Disable Gemini AI review (context only)
-task-list-code-review-mcp /path/to/project --no-gemini
-# Output: code-review-context-20250528-143052.md (only)
-
-# Specify a particular phase for review
-task-list-code-review-mcp /path/to/project --phase 2.0
-# Output: code-review-context-20250528-143052.md + AI feedback file
-
-# Custom output file location (overrides automatic naming)
-task-list-code-review-mcp /path/to/project --output /custom/path/review.md
-
-# Use Gemini 2.5 Pro instead of Flash (via environment variable)
-GEMINI_MODEL=gemini-2.5-pro-preview-05-06 task-list-code-review-mcp /path/to/project
-```
-
-**Output File Naming:**
-- **Automatic**: `code-review-context-{timestamp}.md`
-- **Example**: `code-review-context-20250528-143052.md`
-- **Custom**: Use `--output` flag to specify your own filename
-- **Unique**: Each run generates a unique timestamp to avoid conflicts
-
-**CLI Use Cases:**
-- Testing the tool during setup
-- Manual code review generation outside of AI agent workflows
-- Debugging task list parsing or git integration
-- One-off reviews for specific phases
-
-## MCP Server Installation
-
-This tool works as an MCP (Model Context Protocol) server for integration with Claude Desktop, Cursor, and Claude Code CLI.
-
-### Option 1: Using Script Entry Point (Recommended)
-
-After installing the package, you can use the dedicated MCP server entry point:
-
-```bash
-# Install the package first
-uvx install .
-
-# Use the MCP server entry point
-task-list-code-review-mcp
-```
-
-### Option 2: Claude Code CLI
-
-Install the MCP server using Claude Code's built-in commands:
-
-```bash
-# Option A: Using entry point (recommended)
-claude mcp add task-list-reviewer task-list-code-review-mcp \
-  -e GEMINI_API_KEY=your_gemini_api_key_here
-
-# Option B: Direct Python execution
-claude mcp add task-list-reviewer python /path/to/task-list-code-review-mcp/src/server.py \
-  -e GEMINI_API_KEY=your_gemini_api_key_here
-
-# List configured servers
-claude mcp list
-
-# Test the server
-claude mcp get task-list-reviewer
-```
-
-### Claude Desktop & Cursor
-
-Add this configuration to your `claude_desktop_config.json` or Cursor's MCP settings:
-
-**Location:**
-- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-
-**Option A: Using entry point (recommended):**
-```json
-{
-  "mcpServers": {
-    "task-list-reviewer": {
-      "command": "task-list-code-review-mcp",
-      "env": {
-        "GEMINI_API_KEY": "your_gemini_api_key_here"
-      }
-    }
-  }
-}
-```
-
-**Option B: Direct Python execution:**
-```json
-{
-  "mcpServers": {
-    "task-list-reviewer": {
-      "command": "python",
-      "args": [
-        "/path/to/task-list-code-review-mcp/src/server.py"
-      ],
-      "env": {
-        "GEMINI_API_KEY": "your_gemini_api_key_here"
-      }
-    }
-  }
-}
-```
-
-**Note**: Option A requires `uvx install .` first. Option B requires replacing `/path/to/task-list-code-review-mcp` with your actual project path.
-
-### Configuring Gemini Model Selection
-
-You can choose between Gemini 2.5 Flash (default) and Pro models by setting the `GEMINI_MODEL` environment variable:
-
-**For Claude Desktop/Cursor (claude_desktop_config.json):**
-```json
-{
-  "mcpServers": {
-    "task-list-reviewer": {
-      "command": "python",
-      "args": ["/path/to/task-list-code-review-mcp/src/server.py"],
-      "env": {
-        "GEMINI_API_KEY": "your_gemini_api_key_here",
-        "GEMINI_MODEL": "gemini-2.5-flash-preview-05-20"
-      }
-    }
-  }
-}
-```
-
-**For Claude Code CLI:**
-```bash
-# Use Flash (default - fast, high-volume)
-claude mcp add task-list-reviewer python /path/to/task-list-code-review-mcp/src/server.py \
-  -e GEMINI_API_KEY=your_key \
-  -e GEMINI_MODEL=gemini-2.5-flash-preview-05-20
-
-# Use Pro (complex reasoning, in-depth analysis)
-claude mcp add task-list-reviewer python /path/to/task-list-code-review-mcp/src/server.py \
-  -e GEMINI_API_KEY=your_key \
-  -e GEMINI_MODEL=gemini-2.5-pro-preview-05-06
-```
-
-### Usage by AI Coding Agents
-
-Once installed, AI agents (Cursor, Claude Code) can automatically call this tool when completing development phases:
-
-**AI Agent Usage:**
-```
-AI Agent: "I've completed Phase 2.0 (Implement core parsing logic). Let me generate the code review context."
-
-Tool Call: generate_code_review_context
-Parameters: { "project_path": "/path/to/project" }
-
-AI Agent: "✅ Phase 2.0 complete! Code review context generated at: code-review-context-20241128-143052.md"
-```
-
-**Manual Usage (for testing):**
-```
-Please use the generate_code_review_context tool to analyze my project at /path/to/my/project
-```
-
-The tool will:
-1. **Detect completed phase** - Automatically finds the most recently completed phase from task list
-2. **Parse PRD requirements** - Extracts feature context and goals  
-3. **Analyze git changes** - Gets all file modifications since phase start
-4. **Generate review package** - Creates comprehensive markdown with all context needed for human review
-
-## Environment Variables
-
-### Core Configuration
-- `GEMINI_API_KEY`: Required for Gemini integration (PRD summarization and code review)
-- `MAX_FILE_TREE_DEPTH`: Optional, maximum tree depth (default: 5). Use lower values for large projects.
-- `MAX_FILE_CONTENT_LINES`: Optional, max lines to show per file (default: 500). Adjust for context window limits.
-
-### Gemini 2.5 Code Review Configuration
-- `GEMINI_MODEL`: Model to use for code review (default: `gemini-2.5-flash-preview-05-20`)
-  - **Flash (default)**: `gemini-2.5-flash-preview-05-20` - Fast, high-volume code reviews
-  - **Pro**: `gemini-2.5-pro-preview-05-06` - Complex reasoning, in-depth analysis
-- `ENABLE_GROUNDING`: Enable Google Search grounding (default: `true`)
-- `ENABLE_URL_CONTEXT`: Enable URL context processing (default: `true`)
-- `DEBUG_MODE`: Enable verbose logging (default: `false`)
-
-## Development
-
-Run tests:
-```bash
+# Run tests
 pytest
 ```
 
-## Project Structure
+## 📄 Project Structure
 
-- `src/generate_code_review_context.py` - Core Python script
+- `src/generate_code_review_context.py` - Core context generation
+- `src/ai_code_review.py` - Standalone AI review tool
 - `src/server.py` - MCP server wrapper
-- `tests/` - Test files and fixtures
-- `pyproject.toml` - Project configuration
-- `requirements.txt` - Dependencies
+- `src/model_config.json` - Model configuration and aliases
+- `tests/` - Comprehensive test suite
+- `pyproject.toml` - Project configuration and entry points
