@@ -18,7 +18,8 @@
   },
   "defaults": {
     "model": "gemini-2.0-flash",
-    "summary_model": "gemini-2.0-flash-lite"
+    "summary_model": "gemini-2.0-flash-lite",
+    "default_prompt": "Generate comprehensive code review for recent development changes focusing on code quality, security, performance, and best practices."
   },
   "_comment": "Update this file when Google releases new model versions. Aliases allow users to use simple names like 'gemini-2.5-pro' instead of full preview names."
 }

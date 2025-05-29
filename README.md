@@ -55,7 +55,8 @@ task-list-code-review-mcp /path/to/your/project
 ### CLI Usage
 
 ```bash
-# Smart Default: Auto-detects project completion status
+# Smart Default: Auto-detects project completion status and task list
+# - Finds most recent tasks-*.md file automatically
 # - If all phases complete: Reviews entire project  
 # - If phases in progress: Reviews most recent completed phase
 uvx task-list-code-review-mcp /path/to/project
@@ -66,16 +67,45 @@ uvx task-list-code-review-mcp /path/to/project --scope full_project
 # Review specific phase by number
 uvx task-list-code-review-mcp /path/to/project --scope specific_phase --phase-number 2.0
 
+# Use specific task list (when multiple exist)
+uvx task-list-code-review-mcp /path/to/project --task-list tasks-auth-system.md
+
 # Generate context only (skip AI review)
 uvx task-list-code-review-mcp /path/to/project --context-only
 
 # Use different Gemini model
 GEMINI_MODEL=gemini-2.5-pro uvx task-list-code-review-mcp /path/to/project
+
+# Works without task lists (uses intelligent default prompt)
+uvx task-list-code-review-mcp /path/to/project --default-prompt "Review security and performance"
+```
+
+### Task List Discovery
+
+**How the tool finds task lists:**
+
+- **Auto-discovery**: Searches `/tasks/` directory for `tasks-*.md` files
+- **Multiple files**: Uses most recently modified task list
+- **Specific selection**: Use `--task-list filename.md` to choose exact file  
+- **No task lists**: Falls back to intelligent default prompts
+- **Logging**: Shows which task list was selected when multiple exist
+
+**Examples:**
+```bash
+# Multiple task lists in /tasks/:
+# - tasks-auth-system.md (modified yesterday)
+# - tasks-payment-flow.md (modified today) ← Auto-selected
+
+# Tool output: "Auto-selected most recent: tasks-payment-flow.md"
+
+# Override auto-selection:
+uvx task-list-code-review-mcp . --task-list tasks-auth-system.md
 ```
 
 ### MCP Server Integration
 
-**Claude Desktop/Cursor Configuration** (`claude_desktop_config.json`):
+#### Claude Desktop/Cursor Configuration
+**Setup** (`claude_desktop_config.json`):
 ```json
 {
   "mcpServers": {
@@ -102,6 +132,46 @@ Claude: I'll generate a code review context using smart scope detection.
 }
 
 [Tool Result] Successfully generated: code-review-context-full-project-20241201-143052.md
+```
+
+#### Claude Code CLI Integration
+
+**Add this MCP server to Claude Code:**
+```bash
+# Add the MCP server (set your API key)
+claude mcp add task-list-reviewer -e GEMINI_API_KEY=your_key_here -- uvx task-list-code-review-mcp
+
+# Verify it's added
+claude mcp list
+
+# Use in Claude Code sessions
+claude # Opens Claude Code with MCP server available
+```
+
+**Usage in Claude Code:**
+```
+Human: Generate a code review for my current project
+
+Claude: I'll analyze your project and generate a comprehensive code review.
+
+[Tool Use: generate_code_review_context]
+{
+  "project_path": "/Users/myname/projects/my-app"
+}
+
+[Tool Result] Generated: code-review-context-full-project-20241201-143052.md
+```
+
+**MCP Server Management:**
+```bash
+# List all MCP servers
+claude mcp list
+
+# Get server details
+claude mcp get task-list-reviewer
+
+# Remove server if needed
+claude mcp remove task-list-reviewer
 ```
 
 ## 🛠 Advanced Configuration
@@ -154,7 +224,8 @@ The tool uses a JSON configuration file (`src/model_config.json`) to manage mode
   },
   "defaults": {
     "model": "gemini-2.0-flash",
-    "summary_model": "gemini-2.0-flash-lite"
+    "summary_model": "gemini-2.0-flash-lite",
+    "default_prompt": "Generate comprehensive code review for recent development changes focusing on code quality, security, performance, and best practices."
   }
 }
 ```
@@ -163,6 +234,7 @@ The tool uses a JSON configuration file (`src/model_config.json`) to manage mode
 - **URL Context**: Enhanced web content understanding
 - **Thinking Mode**: Advanced reasoning for complex problems  
 - **Web Grounding**: Up-to-date information from search
+- **Default Prompt**: Fallback prompt when no task lists exist
 
 **Usage Examples:**
 ```bash
@@ -261,14 +333,16 @@ Output: code-review-context-recent-phase-{timestamp}.md
 
 ### Compatible Format Specifications
 
-**PRDs**: Based on [create-prd.mdc](https://github.com/snarktank/ai-dev-tasks/blob/main/create-prd.mdc)
+**PRDs (Optional)**: Based on [create-prd.mdc](https://github.com/snarktank/ai-dev-tasks/blob/main/create-prd.mdc)
 - File naming: `prd-[feature-name].md` in `/tasks/` directory
 - Structured markdown with Goals, User Stories, Functional Requirements
+- **Not required**: Tool works without PRD files
 
 **Task Lists**: Based on [generate-tasks.mdc](https://github.com/snarktank/ai-dev-tasks/blob/main/generate-tasks.mdc)
-- File naming: `tasks-[prd-file-name].md` in `/tasks/` directory
+- File naming: `tasks-[feature-name].md` in `/tasks/` directory
 - Hierarchical phases (1.0, 2.0) with sub-tasks (1.1, 1.2)
 - Checkbox progress tracking (`- [ ]` / `- [x]`)
+- **Flexible**: Multiple task lists supported, auto-discovery available
 
 ## 🚨 Troubleshooting
 
@@ -294,13 +368,26 @@ ERROR: phase_number is required when scope is 'specific_phase'
 uvx task-list-code-review-mcp /project --scope specific_phase --phase-number 2.0
 ```
 
-**File Not Found:**
+**Task List Selection:**
 ```bash
-ERROR: No PRD or task list files found
+Multiple task lists found: tasks-auth.md, tasks-payment.md
+Auto-selected most recent: tasks-payment.md
 ```
-**Solution:** Ensure your project has:
-- PRD file: `tasks/prd-*.md`
-- Task list: `tasks/tasks-*.md`
+**Override Selection:**
+```bash
+uvx task-list-code-review-mcp . --task-list tasks-auth.md
+```
+
+**No Task Lists Found:**
+```bash
+INFO: No task list files found. Will use default prompt for code review.
+```
+**This is OK!** The tool works without task lists using intelligent defaults.
+
+**Custom Default Prompt:**
+```bash
+uvx task-list-code-review-mcp . --default-prompt "Focus on security vulnerabilities and performance issues"
+```
 
 ### File Permissions
 ```bash
