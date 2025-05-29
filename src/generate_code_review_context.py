@@ -22,10 +22,12 @@ import glob
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 import logging
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from .env file (optional)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not available, continue without it
 
 # Optional Gemini import
 try:
@@ -89,7 +91,7 @@ def parse_task_list(content: str) -> Dict[str, Any]:
             })
             
             if completed:
-                current_phase['subtasks_completed'].append(number)
+                current_phase['subtasks_completed'].append(f"{number} {description}")
     
     # Determine if each phase is complete (all subtasks complete)
     for phase in phases:
@@ -246,15 +248,6 @@ def get_changed_files(project_path: str) -> List[Dict[str, str]]:
         List of changed file dictionaries
     """
     try:
-        # Get list of changed files
-        result = subprocess.run(
-            ['git', 'diff', '--name-status', 'HEAD'],
-            cwd=project_path,
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        
         changed_files = []
         max_lines = int(os.getenv('MAX_FILE_CONTENT_LINES', '500'))
         debug_mode = os.getenv('DEBUG_MODE', 'false').lower() == 'true'
@@ -262,40 +255,88 @@ def get_changed_files(project_path: str) -> List[Dict[str, str]]:
         if debug_mode:
             logger.info(f"Debug mode enabled. Processing max {max_lines} lines per file.")
         
+        # Get all types of changes: staged, unstaged, and untracked
+        all_files = {}
+        
+        # 1. Staged changes (index vs HEAD)
+        result = subprocess.run(
+            ['git', 'diff', '--name-status', '--cached'],
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+            check=True
+        )
         for line in result.stdout.strip().split('\n'):
-            if not line:
-                continue
-                
-            parts = line.split('\t', 1)
-            if len(parts) != 2:
-                continue
-                
-            status, file_path = parts
+            if line:
+                parts = line.split('\t', 1)
+                if len(parts) == 2:
+                    status, file_path = parts
+                    if file_path not in all_files:
+                        all_files[file_path] = []
+                    all_files[file_path].append(f"staged-{status}")
+        
+        # 2. Unstaged changes (working tree vs index)
+        result = subprocess.run(
+            ['git', 'diff', '--name-status'],
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        for line in result.stdout.strip().split('\n'):
+            if line:
+                parts = line.split('\t', 1)
+                if len(parts) == 2:
+                    status, file_path = parts
+                    if file_path not in all_files:
+                        all_files[file_path] = []
+                    all_files[file_path].append(f"unstaged-{status}")
+        
+        # 3. Untracked files
+        result = subprocess.run(
+            ['git', 'ls-files', '--others', '--exclude-standard'],
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        for line in result.stdout.strip().split('\n'):
+            if line:
+                if line not in all_files:
+                    all_files[line] = []
+                all_files[line].append("untracked")
+        
+        # Process all collected files
+        for file_path, statuses in all_files.items():
+            absolute_path = os.path.abspath(os.path.join(project_path, file_path))
             
-            # Get file content
-            try:
-                content_result = subprocess.run(
-                    ['git', 'show', f'HEAD:{file_path}'],
-                    cwd=project_path,
-                    capture_output=True,
-                    text=True,
-                    check=True
-                )
-                
-                content_lines = content_result.stdout.split('\n')
-                if len(content_lines) > max_lines:
-                    content = '\n'.join(content_lines[:max_lines])
-                    content += f'\n... (truncated, showing first {max_lines} lines)'
-                else:
-                    content = content_result.stdout
-                    
-            except subprocess.CalledProcessError:
-                # Handle binary files or other errors
-                content = "[Binary file or content not available]"
+            # Check if this is a deleted file
+            is_deleted = any('D' in status for status in statuses)
+            
+            if is_deleted:
+                content = "[File deleted]"
+            else:
+                # Get file content from working directory
+                try:
+                    if os.path.exists(absolute_path):
+                        with open(absolute_path, 'r', encoding='utf-8') as f:
+                            content_lines = f.readlines()
+                            
+                        if len(content_lines) > max_lines:
+                            content = ''.join(content_lines[:max_lines])
+                            content += f'\n... (truncated, showing first {max_lines} lines)'
+                        else:
+                            content = ''.join(content_lines).rstrip('\n')
+                    else:
+                        content = "[File not found in working directory]"
+                        
+                except (UnicodeDecodeError, PermissionError, OSError):
+                    # Handle binary files or other errors
+                    content = "[Binary file or content not available]"
             
             changed_files.append({
-                'path': file_path,
-                'status': status,
+                'path': absolute_path,
+                'status': ', '.join(statuses),
                 'content': content
             })
         
@@ -403,26 +444,47 @@ def format_review_template(data: Dict[str, Any]) -> str:
     Returns:
         Formatted markdown template
     """
-    template = f"""**Overall PRD summary: (2-3 sentences max)**
+    template = f"""<overall_prd_summary>
 {data['prd_summary']}
+</overall_prd_summary>
 
-**Total Number of phases in Task List: {data['total_phases']}**
+<total_phases>
+{data['total_phases']}
+</total_phases>
 
-**Current phase number: {data['current_phase_number']}**
-**Previous phase completed: {data['previous_phase_completed']}**
+<current_phase_number>
+{data['current_phase_number']}
+</current_phase_number>
 
-**Next phase: {data['next_phase']}**
+<previous_phase_completed>
+{data['previous_phase_completed']}
+</previous_phase_completed>
+"""
+    
+    # Only add next phase if it exists
+    if data['next_phase']:
+        template += f"""<next_phase>
+{data['next_phase']}
+</next_phase>
 
-**Current phase description: "{data['current_phase_description']}"**
+"""
+    
+    template += f"""<current_phase_description>
+{data['current_phase_description']}
+</current_phase_description>
 
-**Subtasks completed in current phase: {data['subtasks_completed']}**
+<subtasks_completed>
+{chr(10).join(f"- {subtask}" for subtask in data['subtasks_completed'])}
+</subtasks_completed>
 
-**{data['project_path']}**
-**<file_tree>**
+<project_path>
+{data['project_path']}
+</project_path>
+<file_tree>
 {data['file_tree']}
-**</file_tree>**
+</file_tree>
 
-**<files_changed>**"""
+<files_changed>"""
     
     for file_info in data['changed_files']:
         file_ext = os.path.splitext(file_info['path'])[1].lstrip('.')
@@ -430,19 +492,19 @@ def format_review_template(data: Dict[str, Any]) -> str:
             file_ext = 'txt'
             
         template += f"""
-**File: {file_info['path']}**
-**```{file_ext}**
+File: {file_info['path']} ({file_info['status']})
+```{file_ext}
 {file_info['content']}
-**```**"""
+```"""
     
     template += f"""
-**</files_changed>**
+</files_changed>
 
-**<user_instructions>**
+<user_instructions>
 We have just completed phase #{data['current_phase_number']}: "{data['current_phase_description']}".
 
 Based on the PRD, the completed phase, all subtasks that were finished in that phase, and the files changed, your job is to conduct a code review and output your code review feedback for the completed phase. Identify specific lines or files that are concerning when appropriate.
-**</user_instructions>**"""
+</user_instructions>"""
     
     return template
 
@@ -488,7 +550,123 @@ def find_project_files(project_path: str) -> tuple[Optional[str], Optional[str]]
     return prd_file, task_file
 
 
-def main(project_path: str = None, phase: str = None, output: str = None) -> str:
+def send_to_gemini_for_review(context_content: str, project_path: str) -> Optional[str]:
+    """
+    Send review context to Gemini 2.5 for comprehensive code review.
+    
+    Args:
+        context_content: The formatted review context content
+        project_path: Path to project root for saving output
+        
+    Returns:
+        Path to saved Gemini response file, or None if failed
+    """
+    if not GEMINI_AVAILABLE or not os.getenv('GEMINI_API_KEY'):
+        logger.warning("Gemini API not available or API key not provided. Skipping Gemini review.")
+        return None
+    
+    try:
+        client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
+        
+        # Configure model selection (Flash by default)
+        model_config = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash-preview-05-20')
+        logger.info(f"Using Gemini model: {model_config}")
+        
+        # Configure tools
+        tools = []
+        
+        # Enable URL context tool if needed (simplified for compatibility)
+        enable_url_context = os.getenv('ENABLE_URL_CONTEXT', 'false').lower() == 'true'
+        if enable_url_context:
+            try:
+                tools.append(types.Tool(url_context=types.UrlContext()))
+            except AttributeError:
+                logger.warning("URL context not available in this API version")
+        
+        # Configure grounding using available types
+        grounding_config = None
+        enable_grounding = os.getenv('ENABLE_GROUNDING', 'false').lower() == 'true'
+        if enable_grounding:
+            try:
+                grounding_config = types.GoogleSearchRetrieval(
+                    dynamic_retrieval_config=types.DynamicRetrievalConfig(
+                        threshold=0.3
+                    )
+                )
+            except (AttributeError, TypeError) as e:
+                logger.warning(f"Grounding configuration failed: {e}")
+        
+        # Configure thinking and other settings
+        config_params = {
+            'max_output_tokens': 8000,
+            'temperature': 0.1,
+            'thinking_config': types.ThinkingConfig(
+                include_thoughts=True,
+                thinking_budget=2048  # Enable thinking mode
+            )
+        }
+        
+        if tools:
+            config_params['tools'] = tools
+            
+        # Add grounding as a tool instead of config
+        if grounding_config:
+            if not tools:
+                config_params['tools'] = []
+            config_params['tools'].append(types.Tool(google_search_retrieval=grounding_config))
+        
+        config = types.GenerateContentConfig(**config_params)
+        
+        # Create comprehensive review prompt
+        review_prompt = f"""You are an expert code reviewer conducting a comprehensive code review. Based on the provided context, please provide detailed feedback.
+
+{context_content}
+
+Please provide a thorough code review that includes:
+1. **Overall Assessment** - High-level evaluation of the implementation
+2. **Code Quality & Best Practices** - Specific line-by-line feedback where applicable
+3. **Architecture & Design** - Comments on system design and patterns
+4. **Security Considerations** - Any security concerns or improvements
+5. **Performance Implications** - Performance considerations and optimizations
+6. **Testing & Maintainability** - Suggestions for testing and long-term maintenance
+7. **Next Steps** - Recommendations for future work or improvements
+
+Focus on being specific and actionable. When referencing files, include line numbers where relevant."""
+        
+        # Generate review
+        logger.info("Sending context to Gemini for code review...")
+        response = client.models.generate_content(
+            model=model_config,
+            contents=[review_prompt],
+            config=config
+        )
+        
+        # Format and save response
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        output_file = os.path.join(project_path, f'code-review-comprehensive-feedback-{timestamp}.md')
+        
+        # Format the response with metadata
+        formatted_response = f"""# Comprehensive Code Review Feedback
+*Generated on {datetime.now().strftime("%Y-%m-%d at %H:%M:%S")} using {model_config}*
+
+{response.text}
+
+---
+*Review conducted by Gemini AI with thinking enabled and web grounding capabilities*
+"""
+        
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(formatted_response)
+        
+        logger.info(f"Gemini review saved to: {output_file}")
+        return output_file
+        
+    except Exception as e:
+        logger.error(f"Failed to generate Gemini review: {e}")
+        return None
+
+
+def main(project_path: str = None, phase: str = None, output: str = None, enable_gemini_review: bool = True) -> str:
     """
     Main function to generate code review context.
     
@@ -552,13 +730,23 @@ def main(project_path: str = None, phase: str = None, output: str = None) -> str
         
         # Save output
         if output is None:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output = os.path.join(project_path, 'tasks', f'review-context-{timestamp}.md')
+            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            output = os.path.join(project_path, f'code-review-context-{timestamp}.md')
         
         with open(output, 'w', encoding='utf-8') as f:
             f.write(review_context)
         
         logger.info(f"Generated review context: {output}")
+        
+        # Send to Gemini for comprehensive review if enabled
+        gemini_output = None
+        if enable_gemini_review:
+            gemini_output = send_to_gemini_for_review(review_context, project_path)
+            if gemini_output:
+                logger.info(f"Gemini review generated: {gemini_output}")
+            else:
+                logger.warning("Gemini review generation failed or was skipped")
+        
         return output
         
     except Exception as e:
@@ -572,11 +760,14 @@ if __name__ == "__main__":
                       help="Path to project root")
     parser.add_argument("--phase", help="Override current phase detection")
     parser.add_argument("--output", help="Custom output file path")
+    parser.add_argument("--no-gemini", action="store_true", 
+                      help="Disable Gemini AI code review generation")
     
     args = parser.parse_args()
     
     try:
-        output_path = main(args.project_path, args.phase, args.output)
+        enable_gemini = not args.no_gemini
+        output_path = main(args.project_path, args.phase, args.output, enable_gemini)
         print(f"Review context generated: {output_path}")
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

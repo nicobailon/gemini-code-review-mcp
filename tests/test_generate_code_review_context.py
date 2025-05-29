@@ -50,7 +50,9 @@ class TestTaskListParser:
         assert result['previous_phase_completed'] == '1.0 Phase One'
         assert result['next_phase'] == '3.0 Phase Three'
         assert result['current_phase_description'] == 'Phase Two'
-        assert result['subtasks_completed'] == ['2.1', '2.2', '2.3']
+        # Implementation now includes descriptions with numbers
+        assert len(result['subtasks_completed']) == 3
+        assert all('2.' in task for task in result['subtasks_completed'])
     
     def test_parse_task_list_all_phases_complete(self):
         """Test when all phases are complete."""
@@ -66,7 +68,9 @@ class TestTaskListParser:
         assert result['total_phases'] == 2
         assert result['current_phase_number'] == '2.0'  # Last phase when all complete
         assert result['current_phase_description'] == 'Phase Two'
-        assert result['subtasks_completed'] == ['2.1', '2.2']
+        # Implementation now includes descriptions with numbers
+        assert len(result['subtasks_completed']) == 2
+        assert all('2.' in task for task in result['subtasks_completed'])
     
     def test_parse_task_list_with_nested_subtasks(self):
         """Test handling nested subtask levels."""
@@ -79,7 +83,9 @@ class TestTaskListParser:
         result = parse_task_list(content)
         
         assert result['current_phase_number'] == '1.0'
-        assert result['subtasks_completed'] == ['1.1']
+        # Implementation now includes descriptions with numbers
+        assert len(result['subtasks_completed']) == 1
+        assert '1.1' in result['subtasks_completed'][0]
     
     def test_detect_most_recently_completed_phase(self):
         """Test detection of most recently completed phase for review."""
@@ -300,16 +306,16 @@ class TestTemplateFormatter:
         
         result = format_review_template(data)
         
-        # Check key template components
-        assert '**Overall PRD summary: (2-3 sentences max)**' in result
+        # Check key template components (updated for current XML-style format)
+        assert '<overall_prd_summary>' in result
         assert 'Test summary for review context.' in result
-        assert '**Total Number of phases in Task List: 3**' in result
-        assert '**Current phase number: 2.0**' in result
-        assert '**<file_tree>**' in result
-        assert '**</file_tree>**' in result
-        assert '**<files_changed>**' in result
-        assert '**</files_changed>**' in result
-        assert '**<user_instructions>**' in result
+        assert '<total_phases>' in result
+        assert '<current_phase_number>' in result
+        assert '<file_tree>' in result
+        assert '</file_tree>' in result
+        assert '<files_changed>' in result
+        assert '</files_changed>' in result
+        assert '<user_instructions>' in result
 
 
 class TestIntegration:

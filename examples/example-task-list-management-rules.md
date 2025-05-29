@@ -28,8 +28,7 @@ When working with task lists, the AI must:
 2. Follow the completion protocol:
    - Mark each finished **sub‑task** `[x]`.
    - Once **all** its subtasks are `[x]` within a parent task, you need to run the `generate_code_review_context` tool to generate the code review context for that phase.
-   - That tool will return a markdown file with the code review context for the completed phase.
-   - Use the `send_code_review_context` tool to send the markdown file to Gemini to code review. It will return the path to the review file.
+   - Once the context file is generated, use the `send_code_review_context` tool to send the markdown file to Gemini to code review. It will return the path to the review file.
    - Access the review file and add the code review feedback.
    - Mark the **parent task** `[x]` once the code review feedback is complete.
 3. Add newly discovered tasks.

@@ -61,6 +61,11 @@ async def handle_list_tools() -> list[Tool]:
                     "output_path": {
                         "type": "string",
                         "description": "Custom output file path. If not provided, uses default timestamped path"
+                    },
+                    "enable_gemini_review": {
+                        "type": "boolean",
+                        "description": "Enable Gemini AI code review generation (default: true)",
+                        "default": True
                     }
                 },
                 "required": ["project_path"]
@@ -82,6 +87,7 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> CallToolResu
         project_path = arguments.get("project_path")
         current_phase = arguments.get("current_phase")
         output_path = arguments.get("output_path")
+        enable_gemini_review = arguments.get("enable_gemini_review", True)
         
         if not project_path:
             raise ValueError("project_path is required")
@@ -98,7 +104,8 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> CallToolResu
         output_file = generate_review_context(
             project_path=project_path,
             phase=current_phase,
-            output=output_path
+            output=output_path,
+            enable_gemini_review=enable_gemini_review
         )
         
         # Read the generated content to return
@@ -131,7 +138,7 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> CallToolResu
         )
 
 
-async def main():
+async def async_main():
     """
     Main entry point for the MCP server.
     """
@@ -153,11 +160,18 @@ async def main():
         )
 
 
-if __name__ == "__main__":
+def main():
+    """
+    Entry point for the MCP server script.
+    """
     try:
-        asyncio.run(main())
+        asyncio.run(async_main())
     except KeyboardInterrupt:
         logger.info("Server stopped by user")
     except Exception as e:
         logger.error(f"Server error: {e}")
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

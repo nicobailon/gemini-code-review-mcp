@@ -23,7 +23,8 @@ classifiers = [
 ]
 dependencies = [
     "mcp>=0.1.0",
-    "openai>=1.0.0",
+    "google-genai>=0.1.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [project.optional-dependencies]
@@ -37,6 +38,7 @@ dev = [
 
 [project.scripts]
 generate-code-review-context = "src.generate_code_review_context:main"
+code-review-context-mcp-server = "src.server:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

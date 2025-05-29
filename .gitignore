@@ -13,3 +13,4 @@ build/
 .idea/
 *.log
 review-context-*.md.env
+tasks/
