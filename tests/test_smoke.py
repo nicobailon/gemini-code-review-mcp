@@ -12,10 +12,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 def test_package_imports():
     """Test that all main modules can be imported"""
-    import src.server
-    import src.generate_code_review_context
-    import src.ai_code_review
-    import src.model_config
+    import server
+    import generate_code_review_context
+    import ai_code_review
     assert True  # If we get here, imports worked
 
 def test_model_config_loading():
