@@ -7,6 +7,7 @@ __pycache__/
 .pytest_cache/
 .coverage
 *.egg-info/
+*.dist-info/
 dist/
 build/
 .DS_Store
@@ -18,4 +19,4 @@ review-context-*.md
 code-review-*.md
 /*.md
 !README.md
-/tasks/
+/tasks/*.dist-info/

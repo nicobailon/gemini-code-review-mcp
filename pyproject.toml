@@ -23,7 +23,7 @@ exclude = [
 
 [project]
 name = "task-list-code-review-mcp"
-version = "0.1.0"
+version = "0.2.1"
 description = "MCP server for AI-powered task list code reviews with PRD context"
 authors = [
     {name = "Nico Bailon", email = "nico604@pm.me"},
@@ -65,6 +65,8 @@ dev = [
 
 [project.scripts]
 task-list-code-review-mcp = "src.server:main"
+generate-code-review = "src.generate_code_review_context:cli_main"
+review-with-ai = "src.ai_code_review:main"
 
 [tool.black]
 line-length = 88
@@ -79,3 +81,4 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+asyncio_default_fixture_loop_scope = "function"
