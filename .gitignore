@@ -14,3 +14,4 @@ build/
 *.log
 review-context-*.md.env
 tasks/
+.env
