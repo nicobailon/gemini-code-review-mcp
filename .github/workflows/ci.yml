@@ -21,7 +21,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest pytest-mock pytest-asyncio
+        pip install pytest pytest-mock pytest-asyncio build
         pip install -e .
     
     - name: Run critical tests only
@@ -29,8 +29,8 @@ jobs:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         GEMINI_MODEL: gemini-2.0-flash-lite  # Cheapest model
       run: |
-        # Test core functionality with real API (cheapest model)
-        pytest tests/test_package.py tests/test_min_python_requirements.py tests/test_server.py -v
+        # Test core functionality that actually exists
+        pytest tests/test_critical.py -v --tb=short
     
     - name: Test package building
       run: |
