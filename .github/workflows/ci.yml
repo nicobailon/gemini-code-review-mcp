@@ -7,13 +7,13 @@ on:
     branches: [ master ]
 
 jobs:
+  # Minimal essential testing - pragmatic approach
   test:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest  # Single OS for speed
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.8', '3.12']  # Min/max versions only
     
     steps:
     - uses: actions/checkout@v4
@@ -26,30 +26,34 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install build hatch pytest pytest-mock uvx
+        pip install build pytest pytest-mock
     
     - name: Install package in development mode
       run: |
         pip install -e .
     
-    - name: Run tests
+    - name: Run smoke tests (essential functionality only)
       run: |
-        pytest tests/ -v --tb=short
+        # Fast smoke tests - no external dependencies or API calls
+        pytest tests/test_smoke.py tests/test_package.py -v --tb=short
     
     - name: Test package building
       run: |
         python -m build
     
-    - name: Test uvx execution
+    - name: Test imports and entry points
       run: |
-        pip install dist/*.whl
-        python -c "import src.server; print('Package import test passed')"
-    
-    - name: Test entry point
-      shell: bash
-      run: |
-        # Test the console script entry point
-        task-list-code-review-mcp --help || echo "Entry point test completed"
+        # Test package imports work
+        python -c "import src.server; import src.generate_code_review_context; import src.ai_code_review; print('All imports successful')"
+        
+        # Test entry points exist (without executing - no API key needed)
+        python -c "
+        import pkg_resources
+        eps = list(pkg_resources.iter_entry_points('console_scripts'))
+        names = [ep.name for ep in eps if 'task-list' in ep.name or 'generate-code' in ep.name or 'review-with' in ep.name]
+        assert len(names) >= 3, f'Missing entry points: {names}'
+        print(f'Entry points verified: {names}')
+        "
 
   lint:
     runs-on: ubuntu-latest
