@@ -159,7 +159,7 @@ def detect_current_phase(phases: List[Dict]) -> Dict[str, Any]:
     
     # Find previous completed phase
     previous_phase_completed = ''
-    if review_idx and review_idx > 0:
+    if review_idx is not None and review_idx > 0:
         prev_phase = phases[review_idx - 1]
         previous_phase_completed = f"{prev_phase['number']} {prev_phase['description']}"
     
@@ -699,10 +699,28 @@ def main(project_path: str = None, phase: str = None, output: str = None, enable
         # Override phase if provided
         if phase:
             # Find the specified phase
-            for p in task_data['phases']:
+            for i, p in enumerate(task_data['phases']):
                 if p['number'] == phase:
-                    phase_data = detect_current_phase([p])
-                    task_data.update(phase_data)
+                    # Find previous completed phase
+                    previous_phase_completed = ''
+                    if i > 0:
+                        prev_phase = task_data['phases'][i - 1]
+                        previous_phase_completed = f"{prev_phase['number']} {prev_phase['description']}"
+                    
+                    # Find next phase
+                    next_phase = ''
+                    if i < len(task_data['phases']) - 1:
+                        next_phase_obj = task_data['phases'][i + 1]
+                        next_phase = f"{next_phase_obj['number']} {next_phase_obj['description']}"
+                    
+                    # Override the detected phase data
+                    task_data.update({
+                        'current_phase_number': p['number'],
+                        'current_phase_description': p['description'],
+                        'previous_phase_completed': previous_phase_completed,
+                        'next_phase': next_phase,
+                        'subtasks_completed': p['subtasks_completed']
+                    })
                     break
         
         # Get git changes

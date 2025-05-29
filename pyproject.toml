@@ -1,18 +1,38 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "test-env",
+  "examples",
+  "rules",
+  ".env*",
+  "review-context-*.md"
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+exclude = [
+  "test-env",
+  "examples", 
+  "rules",
+  ".env*",
+  "review-context-*.md"
+]
 
 [project]
-name = "code-review-context-mcp"
-version = "0.1.0"
-description = "Python-based MCP server tool that generates formatted code review context by parsing PRD and task list files"
+name = "ai-dev-tasks-mcp"
+version = "1.0.0"
+description = "MCP server for generating code review context from PRDs and git changes"
 authors = [
-    {name = "Developer", email = "developer@example.com"}
+    {name = "Nico Bailon", email = "nico604@pm.me"},
 ]
 readme = "README.md"
+license = {text = "MIT"}
 requires-python = ">=3.8"
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -20,29 +40,31 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "mcp>=0.1.0",
+    "fastmcp>=0.1.0",
     "google-genai>=0.1.0",
     "python-dotenv>=1.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/nicobailon/ai-dev-tasks-mcp"
+Repository = "https://github.com/nicobailon/ai-dev-tasks-mcp"
+Issues = "https://github.com/nicobailon/ai-dev-tasks-mcp/issues"
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
     "pytest-mock>=3.0.0",
+    "pytest-asyncio>=0.21.0",
     "black",
     "isort",
     "flake8",
 ]
 
 [project.scripts]
-generate-code-review-context = "src.generate_code_review_context:main"
-code-review-context-mcp-server = "src.server:main"
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["src*"]
+ai-dev-tasks-mcp = "src.server:main"
 
 [tool.black]
 line-length = 88

@@ -1,4 +1,5 @@
 venv/
+test-env/
 __pycache__/
 *.pyc
 *.pyo
@@ -12,6 +13,9 @@ build/
 .vscode/
 .idea/
 *.log
-review-context-*.md.env
-tasks/
 .env
+review-context-*.md
+code-review-*.md
+/*.md
+!README.md
+/tasks/
