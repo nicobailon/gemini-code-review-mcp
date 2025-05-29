@@ -319,14 +319,16 @@ The tool automatically detects project completion status:
 
 **Project Complete Workflow:**
 ```
-AI Agent: "I've completed the final phase. Let me generate a code review."
+Human: "Generate a code review for my completed project"
+AI Agent: I'll analyze your project and generate a comprehensive review.
 Tool detects: All phases (1.0-7.0) complete → Full project review
 Output: code-review-context-full-project-{timestamp}.md
 ```
 
 **Mid-Development Workflow:**
 ```
-AI Agent: "I've completed Phase 2.0 of 5.0. Let me generate a review."
+Human: "I just finished Phase 2.0, can you review what I've done?"
+AI Agent: I'll review your recent work using the MCP server.
 Tool detects: Phases in progress → Recent completed phase
 Output: code-review-context-recent-phase-{timestamp}.md
 ```
