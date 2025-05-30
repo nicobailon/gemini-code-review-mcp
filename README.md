@@ -1,10 +1,21 @@
-# Task List Code Review MCP Server
+# Task List Code Review MCP Server & CLI Tool
 
-An MCP server tool designed for **AI coding agents** (Cursor, Claude Code, etc.) to automatically generate comprehensive code review context when completing development phases.
+An MCP server designed for **AI coding agents** (Cursor, Claude Code, etc.) with **standalone CLI support** to automatically generate comprehensive code review context when completing development phases.
 
-**Version**: 0.2.1 - Enhanced with scope-based reviews, dual tool architecture, AI-powered code analysis, and configurable model management.
+**Version**: 0.3.0 - Enhanced with auto-prompt generation, standalone CLI tools, MCP text response chaining, and TDD-based auto-prompt workflows.
+
+## 🎯 Usage Options
+
+**🤖 MCP Server** (Primary): Integration with AI agents (Claude Desktop, Claude Code, Cursor)  
+**🖥️ Standalone CLI**: Direct command-line usage for manual code reviews + auto-prompt generation  
+**⚠️ Note**: Use development commands if getting cached/old versions  
+**🔗 Hybrid**: Use CLI for testing/auto-prompts, then integrate as MCP server for AI workflows
+
+**📊 [Workflow Diagrams](./WORKFLOW_DIAGRAMS.md)**: Visual ASCII flow diagrams for all tools and commands
 
 ## 🚀 Quick Start
+
+> **💡 Most Common Command**: `uvx task-list-code-review-mcp /path/to/project`
 
 ### Try It First (No Installation Required)
 
@@ -28,17 +39,48 @@ uvx task-list-code-review-mcp /path/to/your/project
 # 📄 Files generated: code-review-context-recent-phase-20241201-143052.md, ...
 ```
 
+### 🚨 Development/Local Testing
+
+**If you're working with the source code or getting cached version issues:**
+
+```bash
+# 🎯 Wrapper scripts (intelligent fallback: dev mode → installed package)
+./review /path/to/project --scope full_project
+./prompt --project-path /path/to/project
+
+# 🔧 Direct module execution (always works in dev mode)
+python -m src.generate_code_review_context /path/to/project --scope full_project
+python -m src.auto_prompt_generator --project-path /path/to/project
+
+# 🧹 Makefile commands (use PROJECT= parameter)
+make review PROJECT=/path/to/project
+make prompt PROJECT=/path/to/project
+make help  # Show all available commands
+
+# 🗺️ Clear uvx cache if getting old versions
+uv cache clean
+```
+
 ### Install Globally (If You Like It)
 
 ```bash
 # Install from PyPI
 pip install task-list-code-review-mcp
 
-# Now available as a command
+# Now available as commands
 task-list-code-review-mcp /path/to/your/project
+generate-auto-prompt --context-file tasks/context.md
 ```
 
 ## ✨ Key Features
+
+### 🎯 Auto-Prompt Generation (NEW!)
+- **🤖 MCP Tool**: `generate_auto_prompt` → Creates AI-optimized review prompts from completed work
+- **🖥️ Standalone CLI**: `generate-auto-prompt` → Command-line auto-prompt generation
+- **📄 File Output**: Saves formatted auto-prompts to timestamped .md files (default: current directory)
+- **📡 Stream Output**: `--stream` flag outputs prompts directly to stdout
+- **🎨 Custom Templates**: Support for custom auto-prompt templates
+- **🧠 Intelligent Analysis**: Analyzes codebase context to create targeted review prompts
 
 ### Smart Scope Detection
 - **All phases complete** → Automatically generates comprehensive full-project review
@@ -56,31 +98,57 @@ task-list-code-review-mcp /path/to/your/project
 - **AI Review**: Separate tool for generating AI-powered feedback from context files
 - **Model Configuration**: Easy model switching and alias management via JSON config
 
-## 📖 Basic Usage
+## 📖 Usage Guide
 
-### CLI Usage
+### 🚀 Essential Commands (80% Use Cases)
+
+> **⚡ Quick Reference**:
+> - `uvx task-list-code-review-mcp .` - Smart review current project  
+> - `uvx task-list-code-review-mcp . --auto-prompt` - With optimization
+> - `generate-auto-prompt --project-path . --stream` - Just the prompt
 
 ```bash
-# Smart Default: Auto-detects project completion status and task list
+# Most common: Smart review of your project
 uvx task-list-code-review-mcp /path/to/project
-# Shows: 🔍 Project analysis → 🤖 Model capabilities → 📄 Generated files
+# 🔍 Auto-detects completion status → 🤖 Model capabilities → 📄 Generated files
 
-# Review entire project (force full scope)
+# With auto-prompt optimization
+uvx task-list-code-review-mcp /path/to/project --auto-prompt
+# Generates custom prompt first, then uses it for targeted review
+
+# Review entire project
 uvx task-list-code-review-mcp /path/to/project --scope full_project
+```
 
-# Review specific phase by number
+### 🔧 Advanced Usage
+
+```bash
+# 🎯 AUTO-PROMPT GENERATION
+
+# Generate optimized prompt for your completed work
+generate-auto-prompt --project-path /path/to/project --stream
+# Outputs to console for copy/paste
+
+generate-auto-prompt --context-file tasks/context.md
+# Saves to auto-prompt-YYYYMMDD-HHMMSS.md
+
+# 📊 SCOPE CONTROL
+
+# Review specific phase
 uvx task-list-code-review-mcp /path/to/project --scope specific_phase --phase-number 2.0
 
 # Use specific task list (when multiple exist)
 uvx task-list-code-review-mcp /path/to/project --task-list tasks-auth-system.md
 
-# Generate context only (skip AI review)
+# Context generation only (no AI review)
 uvx task-list-code-review-mcp /path/to/project --context-only
+
+# 🤖 MODEL SELECTION
 
 # Use different Gemini model
 GEMINI_MODEL=gemini-2.5-pro uvx task-list-code-review-mcp /path/to/project
 
-# Works without task lists (uses intelligent default prompt)
+# Works without task lists
 uvx task-list-code-review-mcp /path/to/project --default-prompt "Review security and performance"
 ```
 
@@ -232,19 +300,251 @@ claude mcp get task-list-reviewer
 claude mcp remove task-list-reviewer
 ```
 
+## 🖥️ CLI Commands Reference
+
+### 📄 CLI Commands Overview
+
+| Command | Purpose | When to Use |
+|---------|---------|-------------|
+| `uvx task-list-code-review-mcp` | **Primary CLI** - Full code review workflow | Most common use case |
+| `generate-auto-prompt` | **Auto-prompt generation** - Creates optimized review prompts | When you need custom prompts |
+| `review-with-ai` | **AI review only** - Reviews existing context files | When you have pre-generated context |
+
+**Note**: `task-list-code-review-mcp` without `uvx` starts the MCP server, not the CLI.
+
+### 🚨 Development Mode Commands
+
+**When working with source code or testing locally:**
+
+```bash
+# Main code review (context + AI feedback)
+python -m src.generate_code_review_context /path/to/project --scope full_project
+
+# Meta-prompt generation
+python -m src.auto_prompt_generator --project-path /path/to/project
+
+# AI review from existing context
+python -m src.ai_code_review /path/to/context-file.md
+```
+
+## 🎯 Auto-Prompt Generation CLI
+
+**NEW**: Dedicated CLI tool for generating auto-prompts from completed development work.
+
+### 📋 Available Flags
+
+**Input Sources** (exactly one required):
+- `--context-file PATH` - Use existing context file
+- `--context-content TEXT` - Direct content string  
+- `--project-path PATH` - Generate from project (with optional `--scope`)
+
+**Output Control**:
+- `--output-dir DIR` - Save location (default: current directory)
+- `--stream` - Output to stdout instead of file
+
+**Customization**:
+- `--custom-template TEMPLATE` - Override template (use `{context}` placeholder)
+- `--scope SCOPE` - For `--project-path` only: `recent_phase`, `full_project`, `specific_phase`, `specific_task`
+
+### 🚀 Quick Examples
+
+```bash
+# From context file → saves to current directory
+generate-auto-prompt --context-file tasks/context.md
+
+# From project → stream to stdout  
+generate-auto-prompt --project-path /path/to/project --stream
+
+# Custom directory + template
+generate-auto-prompt --project-path . --output-dir ./prompts --custom-template "Security focus: {context}"
+
+# Specific scope
+generate-auto-prompt --project-path . --scope full_project
+```
+
+### 📄 Output Modes
+
+**File Mode (Default)**:
+- Location: Current directory (or `--output-dir`)
+- Format: `meta-prompt-YYYYMMDD-HHMMSS.md`
+- Content: Formatted with metadata headers
+
+**Stream Mode (`--stream`)**:
+- Output: Raw prompt content to stdout
+- Use case: Pipe to tools or copy/paste
+
+### 🔗 Workflow Integration
+
+```bash
+# CLI generation → MCP usage
+generate-auto-prompt --project-path . --output-dir ./prompts
+# Creates: ./prompts/meta-prompt-20241201-143052.md
+
+# Then use in MCP tools:
+# [Tool Use: generate_ai_code_review]
+# {"context_file_path": "./prompts/meta-prompt-20241201-143052.md"}
+```
+
+## 🔧 MCP Tools Quick Reference
+
+**📊 [Complete Workflow Diagrams](./WORKFLOW_DIAGRAMS.md)** - Visual ASCII flow diagrams
+
+### 🎯 `generate_auto_prompt`
+**Creates optimized prompts from completed work**
+
+```javascript
+await use_mcp_tool({
+  server_name: "task-list-code-review-mcp",
+  tool_name: "generate_auto_prompt",
+  arguments: {
+    project_path: "/path/to/project",
+    text_output: true  // Returns content directly for AI chaining
+  }
+});
+```
+
+### 📋 `generate_code_review_context`
+**Primary context generation tool**
+
+```javascript
+await use_mcp_tool({
+  server_name: "task-list-code-review-mcp",
+  tool_name: "generate_code_review_context",
+  arguments: {
+    project_path: "/path/to/project",
+    scope: "recent_phase",  // or full_project, specific_phase
+    raw_context_only: false
+  }
+});
+```
+
+### 🤖 `generate_ai_code_review`
+**AI-powered feedback from context files**
+
+```javascript
+await use_mcp_tool({
+  server_name: "task-list-code-review-mcp",
+  tool_name: "generate_ai_code_review",
+  arguments: {
+    context_file_path: "/path/to/context.md",
+    custom_prompt: "Focus on security vulnerabilities...",
+    temperature: 0.5
+  }
+});
+```
+
+### 🌿 `generate_branch_comparison_review`
+**Branch diff analysis**
+
+```javascript
+await use_mcp_tool({
+  server_name: "task-list-code-review-mcp",
+  tool_name: "generate_branch_comparison_review",
+  arguments: {
+    project_path: "/path/to/project",
+    compare_branch: "feature/auth-system",
+    target_branch: "main"
+  }
+});
+```
+
+### 🔗 `generate_pr_review`
+**GitHub PR analysis (requires `GITHUB_TOKEN`)**
+
+```javascript
+await use_mcp_tool({
+  server_name: "task-list-code-review-mcp",
+  tool_name: "generate_pr_review",
+  arguments: {
+    github_pr_url: "https://github.com/owner/repo/pull/123",
+    project_path: "/absolute/path/to/project"  // Optional
+  }
+});
+```
+
+**Example output:**
+```
+🔍 Analyzed project: my-app
+🔗 GitHub PR: owner/repo/pull/123
+📝 Generated review context: code-review-github-pr-20241201-143052.md
+✅ AI code review completed: code-review-comprehensive-feedback-20241201-143052.md
+```
+
+### 📊 Legacy Tools
+- **`generate_review_context`** & **`generate_ai_review`** - Backward compatibility aliases
+
+---
+
+## 🚀 MCP Workflow Patterns
+
+### Pattern 1: AI-Optimized Review (Recommended)
+**Auto-prompt generation → Targeted review**
+
+```bash
+# AI agent automatically generates custom prompt, then uses it
+Human: Generate an optimized review for my authentication system
+
+[Tool Use: generate_auto_prompt]
+{
+  "project_path": "/Users/dev/auth-service",
+  "text_output": true
+}
+# AI returns: "Focus on authentication security, input validation..."
+
+[Tool Use: generate_ai_code_review]
+{
+  "context_file_path": "/Users/dev/auth-service/context.md",
+  "custom_prompt": "Focus on authentication security, input validation..."
+}
+```
+
+### Pattern 2: Traditional Comprehensive Review
+**Standard project analysis**
+
+```bash
+# Direct context generation + AI review
+Human: Generate a comprehensive review of my recent work
+
+[Tool Use: generate_code_review_context]
+{
+  "project_path": "/Users/dev/my-app",
+  "scope": "recent_phase",
+  "temperature": 0.3
+}
+
+# Specialized workflows:
+# - Branch comparison: generate_branch_comparison_review
+# - GitHub PR review: generate_pr_review  
+# - Context-only generation: raw_context_only: true
+```
+
+---
+
 ## 🛠 Advanced Configuration
 
-### Environment Variables
+### Environment Variables Reference
 
-**Essential:**
-- `GEMINI_API_KEY`: Required for AI features
-- `GEMINI_MODEL`: Model selection (`gemini-2.0-flash`, `gemini-2.5-pro`, `gemini-2.5-flash`)
-- `GEMINI_TEMPERATURE`: AI creativity (0.0-2.0, default: 0.5)
+| Variable | Required | Default | Description | Example |
+|----------|----------|---------|-------------|---------|
+| `GEMINI_API_KEY` | **Yes** | None | Google Gemini API key | `export GEMINI_API_KEY=your_key` |
+| `GEMINI_MODEL` | No | `gemini-2.0-flash` | Model selection | `gemini-2.5-pro`, `gemini-2.5-flash` |
+| `GEMINI_TEMPERATURE` | No | `0.5` | AI creativity (0.0-2.0) | `0.3` for focused, `0.7` for creative |
+| `GITHUB_TOKEN` | No | None | GitHub API access for PR reviews | `ghp_...` (repo scope) |
+| `MAX_FILE_SIZE_MB` | No | `10` | File size limit for analysis | `20` |
+| `DISABLE_THINKING` | No | `false` | Disable thinking mode | `true`/`false` |
+| `DISABLE_GROUNDING` | No | `false` | Disable web grounding | `true`/`false` |
 
-**Advanced:**
-- `MAX_FILE_SIZE_MB`: File size limit (default: 10)
-- `DISABLE_THINKING`: Disable thinking mode (`true`/`false`)
-- `DISABLE_GROUNDING`: Disable web grounding (`true`/`false`)
+**Quick Setup:**
+```bash
+# Essential
+export GEMINI_API_KEY=your_key_here
+
+# Optional model selection  
+export GEMINI_MODEL=gemini-2.5-pro
+
+# For GitHub PR reviews
+export GITHUB_TOKEN=your_github_token
+```
 
 ### 📋 Configuration File Integration
 
@@ -321,112 +621,6 @@ GEMINI_MODEL=gemini-2.5-flash uvx task-list-code-review-mcp /project
 
 **Configuration File**: `src/model_config.json` manages aliases and capabilities. Updates automatically when Google releases new models.
 
-## 🔧 MCP Tools Reference
-
-### generate_code_review_context
-
-**Primary tool for generating code review context with flexible scope options.**
-
-**Scope Options:**
-
-| Scope | Description | Output Pattern |
-|-------|-------------|----------------|
-| `recent_phase` | **Smart Default**: Reviews recent phase OR full project if all complete | `*-recent-phase-*` or `*-full-project-*` |
-| `full_project` | Reviews all completed phases | `*-full-project-*` |
-| `specific_phase` | Reviews specific phase (requires `phase_number`) | `*-phase-X-Y-*` |
-| `specific_task` | Reviews specific task (requires `task_number`) | `*-task-X-Y-*` |
-
-**MCP Usage Examples:**
-```javascript
-// Smart default - auto-detects completion status
-await use_mcp_tool({
-  server_name: "task-list-code-review-mcp",
-  tool_name: "generate_code_review_context",
-  arguments: {
-    project_path: "/absolute/path/to/project"
-  }
-});
-
-// Review specific phase
-await use_mcp_tool({
-  server_name: "task-list-code-review-mcp",
-  tool_name: "generate_code_review_context",
-  arguments: {
-    project_path: "/absolute/path/to/project",
-    scope: "specific_phase",
-    phase_number: "2.0"
-  }
-});
-```
-
-### generate_ai_code_review
-
-**Standalone tool for generating AI-powered code reviews from existing context files.**
-
-```javascript
-await use_mcp_tool({
-  server_name: "task-list-code-review-mcp",
-  tool_name: "generate_ai_code_review",
-  arguments: {
-    context_file_path: "/path/to/code-review-context-*.md",
-    model: "gemini-2.5-pro"
-  }
-});
-```
-
-### generate_branch_comparison_review
-
-**Generate code review by comparing git branches.**
-
-```javascript
-await use_mcp_tool({
-  server_name: "task-list-code-review-mcp",
-  tool_name: "generate_branch_comparison_review",
-  arguments: {
-    project_path: "/absolute/path/to/project",
-    compare_branch: "feature/auth-system",
-    target_branch: "main"  // Optional - auto-detects main/master if omitted
-  }
-});
-```
-
-**Example output:**
-```
-🔍 Analyzed project: my-app
-🌿 Branch comparison: feature/auth-system → main
-🌡️ AI temperature: 0.5
-📝 Generated review context: code-review-branch-comparison-20241201-143052.md
-✅ AI code review completed: code-review-comprehensive-feedback-20241201-143052.md
-🎉 Branch comparison review completed!
-📄 Files generated: code-review-branch-comparison-20241201-143052.md, code-review-comprehensive-feedback-20241201-143052.md
-```
-
-### generate_pr_review
-
-**Generate code review for a GitHub Pull Request.**
-
-```javascript
-await use_mcp_tool({
-  server_name: "task-list-code-review-mcp",
-  tool_name: "generate_pr_review",
-  arguments: {
-    github_pr_url: "https://github.com/owner/repo/pull/123",
-    project_path: "/absolute/path/to/project"  // Optional - uses current directory if omitted
-  }
-});
-```
-
-**Example output:**
-```
-🔍 Analyzed project: my-app
-🔗 GitHub PR: owner/repo/pull/123
-🌡️ AI temperature: 0.5
-📝 Generated review context: code-review-github-pr-20241201-143052.md
-✅ AI code review completed: code-review-comprehensive-feedback-20241201-143052.md
-🎉 GitHub PR review completed!
-📄 Files generated: code-review-github-pr-20241201-143052.md, code-review-comprehensive-feedback-20241201-143052.md
-```
-
 ## 📋 Enhanced Review Context Formats
 
 ### Branch Comparison Context
@@ -500,11 +694,56 @@ Output: code-review-context-recent-phase-{timestamp}.md
 - Checkbox progress tracking (`- [ ]` / `- [x]`)
 - **Flexible**: Multiple task lists supported, auto-discovery available
 
-## 🆘 Need Help?
+## 🆘 Troubleshooting
+
+> **🔑 Quick Fixes**: Missing API key? → https://ai.google.dev/gemini-api/docs/api-key | Old version? → `uv cache clean`
+
+### 🚨 Common Issues
+
+**⚠️ "MCP server started" instead of CLI output**
+```bash
+# Problem: Used server command instead of CLI
+python -m src.server  # ❌ Starts MCP server
+
+# Solution: Use CLI command
+python -m src.generate_code_review_context /path/to/project  # ✅ Runs CLI
+```
+
+**⚠️ "uvx giving old version errors"**
+```bash
+# Problem: Cached old version
+uvx task-list-code-review-mcp  # May use cached v0.2.0
+
+# Solutions:
+uv cache clean  # Clear cache, then retry
+# OR use development mode:
+python -m src.generate_code_review_context /path/to/project
+```
+
+**⚠️ "TypeError: unexpected keyword argument 'log_level'"**
+```bash
+# Problem: Old cached package version
+# Solution: Clear cache and reinstall
+uv cache clean
+uvx --force task-list-code-review-mcp /path/to/project
+```
+
+**⚠️ "Module not found" errors**
+```bash
+# Problem: Missing dependencies in development
+# Solution: Install package in development mode
+pip install -e .
+# OR use uvx for isolated environment
+uvx task-list-code-review-mcp /path/to/project
+```
+
+### 🔑 Quick Solutions
 
 **Missing API key?** Get one at: https://ai.google.dev/gemini-api/docs/api-key  
 **Error messages?** The tool provides specific solutions for each issue  
-**Still stuck?** Check the [MCP Inspector Guide](./MCP_INSPECTOR_GUIDE.md) for testing
+**Still stuck?** Use development commands: `python -m src.generate_code_review_context`  
+**Diagnostic help?** Run: `python scripts/check-cli.py` (shows available commands)  
+**MCP testing?** Check the [MCP Inspector Guide](./MCP_INSPECTOR_GUIDE.md)
 
 ## 📋 What This Tool Generates
 
@@ -518,21 +757,43 @@ Output: code-review-context-recent-phase-{timestamp}.md
 
 ## 📦 Development
 
+### 🚀 Quick Setup
+
 ```bash
 # Clone and install in development mode
 git clone <repository-url>
 cd task-list-code-review-mcp
 pip install -e .
 
-# Run tests
+# 🎯 Test CLI with wrapper scripts (recommended)
+./review . --scope full_project
+./prompt --project-path .
+
+# 🧹 Or use Makefile (with proper PROJECT= syntax)
+make review PROJECT=.
+make prompt PROJECT=.
+make test
+```
+
+### 🔧 Development Commands
+
+```bash
+# Direct module execution (always works)
+python -m src.generate_code_review_context . --scope full_project
+python -m src.auto_prompt_generator --project-path .
+
+# Run tests and diagnostics
 pytest
+python scripts/check-cli.py  # CLI diagnostic tool
+make test-cli  # Test CLI functionality
 ```
 
 ## 📄 Project Structure
 
 - `src/generate_code_review_context.py` - Core context generation
 - `src/ai_code_review.py` - Standalone AI review tool
+- `src/auto_prompt_generator.py` - **NEW**: Auto-prompt generation CLI and MCP tool
 - `src/server.py` - MCP server wrapper
 - `src/model_config.json` - Model configuration and aliases
-- `tests/` - Comprehensive test suite
+- `tests/` - Comprehensive test suite including TDD for auto-prompt features
 - `pyproject.toml` - Project configuration and entry points

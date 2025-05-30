@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 # Try to import yaml, fallback if not available
 try:
-    import yaml
+    import yaml  # type: ignore
     HAS_YAML = True
 except ImportError:
     HAS_YAML = False

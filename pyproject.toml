@@ -23,8 +23,8 @@ exclude = [
 
 [project]
 name = "task-list-code-review-mcp"
-version = "0.2.1"
-description = "MCP server for AI-powered task list code reviews with PRD context"
+version = "0.3.0"
+description = "MCP server and CLI tools for AI-powered code reviews with meta-prompt generation"
 authors = [
     {name = "Nico Bailon", email = "nico604@pm.me"},
 ]
@@ -66,8 +66,12 @@ dev = [
 
 [project.scripts]
 task-list-code-review-mcp = "src.server:main"
-generate-code-review = "src.generate_code_review_context:cli_main"
+generate-code-review = "src.generate_code_review_context:main"
 review-with-ai = "src.ai_code_review:main"
+generate-auto-prompt = "src.auto_prompt_generator:main"
+# Development shortcuts
+review = "src.generate_code_review_context:main"
+prompt = "src.auto_prompt_generator:main"
 
 [tool.black]
 line-length = 88

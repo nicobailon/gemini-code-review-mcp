@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+"""
+Simple wrapper script for development mode CLI access.
+
+This provides a consistent entry point regardless of installation status.
+Follows Python CLI best practices with fallback behavior.
+"""
+
+import sys
+import subprocess
+from pathlib import Path
+
+def main():
+    """Main entry point with intelligent fallback."""
+    
+    # Try installed command first
+    try:
+        # Check if we're in development directory
+        script_dir = Path(__file__).parent
+        if (script_dir / "src" / "generate_code_review_context.py").exists():
+            # We're in development mode - use module execution
+            cmd = ["python3", "-m", "src.generate_code_review_context"] + sys.argv[1:]
+            subprocess.run(cmd, cwd=script_dir)
+        else:
+            # Try installed package
+            cmd = ["task-list-code-review-mcp"] + sys.argv[1:]
+            subprocess.run(cmd)
+    except FileNotFoundError:
+        print("❌ CLI not available. Install with: pip install task-list-code-review-mcp", file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

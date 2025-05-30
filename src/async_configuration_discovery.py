@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 # Try to import yaml, fallback if not available
 try:
-    import yaml
+    import yaml  # type: ignore
     HAS_YAML = True
 except ImportError:
     HAS_YAML = False
@@ -194,7 +194,7 @@ async def async_discover_modern_cursor_rules(project_path: str) -> List[Dict[str
     Returns:
         List of dictionaries containing modern rule information
     """
-    rules = []
+    rules: List[Dict[str, Any]] = []
     
     def _find_mdc_files():
         """Find all .mdc files using glob patterns."""
@@ -223,7 +223,7 @@ async def async_discover_modern_cursor_rules(project_path: str) -> List[Dict[str
         try:
             from .cursor_rules_parser import parse_mdc_file
             
-            rule_data = parse_mdc_file(content, file_path)
+            rule_data = parse_mdc_file(file_path)
             if rule_data:
                 rules.append({
                     'file_path': file_path,

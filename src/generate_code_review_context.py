@@ -49,18 +49,20 @@ except ImportError:
         get_complete_pr_analysis = None
 # Load environment variables from .env file (optional)
 try:
-    from dotenv import load_dotenv
+    from dotenv import load_dotenv  # type: ignore
     load_dotenv()
 except ImportError:
     pass  # dotenv not available, continue without it
 
 # Optional Gemini import
 try:
-    from google import genai
-    from google.genai import types
+    import google.genai as genai  # type: ignore
+    from google.genai import types  # type: ignore
     GEMINI_AVAILABLE = True
 except ImportError:
     GEMINI_AVAILABLE = False
+    genai = None
+    types = None
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -110,6 +112,315 @@ def load_model_config() -> Dict[str, Any]:
     return default_config
 
 
+def load_meta_prompt_templates(config_path: Optional[str] = None) -> Dict[str, Dict[str, Any]]:
+    """Load meta-prompt templates from model_config.json."""
+    if config_path is None:
+        config = load_model_config()
+    else:
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+        except (json.JSONDecodeError, IOError) as e:
+            raise ValueError(f"Failed to load config from {config_path}: {e}")
+    
+    # Get meta_prompt_templates section, fallback to empty dict
+    templates = config.get('meta_prompt_templates', {})
+    
+    # Validate each template
+    for template_name, template_data in templates.items():
+        validation_result = validate_meta_prompt_template(template_data)
+        if not validation_result['valid']:
+            raise ValueError(f"Invalid template '{template_name}': {validation_result['errors']}")
+    
+    return templates
+
+
+def validate_meta_prompt_template(template: Dict[str, Any]) -> Dict[str, Any]:
+    """Validate meta-prompt template structure and content."""
+    errors = []
+    
+    # Check required fields (simplified)
+    required_fields = ['name', 'template']
+    for field in required_fields:
+        if field not in template:
+            errors.append(f"Missing required field: {field}")
+        elif not template[field]:
+            errors.append(f"Field '{field}' cannot be empty")
+    
+    # Validate specific field types
+    if 'name' in template and not isinstance(template['name'], str):
+        errors.append("Field 'name' must be a string")
+    
+    if 'template' in template:
+        if not isinstance(template['template'], str):
+            errors.append("Field 'template' must be a string")
+        elif len(template['template']) < 50:
+            errors.append("Template content is too short (minimum 50 characters)")
+    
+    if 'focus_areas' in template:
+        if not isinstance(template['focus_areas'], list):
+            errors.append("Field 'focus_areas' must be a list")
+        elif len(template['focus_areas']) == 0:
+            errors.append("Field 'focus_areas' cannot be empty")
+    
+    if 'output_format' in template and not isinstance(template['output_format'], str):
+        errors.append("Field 'output_format' must be a string")
+    
+    # Check for placeholder variables
+    placeholders = []
+    if 'template' in template and isinstance(template['template'], str):
+        import re
+        placeholders = re.findall(r'\{(\w+)\}', template['template'])
+    
+    result = {
+        'valid': len(errors) == 0,
+        'errors': errors,
+        'placeholders': placeholders
+    }
+    
+    return result
+
+
+def get_meta_prompt_template(template_name: str, config_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Get a specific meta-prompt template by name."""
+    try:
+        templates = load_meta_prompt_templates(config_path)
+        return templates.get(template_name)
+    except Exception:
+        return None
+
+
+def list_meta_prompt_templates(config_path: Optional[str] = None) -> List[str]:
+    """List all available meta-prompt template names."""
+    try:
+        templates = load_meta_prompt_templates(config_path)
+        return list(templates.keys())
+    except Exception:
+        return []
+
+
+def load_meta_prompt_config(config_path: Optional[str] = None) -> Dict[str, Any]:
+    """Load meta-prompt configuration section from model_config.json."""
+    if config_path is None:
+        config = load_model_config()
+    else:
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+        except (json.JSONDecodeError, IOError) as e:
+            raise ValueError(f"Failed to load config from {config_path}: {e}")
+    
+    # Default meta-prompt config
+    default_meta_config = {
+        "default_template": "default",
+        "max_context_size": 100000,
+        "analysis_depth": "comprehensive",
+        "include_examples": True,
+        "technology_specific": True
+    }
+    
+    # Get meta_prompt_config section, merge with defaults
+    meta_config = config.get('meta_prompt_config', {})
+    for key, value in default_meta_config.items():
+        if key not in meta_config:
+            meta_config[key] = value
+    
+    return meta_config
+
+
+def validate_meta_prompt_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    """Validate meta-prompt configuration."""
+    errors = []
+    
+    # Validate analysis_depth
+    if 'analysis_depth' in config:
+        valid_depths = ['basic', 'comprehensive', 'advanced']
+        if config['analysis_depth'] not in valid_depths:
+            errors.append(f"analysis_depth must be one of {valid_depths}")
+    
+    # Validate max_context_size
+    if 'max_context_size' in config:
+        if not isinstance(config['max_context_size'], int) or config['max_context_size'] <= 0:
+            errors.append("max_context_size must be a positive integer")
+    
+    # Validate boolean fields
+    bool_fields = ['include_examples', 'technology_specific']
+    for field in bool_fields:
+        if field in config and not isinstance(config[field], bool):
+            errors.append(f"Field '{field}' must be a boolean")
+    
+    return {
+        'valid': len(errors) == 0,
+        'errors': errors
+    }
+
+
+def merge_template_overrides(base_templates: Dict[str, Dict[str, Any]], config_path: str) -> Dict[str, Dict[str, Any]]:
+    """Merge template overrides from config file with base templates."""
+    try:
+        with open(config_path, 'r') as f:
+            override_config = json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return base_templates
+    
+    override_templates = override_config.get('meta_prompt_templates', {})
+    merged_templates = base_templates.copy()
+    
+    for template_name, override_data in override_templates.items():
+        if template_name in merged_templates:
+            # Merge override with base template
+            merged_template = merged_templates[template_name].copy()
+            merged_template.update(override_data)
+            merged_templates[template_name] = merged_template
+        else:
+            # Add new template
+            merged_templates[template_name] = override_data
+    
+    return merged_templates
+
+
+def load_meta_prompt_templates_from_env() -> Dict[str, Dict[str, Any]]:
+    """Load meta-prompt templates from environment variable path."""
+    env_config_path = os.getenv('META_PROMPT_CONFIG_PATH')
+    if env_config_path and os.path.exists(env_config_path):
+        return load_meta_prompt_templates(env_config_path)
+    else:
+        return load_meta_prompt_templates()
+
+
+def load_meta_prompt_with_precedence(config_path: Optional[str] = None, cli_overrides: Optional[Dict[str, Any]] = None) -> Dict[str, Dict[str, Any]]:
+    """Load meta-prompt templates with precedence: CLI > Environment > Config File > Defaults."""
+    # Start with base config
+    templates = load_meta_prompt_templates(config_path)
+    
+    # Apply environment overrides
+    env_config_path = os.getenv('META_PROMPT_CONFIG_PATH')
+    if env_config_path and os.path.exists(env_config_path):
+        env_templates = load_meta_prompt_templates(env_config_path)
+        templates.update(env_templates)
+    
+    # Apply CLI overrides (highest precedence)
+    if cli_overrides:
+        for template_name, override_data in cli_overrides.items():
+            if template_name in templates:
+                templates[template_name].update(override_data)
+            else:
+                templates[template_name] = override_data
+    
+    return templates
+
+
+def get_default_meta_prompt_template(config_path: Optional[str] = None) -> Dict[str, Any]:
+    """Get the default meta-prompt template based on configuration."""
+    meta_config = load_meta_prompt_config(config_path)
+    default_template_name = meta_config.get('default_template', 'default')
+    
+    template = get_meta_prompt_template(default_template_name, config_path)
+    if template is None:
+        # Fallback to 'default' template if specified default doesn't exist
+        template = get_meta_prompt_template('default', config_path)
+    
+    # If still None, return a basic fallback template
+    if template is None:
+        return {
+            "name": "fallback",
+            "description": "Basic fallback template",
+            "template": "Please review the following code:\n\n{context}"
+        }
+    
+    return template
+
+
+def analyze_project_completion_status(task_list_content: str) -> Dict[str, Any]:
+    """Analyze project completion status from task list content."""
+    lines = task_list_content.split('\n')
+    
+    completed_phases = []
+    current_phase = None
+    next_priorities = []
+    total_tasks = 0
+    completed_tasks = 0
+    
+    # Parse task list for completion status
+    for line in lines:
+        line = line.strip()
+        
+        # Look for main phase tasks (e.g., "- [x] 1.0 Authentication System")
+        if re.match(r'- \[(x| )\] (\d+\.\d+)', line):
+            total_tasks += 1
+            if '[x]' in line:
+                completed_tasks += 1
+                # Extract phase number
+                phase_match = re.search(r'(\d+\.\d+)', line)
+                if phase_match:
+                    completed_phases.append(phase_match.group(1))
+            else:
+                # This is an incomplete phase
+                if current_phase is None:
+                    phase_match = re.search(r'(\d+\.\d+)', line)
+                    if phase_match:
+                        current_phase = phase_match.group(1)
+                        # Extract priority from phase name
+                        if 'security' in line.lower():
+                            next_priorities.append('security')
+                        if 'performance' in line.lower():
+                            next_priorities.append('performance')
+                        if 'testing' in line.lower():
+                            next_priorities.append('testing')
+    
+    completion_percentage = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+    
+    return {
+        'completed_phases': completed_phases,
+        'current_phase': current_phase,
+        'next_priorities': next_priorities,
+        'completion_percentage': completion_percentage,
+        'total_tasks': total_tasks,
+        'completed_tasks': completed_tasks
+    }
+
+
+def validate_meta_prompt_config_file(config_path: str) -> Dict[str, Any]:
+    """Validate entire meta-prompt configuration file."""
+    try:
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+    except json.JSONDecodeError as e:
+        return {'valid': False, 'errors': [f'Invalid JSON: {e}']}
+    except IOError as e:
+        return {'valid': False, 'errors': [f'File error: {e}']}
+    
+    errors = []
+    
+    # Validate templates section
+    if 'meta_prompt_templates' in config:
+        templates = config['meta_prompt_templates']
+        for template_name, template_data in templates.items():
+            validation_result = validate_meta_prompt_template(template_data)
+            if not validation_result['valid']:
+                errors.extend([f'Template {template_name}: {error}' for error in validation_result['errors']])
+    
+    # Validate config section
+    if 'meta_prompt_config' in config:
+        config_validation = validate_meta_prompt_config(config['meta_prompt_config'])
+        if not config_validation['valid']:
+            errors.extend(config_validation['errors'])
+    
+    return {
+        'valid': len(errors) == 0,
+        'errors': errors
+    }
+
+
+def load_meta_prompt_templates_with_fallback(config_path: str) -> Dict[str, Dict[str, Any]]:
+    """Load meta-prompt templates with fallback to defaults on error."""
+    try:
+        return load_meta_prompt_templates(config_path)
+    except Exception:
+        # Fallback to default templates
+        return load_meta_prompt_templates()
+
+
 def load_api_key() -> Optional[str]:
     """Load API key with multiple fallback strategies for uvx compatibility"""
     from pathlib import Path
@@ -124,7 +435,7 @@ def load_api_key() -> Optional[str]:
     env_file = Path('.env')
     if env_file.exists():
         try:
-            from dotenv import load_dotenv
+            from dotenv import load_dotenv  # type: ignore
             load_dotenv(env_file)
             api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
             if api_key:
@@ -476,7 +787,7 @@ def extract_prd_summary(content: str) -> str:
     else:
         api_key = None
         
-    if GEMINI_AVAILABLE and api_key:
+    if GEMINI_AVAILABLE and api_key and genai is not None:
         try:
             client = genai.Client(api_key=api_key)
             first_2000_chars = content[:2000]
@@ -491,7 +802,7 @@ def extract_prd_summary(content: str) -> str:
                 config=types.GenerateContentConfig(
                     max_output_tokens=150,
                     temperature=0.1
-                )
+                ) if types is not None else None
             )
             
             return response.text.strip()
@@ -524,7 +835,8 @@ def get_changed_files(project_path: str) -> List[Dict[str, str]]:
     """
     try:
         changed_files = []
-        max_lines = int(os.getenv('MAX_FILE_CONTENT_LINES', '500'))
+        max_lines_env = os.getenv('MAX_FILE_CONTENT_LINES', '500')
+        max_lines = int(max_lines_env) if max_lines_env else 500
         debug_mode = os.getenv('DEBUG_MODE', 'false').lower() == 'true'
         
         if debug_mode:
@@ -630,7 +942,7 @@ def get_changed_files(project_path: str) -> List[Dict[str, str]]:
         return []
 
 
-def generate_file_tree(project_path: str, max_depth: int = None) -> str:
+def generate_file_tree(project_path: str, max_depth: Optional[int] = None) -> str:
     """
     Generate ASCII file tree representation.
     
@@ -714,6 +1026,35 @@ def generate_file_tree(project_path: str, max_depth: int = None) -> str:
     tree_lines = [project_path]
     tree_lines.extend(build_tree(project_path))
     return '\n'.join(tree_lines)
+
+
+def extract_clean_prompt_content(auto_prompt_content: str) -> str:
+    """
+    Extract clean prompt content from auto-generated prompt response.
+    
+    Since auto-prompt generation now returns raw content without headers/footers,
+    this function primarily handles basic cleanup and formatting.
+    
+    Args:
+        auto_prompt_content: Auto-prompt response (should be clean already)
+        
+    Returns:
+        Clean prompt content suitable for user_instructions
+    """
+    # Basic cleanup - remove any extra whitespace
+    content = auto_prompt_content.strip()
+    
+    # Remove any remaining code block markers if present (just in case)
+    if content.startswith('```') and content.endswith('```'):
+        lines = content.split('\n')
+        if len(lines) > 2:
+            content = '\n'.join(lines[1:-1]).strip()
+    
+    # Collapse multiple blank lines
+    import re
+    content = re.sub(r'\n\n\n+', '\n\n', content)
+    
+    return content
 
 
 def format_review_template(data: Dict[str, Any]) -> str:
@@ -909,20 +1250,33 @@ File: {file_info['path']} ({file_info['status']})
 ```"""
     
     template += f"""
-</files_changed>
+</files_changed>"""
+
+    # Add AI review instructions only if not raw_context_only
+    if not data.get('raw_context_only', False):
+        template += """
 
 <user_instructions>"""
-    
-    # Customize instructions based on review mode and scope
-    review_mode = data.get('review_mode', 'task_list_based')
-    branch_data = data.get('branch_comparison_data')
-    
-    if review_mode == 'github_pr' and branch_data:
-        config_note = ""
-        if data.get('configuration_content'):
-            config_note = "\n\nPay special attention to the configuration context (Claude memory and Cursor rules) provided above, which contains project-specific guidelines and coding standards that should be followed."
         
-        template += f"""You are reviewing a GitHub Pull Request that contains changes from branch '{branch_data['pr_data']['source_branch']}' to '{branch_data['pr_data']['target_branch']}'.
+        # Check if auto-generated meta-prompt should be used
+        auto_prompt_content = data.get('auto_prompt_content')
+        if auto_prompt_content:
+            # Extract clean prompt content (remove headers, metadata, and formatting)
+            clean_prompt = extract_clean_prompt_content(auto_prompt_content)
+            # Use the auto-generated meta-prompt as user instructions
+            template += clean_prompt
+        else:
+            # Use default template-based instructions
+            # Customize instructions based on review mode and scope
+            review_mode = data.get('review_mode', 'task_list_based')
+            branch_data = data.get('branch_comparison_data')
+            
+            if review_mode == 'github_pr' and branch_data:
+                config_note = ""
+                if data.get('configuration_content'):
+                    config_note = "\n\nPay special attention to the configuration context (Claude memory and Cursor rules) provided above, which contains project-specific guidelines and coding standards that should be followed."
+                
+                template += f"""You are reviewing a GitHub Pull Request that contains changes from branch '{branch_data['pr_data']['source_branch']}' to '{branch_data['pr_data']['target_branch']}'.
 
 The PR "{branch_data['pr_data']['title']}" by {branch_data['pr_data']['author']} includes {branch_data['summary']['files_changed']} changed files with {branch_data['summary']['files_added']} additions, {branch_data['summary']['files_modified']} modifications, and {branch_data['summary']['files_deleted']} deletions.{config_note}
 
@@ -935,13 +1289,13 @@ Based on the PR metadata, commit history, and file changes shown above, conduct 
 6. Integration and compatibility issues
 
 Identify specific lines, files, or patterns that are concerning and provide actionable feedback."""
-    elif review_mode == 'branch_comparison' and branch_data:
-        config_note = ""
-        if data.get('configuration_content'):
-            config_note = "\n\nPay special attention to the configuration context (Claude memory and Cursor rules) provided above, which contains project-specific guidelines and coding standards that should be followed."
-        
-        commits_count = len(branch_data.get('commits', []))
-        template += f"""You are reviewing changes between git branches '{branch_data['source_branch']}' and '{branch_data['target_branch']}'.
+            elif review_mode == 'branch_comparison' and branch_data:
+                config_note = ""
+                if data.get('configuration_content'):
+                    config_note = "\n\nPay special attention to the configuration context (Claude memory and Cursor rules) provided above, which contains project-specific guidelines and coding standards that should be followed."
+                
+                commits_count = len(branch_data.get('commits', []))
+                template += f"""You are reviewing changes between git branches '{branch_data['source_branch']}' and '{branch_data['target_branch']}'.
 
 The comparison shows {commits_count} commits ahead of the target branch, affecting {branch_data['summary']['files_changed']} files with {branch_data['summary']['files_added']} additions, {branch_data['summary']['files_modified']} modifications, and {branch_data['summary']['files_deleted']} deletions.{config_note}
 
@@ -954,32 +1308,32 @@ Based on the branch comparison metadata, commit history, and file changes shown 
 6. Documentation updates needed
 
 Review the commit progression to understand the development approach and identify specific lines, files, or patterns that need attention."""
-    elif data['scope'] == 'full_project':
-        config_note = ""
-        if data.get('configuration_content'):
-            config_note = "\n\nImportant: Refer to the configuration context (Claude memory and Cursor rules) provided above for project-specific guidelines and coding standards that should be followed throughout the project."
-        
-        template += f"""We have completed all phases (and subtasks within) of this project: {data['current_phase_description']}.{config_note}
+            elif data['scope'] == 'full_project':
+                config_note = ""
+                if data.get('configuration_content'):
+                    config_note = "\n\nImportant: Refer to the configuration context (Claude memory and Cursor rules) provided above for project-specific guidelines and coding standards that should be followed throughout the project."
+                
+                template += f"""We have completed all phases (and subtasks within) of this project: {data['current_phase_description']}.{config_note}
 
 Based on the PRD, all completed phases, all subtasks that were finished across the entire project, and the files changed in the working directory, your job is to conduct a comprehensive code review and output your code review feedback for the entire project. Identify specific lines or files that are concerning when appropriate."""
-    elif data['scope'] == 'specific_task':
-        config_note = ""
-        if data.get('configuration_content'):
-            config_note = "\n\nImportant: Refer to the configuration context (Claude memory and Cursor rules) provided above for project-specific guidelines and coding standards."
-        
-        template += f"""We have just completed task #{data['current_phase_number']}: "{data['current_phase_description']}".{config_note}
+            elif data['scope'] == 'specific_task':
+                config_note = ""
+                if data.get('configuration_content'):
+                    config_note = "\n\nImportant: Refer to the configuration context (Claude memory and Cursor rules) provided above for project-specific guidelines and coding standards."
+                
+                template += f"""We have just completed task #{data['current_phase_number']}: "{data['current_phase_description']}".{config_note}
 
 Based on the PRD, the completed task, and the files changed in the working directory, your job is to conduct a code review and output your code review feedback for this specific task. Identify specific lines or files that are concerning when appropriate."""
-    else:
-        config_note = ""
-        if data.get('configuration_content'):
-            config_note = "\n\nImportant: Refer to the configuration context (Claude memory and Cursor rules) provided above for project-specific guidelines and coding standards."
-        
-        template += f"""We have just completed phase #{data['current_phase_number']}: "{data['current_phase_description']}".{config_note}
+            else:
+                config_note = ""
+                if data.get('configuration_content'):
+                    config_note = "\n\nImportant: Refer to the configuration context (Claude memory and Cursor rules) provided above for project-specific guidelines and coding standards."
+                
+                template += f"""We have just completed phase #{data['current_phase_number']}: "{data['current_phase_description']}".{config_note}
 
 Based on the PRD, the completed phase, all subtasks that were finished in that phase, and the files changed in the working directory, your job is to conduct a code review and output your code review feedback for the completed phase. Identify specific lines or files that are concerning when appropriate."""
-    
-    template += """
+        
+        template += """
 </user_instructions>"""
     
     return template
@@ -1063,7 +1417,7 @@ Working examples:
     return prd_file, task_file
 
 
-def send_to_gemini_for_review(context_content: str, project_path: str, temperature: float = 0.5, model: Optional[str] = None) -> Optional[str]:
+def send_to_gemini_for_review(context_content: str, project_path: Optional[str] = None, temperature: float = 0.5, model: Optional[str] = None, return_text: bool = False, include_formatting: bool = True) -> Optional[str]:
     """
     Send review context to Gemini for comprehensive code review with advanced features.
     
@@ -1074,15 +1428,17 @@ def send_to_gemini_for_review(context_content: str, project_path: str, temperatu
     
     Args:
         context_content: The formatted review context content
-        project_path: Path to project root for saving output
+        project_path: Path to project root for saving output (optional if return_text=True)
         temperature: Temperature for AI model (default: 0.5)
         model: Optional model override (default: uses GEMINI_MODEL env var or config default)
+        return_text: If True, return generated text directly; if False, save to file and return file path
+        include_formatting: If True, include headers and metadata; if False, return raw response (default: True)
         
     Returns:
-        Path to saved Gemini response file, or None if failed
+        Generated text (if return_text=True) or path to saved file (if return_text=False), or None if failed
     """
     # Check if Gemini is available first
-    if not GEMINI_AVAILABLE:
+    if not GEMINI_AVAILABLE or genai is None:
         logger.warning("Gemini API not available. Skipping Gemini review.")
         return None
     
@@ -1149,14 +1505,14 @@ def send_to_gemini_for_review(context_content: str, project_path: str, temperatu
         tools = []
         
         # URL Context - enabled by default for supported models
-        if url_context_enabled:
+        if url_context_enabled and types is not None:
             try:
                 tools.append(types.Tool(url_context=types.UrlContext()))
             except (AttributeError, TypeError) as e:
                 logger.warning(f"URL context configuration failed: {e}")
         
         # Google Search Grounding - enabled by default for supported models
-        if grounding_enabled:
+        if grounding_enabled and types is not None:
             try:
                 # Use GoogleSearch for newer models (Gemini 2.0+, 2.5+)
                 if 'gemini-2.0' in model_config or 'gemini-2.5' in model_config:
@@ -1179,18 +1535,22 @@ def send_to_gemini_for_review(context_content: str, project_path: str, temperatu
                 if 'gemini-2.5-flash' in model_config:
                     # Full thinking support with optional budget control
                     config_params = {'include_thoughts': include_thoughts}
-                    if thinking_budget is not None:
-                        budget_val = int(thinking_budget)
-                        config_params['thinking_budget'] = min(budget_val, 24576)  # Max 24,576 tokens
-                        budget_msg = f"budget: {config_params['thinking_budget']}"
+                    if thinking_budget and thinking_budget.strip():
+                        try:
+                            budget_val = int(thinking_budget)
+                            # Note: thinking_budget parameter not supported in current API
+                            budget_msg = f"budget: {min(budget_val, 24576)}"
+                        except (ValueError, TypeError):
+                            # Invalid budget value, use auto-adjust
+                            budget_msg = "budget: auto-adjust"
                     else:
                         budget_msg = "budget: auto-adjust"
-                    thinking_config = types.ThinkingConfig(**config_params)
+                    thinking_config = types.ThinkingConfig(**config_params) if types is not None else None
                 elif 'gemini-2.5-pro' in model_config:
                     # Pro models support summaries only
                     thinking_config = types.ThinkingConfig(
                         include_thoughts=include_thoughts
-                    )
+                    ) if types is not None else None
                     budget_msg = "budget: N/A (Pro model)"
             except (AttributeError, TypeError) as e:
                 logger.warning(f"Thinking configuration failed: {e}")
@@ -1210,7 +1570,10 @@ def send_to_gemini_for_review(context_content: str, project_path: str, temperatu
         if thinking_config:
             config_params['thinking_config'] = thinking_config
         
-        config = types.GenerateContentConfig(**config_params)
+        if types is not None:
+            config = types.GenerateContentConfig(**config_params)
+        else:
+            config = None
         
         # Create comprehensive review prompt
         review_prompt = f"""You are an expert code reviewer conducting a comprehensive code review. Based on the provided context, please provide detailed feedback.
@@ -1236,9 +1599,8 @@ Focus on being specific and actionable. When referencing files, include line num
             config=config
         )
         
-        # Format and save response
+        # Format response metadata
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        output_file = os.path.join(project_path, f'code-review-comprehensive-feedback-{timestamp}.md')
         
         # Format the response with metadata
         enabled_features = []
@@ -1255,7 +1617,9 @@ Focus on being specific and actionable. When referencing files, include line num
         
         features_text = ", ".join(enabled_features) if enabled_features else "basic capabilities"
         
-        formatted_response = f"""# Comprehensive Code Review Feedback
+        # Format response based on include_formatting parameter
+        if include_formatting:
+            formatted_response = f"""# Comprehensive Code Review Feedback
 *Generated on {datetime.now().strftime("%Y-%m-%d at %H:%M:%S")} using {model_config}*
 
 {response.text}
@@ -1263,12 +1627,26 @@ Focus on being specific and actionable. When referencing files, include line num
 ---
 *Review conducted by Gemini AI with {features_text}*
 """
+        else:
+            # Return raw response without headers/footers
+            formatted_response = response.text
         
-        with open(output_file, 'w', encoding='utf-8') as f:
-            f.write(formatted_response)
-        
-        logger.info(f"Gemini review saved to: {output_file}")
-        return output_file
+        # Return text directly or save to file based on return_text parameter
+        if return_text:
+            return formatted_response
+        else:
+            # Validate project_path is provided when saving to file
+            if not project_path:
+                raise ValueError("project_path is required when return_text=False")
+                
+            # Define output file path only when saving to file
+            output_file = os.path.join(project_path, f'code-review-comprehensive-feedback-{timestamp}.md')
+            
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(formatted_response)
+            
+            logger.info(f"Gemini review saved to: {output_file}")
+            return output_file
         
     except Exception as e:
         logger.error(f"Failed to generate Gemini review: {e}")
@@ -1570,7 +1948,18 @@ def discover_project_configurations(project_path: str) -> Dict[str, Any]:
         Dictionary with discovered configurations and any errors
     """
     # Use cache for performance
-    return _config_cache.get_configurations(project_path)
+    configurations = _config_cache.get_configurations(project_path)
+    if configurations is None:
+        # Fallback if cache returns None
+        return {
+            'claude_memory': [],
+            'cursor_rules': [],
+            'discovery_errors': [{
+                'error_type': 'cache_error',
+                'error_message': 'Failed to get configurations from cache'
+            }]
+        }
+    return configurations
 
 
 def discover_project_configurations_with_fallback(project_path: str) -> Dict[str, Any]:
@@ -1644,7 +2033,16 @@ def discover_project_configurations_with_flags(
                 for file_info in claude_files:
                     try:
                         file_path = file_info['file_path']
-                        memory_file = parse_claude_memory_with_imports(file_path, project_path)
+                        parsed_data = parse_claude_memory_with_imports(file_path, project_path)
+                        
+                        # Create proper ClaudeMemoryFile object
+                        memory_file = ClaudeMemoryFile(
+                            file_path=file_path,
+                            content=parsed_data.get('content', ''),
+                            hierarchy_level=file_info.get('scope', 'project'),
+                            imports=parsed_data.get('successful_imports', []),
+                            resolved_content=parsed_data.get('resolved_content', parsed_data.get('content', ''))
+                        )
                         result['claude_memory_files'].append(memory_file)
                     except Exception as e:
                         file_path = file_info.get('file_path', 'unknown')
@@ -1881,9 +2279,13 @@ def generate_enhanced_review_context(
         git_changed_files = get_changed_files(project_path)
         changed_files = [f['path'] for f in git_changed_files]
     
+    # Ensure we have valid data for rule processing
+    cursor_rules = configurations.get('cursor_rules', []) or []
+    changed_files = changed_files or []
+    
     # Get applicable rules for changed files
     applicable_rules = get_applicable_rules_for_files(
-        configurations['cursor_rules'],
+        cursor_rules,
         changed_files
     )
     
@@ -1909,11 +2311,12 @@ def generate_enhanced_review_context(
     return enhanced_context
 
 
-def main(project_path: str = None, phase: str = None, output: str = None, enable_gemini_review: bool = True, 
-         scope: str = "recent_phase", phase_number: str = None, task_number: str = None, temperature: float = 0.5,
-         task_list: str = None, default_prompt: str = None, compare_branch: str = None, 
-         target_branch: str = None, github_pr_url: str = None,
-         include_claude_memory: bool = True, include_cursor_rules: bool = False) -> tuple[str, Optional[str]]:
+def generate_code_review_context_main(project_path: Optional[str] = None, phase: Optional[str] = None, output: Optional[str] = None, enable_gemini_review: bool = True, 
+         scope: str = "recent_phase", phase_number: Optional[str] = None, task_number: Optional[str] = None, temperature: float = 0.5,
+         task_list: Optional[str] = None, default_prompt: Optional[str] = None, compare_branch: Optional[str] = None, 
+         target_branch: Optional[str] = None, github_pr_url: Optional[str] = None,
+         include_claude_memory: bool = True, include_cursor_rules: bool = False, 
+         raw_context_only: bool = False, auto_prompt_content: Optional[str] = None) -> tuple[str, Optional[str]]:
     """
     Main function to generate code review context with enhanced scope support.
     
@@ -1927,6 +2330,8 @@ def main(project_path: str = None, phase: str = None, output: str = None, enable
         task_number: Task number for specific_task scope (e.g., "1.2")
         include_claude_memory: Whether to include CLAUDE.md files (default: True)
         include_cursor_rules: Whether to include Cursor rules files (default: False)
+        raw_context_only: Exclude default AI review instructions (default: False)
+        auto_prompt_content: Generated meta-prompt to embed in user_instructions (default: None)
         
     Returns:
         Tuple of (context_file_path, gemini_review_path). gemini_review_path is None if not generated.
@@ -2113,11 +2518,12 @@ Working examples:
         # Handle scope-based review logic
         if scope == "recent_phase":
             # Smart defaulting: if ALL phases are complete, automatically review full project
-            all_phases_complete = all(p.get('subtasks_complete', False) for p in task_data['phases'])
+            phases = task_data.get('phases', []) if task_data else []
+            all_phases_complete = all(p.get('subtasks_complete', False) for p in phases)
             
-            if all_phases_complete and task_data['phases']:
+            if all_phases_complete and phases:
                 # All phases complete - automatically switch to full project review
-                completed_phases = [p for p in task_data['phases'] if p.get('subtasks_complete', False)]
+                completed_phases = [p for p in phases if p.get('subtasks_complete', False)]
                 all_completed_subtasks = []
                 phase_descriptions = []
                 for p in completed_phases:
@@ -2138,18 +2544,19 @@ Working examples:
                 # Override with legacy phase parameter if provided
                 if phase:
                     # Find the specified phase
-                    for i, p in enumerate(task_data['phases']):
+                    phases = task_data.get('phases', []) if task_data else []
+                    for i, p in enumerate(phases):
                         if p['number'] == phase:
                             # Find previous completed phase
                             previous_phase_completed = ''
                             if i > 0:
-                                prev_phase = task_data['phases'][i - 1]
+                                prev_phase = phases[i - 1]
                                 previous_phase_completed = f"{prev_phase['number']} {prev_phase['description']}"
                             
                             # Find next phase
                             next_phase = ''
-                            if i < len(task_data['phases']) - 1:
-                                next_phase_obj = task_data['phases'][i + 1]
+                            if i < len(phases) - 1:
+                                next_phase_obj = phases[i + 1]
                                 next_phase = f"{next_phase_obj['number']} {next_phase_obj['description']}"
                             
                             # Override the detected phase data
@@ -2164,7 +2571,8 @@ Working examples:
         
         elif scope == "full_project":
             # Analyze all completed phases
-            completed_phases = [p for p in task_data['phases'] if p.get('subtasks_complete', False)]
+            phases = task_data.get('phases', []) if task_data else []
+            completed_phases = [p for p in phases if p.get('subtasks_complete', False)]
             if completed_phases:
                 # Use summary information for all completed phases
                 all_completed_subtasks = []
@@ -2187,13 +2595,14 @@ Working examples:
         elif scope == "specific_phase":
             # Find and validate the specified phase
             target_phase = None
-            for i, p in enumerate(task_data['phases']):
+            phases = task_data.get('phases', []) if task_data else []
+            for i, p in enumerate(phases):
                 if p['number'] == phase_number:
                     target_phase = (i, p)
                     break
             
             if target_phase is None:
-                available_phases = [p['number'] for p in task_data['phases']]
+                available_phases = [p['number'] for p in phases]
                 error_msg = f"""Phase {phase_number} not found in task list
 
 Available phases: {', '.join(available_phases) if available_phases else 'none found'}
@@ -2213,13 +2622,13 @@ Working examples:
             # Find previous completed phase
             previous_phase_completed = ''
             if i > 0:
-                prev_phase = task_data['phases'][i - 1]
+                prev_phase = phases[i - 1]
                 previous_phase_completed = f"{prev_phase['number']} {prev_phase['description']}"
             
             # Find next phase
             next_phase = ''
-            if i < len(task_data['phases']) - 1:
-                next_phase_obj = task_data['phases'][i + 1]
+            if i < len(phases) - 1:
+                next_phase_obj = phases[i + 1]
                 next_phase = f"{next_phase_obj['number']} {next_phase_obj['description']}"
             
             # Override with specific phase data
@@ -2235,7 +2644,8 @@ Working examples:
             # Find and validate the specified task
             target_task = None
             target_phase = None
-            for i, p in enumerate(task_data['phases']):
+            phases = task_data.get('phases', []) if task_data else []
+            for i, p in enumerate(phases if phases is not None else []):
                 for subtask in p['subtasks']:
                     if subtask['number'] == task_number:
                         target_task = subtask
@@ -2244,11 +2654,12 @@ Working examples:
                 if target_task:
                     break
             
-            if target_task is None:
+            if target_task is None or target_phase is None:
                 # Get available tasks from all phases
                 available_tasks = []
-                for phase in task_data['phases']:
-                    available_tasks.extend([t['number'] for t in phase.get('subtasks', [])])
+                for phase in phases:
+                    if isinstance(phase, dict):
+                        available_tasks.extend([t['number'] for t in phase.get('subtasks', [])])
                 
                 error_msg = f"""Task {task_number} not found in task list
 
@@ -2259,12 +2670,14 @@ Working examples:
   {f'generate-code-review . --scope specific_task --task-number {available_tasks[0]}' if available_tasks else 'generate-code-review . --scope recent_phase  # Use default scope instead'}
   
   # Review entire phase instead
-  generate-code-review . --scope specific_phase --phase-number {task_number.split('.')[0]}.0
+  generate-code-review . --scope specific_phase --phase-number {task_number.split('.')[0] if task_number else '1'}.0
   
   # Use default scope (most recent incomplete phase)
   generate-code-review ."""
                 raise ValueError(error_msg)
             
+            # Type guard: At this point we know target_phase is not None and is a tuple
+            assert target_phase is not None, "target_phase should not be None after validation"
             i, p = target_phase
             # Override with specific task data
             task_data.update({
@@ -2316,8 +2729,13 @@ Working examples:
             print(f"🔄 Fetching PR data from GitHub...")
             try:
                 # Check if GitHub PR integration is available
-                if not get_complete_pr_analysis:
+                if get_complete_pr_analysis is None:
                     raise ImportError("GitHub PR integration not available")
+                
+                # Type guard: Ensure github_pr_url is not None
+                if github_pr_url is None:
+                    raise ValueError("GitHub PR URL is required for PR analysis mode")
+                
                 pr_analysis = get_complete_pr_analysis(github_pr_url)
                 
                 # Convert PR file changes to our expected format
@@ -2351,11 +2769,11 @@ Working examples:
             print(f"🔄 Comparing git branches...")
             try:
                 # Check if git branch comparison functions are available
-                if not all([detect_primary_branch, validate_branch_exists, get_branch_diff]):
+                if any(func is None for func in [detect_primary_branch, validate_branch_exists, get_branch_diff]):
                     raise ImportError("Git branch comparison functions not available")
                 
                 # Determine source and target branches
-                if not target_branch:
+                if not target_branch and detect_primary_branch is not None:
                     target_branch = detect_primary_branch(project_path)
                     print(f"🎯 Auto-detected target branch: {target_branch}")
                 
@@ -2366,14 +2784,23 @@ Working examples:
                     compare_branch = result.stdout.strip()
                     print(f"📦 Using current branch: {compare_branch}")
                 
+                # Type guards: Ensure branches are not None before validation
+                if compare_branch is None:
+                    raise ValueError("Compare branch could not be determined")
+                if target_branch is None:
+                    raise ValueError("Target branch could not be determined")
+                
                 # Validate branches exist
-                if not validate_branch_exists(project_path, compare_branch):
+                if validate_branch_exists is not None and not validate_branch_exists(project_path, compare_branch):
                     raise ValueError(f"Source branch '{compare_branch}' does not exist")
-                if not validate_branch_exists(project_path, target_branch):
+                if validate_branch_exists is not None and not validate_branch_exists(project_path, target_branch):
                     raise ValueError(f"Target branch '{target_branch}' does not exist")
                 
                 # Get branch diff
-                diff_data = get_branch_diff(project_path, compare_branch, target_branch)
+                if get_branch_diff is not None:
+                    diff_data = get_branch_diff(project_path, compare_branch, target_branch)
+                else:
+                    raise ImportError("get_branch_diff function not available")
                 
                 # Convert branch diff to our expected format
                 for file_change in diff_data['changed_files']:
@@ -2445,7 +2872,9 @@ Working examples:
             'claude_memory_files': configurations['claude_memory_files'],
             'cursor_rules': configurations['cursor_rules'],
             'applicable_rules': applicable_rules,
-            'configuration_errors': configurations['discovery_errors']
+            'configuration_errors': configurations['discovery_errors'],
+            'raw_context_only': raw_context_only,
+            'auto_prompt_content': auto_prompt_content
         }
         
         # Format template
@@ -2467,9 +2896,13 @@ Working examples:
                 elif scope == "full_project":
                     mode_prefix = "full-project"
                 elif scope == "specific_phase":
+                    if phase_number is None:
+                        raise ValueError("Phase number is required for specific_phase scope")
                     phase_safe = phase_number.replace(".", "-")
                     mode_prefix = f"phase-{phase_safe}"
                 elif scope == "specific_task":
+                    if task_number is None:
+                        raise ValueError("Task number is required for specific_task scope")
                     task_safe = task_number.replace(".", "-")
                     mode_prefix = f"task-{task_safe}"
                 else:
@@ -2499,8 +2932,8 @@ Working examples:
         raise
 
 
-def cli_main():
-    """CLI entry point for generate-code-review command."""
+def create_argument_parser():
+    """Create and configure the argument parser for CLI."""
     parser = argparse.ArgumentParser(
         description="Generate code review context with enhanced scope options",
         epilog="""
@@ -2523,6 +2956,16 @@ def cli_main():
   
   # Review individual task
   generate-code-review . --scope specific_task --task-number 1.3
+
+🤖 AUTO-PROMPT GENERATION:
+  # Generate optimized prompt using Gemini analysis and use it for review
+  generate-code-review . --auto-prompt
+  
+  # Only generate the optimized prompt (no code review)
+  generate-code-review . --generate-prompt-only
+  
+  # Combine with other options
+  generate-code-review . --auto-prompt --temperature 0.3 --scope full_project
 
 🔀 GIT BRANCH COMPARISON:
   # Compare current branch against main/master
@@ -2605,6 +3048,12 @@ def cli_main():
     parser.add_argument("--no-gemini", action="store_true", 
                       help=argparse.SUPPRESS)  # Hidden deprecated option
     
+    # Auto-prompt generation flags
+    parser.add_argument("--auto-prompt", action="store_true",
+                      help="Generate optimized prompt using Gemini analysis and use it for AI code review")
+    parser.add_argument("--generate-prompt-only", action="store_true",
+                      help="Only generate the optimized prompt, do not run code review")
+    
     # New scope-based parameters
     parser.add_argument("--scope", default="recent_phase",
                       choices=["recent_phase", "full_project", "specific_phase", "specific_task"],
@@ -2627,7 +3076,173 @@ def cli_main():
     parser.add_argument("--include-cursor-rules", action="store_true",
                        help="Include Cursor rules files (.cursorrules and .cursor/rules/*.mdc)")
     
+    return parser
+
+
+def validate_cli_arguments(args):
+    """Validate CLI arguments and check for conflicts."""
+    
+    # Check for mutually exclusive auto-prompt flags
+    if args.auto_prompt and args.generate_prompt_only:
+        raise ValueError("--auto-prompt and --generate-prompt-only are mutually exclusive. "
+                        "Use --auto-prompt to generate a prompt and run code review, or "
+                        "--generate-prompt-only to only generate the prompt.")
+    
+    # Check for conflicts with context-only
+    if args.generate_prompt_only and args.context_only:
+        raise ValueError("--generate-prompt-only and --context-only are mutually exclusive. "
+                        "Use --generate-prompt-only to generate optimized prompts, or "
+                        "--context-only to generate raw context without AI review.")
+    
+    # Validate project path
+    if args.project_path is None:
+        raise ValueError("project_path is required. Please specify a path to your project directory.")
+    
+    # Validate temperature range
+    if args.temperature < 0.0 or args.temperature > 2.0:
+        raise ValueError("Temperature must be between 0.0 and 2.0")
+    
+    # Validate scope-specific parameters
+    if args.scope == "specific_phase" and not args.phase_number:
+        raise ValueError("--phase-number is required when using --scope specific_phase")
+    
+    if args.scope == "specific_task" and not args.task_number:
+        raise ValueError("--task-number is required when using --scope specific_task")
+
+
+def execute_auto_prompt_workflow(project_path: str, scope: str = "recent_phase", 
+                                temperature: float = 0.5, auto_prompt: bool = False,
+                                generate_prompt_only: bool = False, **kwargs) -> str:
+    """Execute auto-prompt generation workflow using MCP tools internally."""
+    try:
+        # Import MCP tools from server module
+        try:
+            from .server import generate_auto_prompt, generate_ai_code_review
+        except ImportError:
+            from server import generate_auto_prompt, generate_ai_code_review
+        
+        # Step 1: Generate optimized prompt using project path
+        print("🤖 Generating optimized prompt using Gemini analysis...")
+        
+        import asyncio
+        prompt_result = asyncio.run(generate_auto_prompt(
+            project_path=project_path,
+            scope=scope
+        ))
+        
+        if not prompt_result.get("analysis_completed"):
+            raise Exception("Auto-prompt generation failed")
+        
+        generated_prompt = prompt_result["generated_prompt"]
+        context_analyzed = prompt_result["context_analyzed"]
+        
+        # Format output for prompt-only mode
+        if generate_prompt_only:
+            return format_auto_prompt_output(prompt_result, auto_prompt_mode=False)
+        
+        # Step 2: For auto-prompt mode, also run AI code review with custom prompt
+        if auto_prompt:
+            print("🔍 Running AI code review with generated prompt...")
+            
+            # First generate context (needed for AI review)
+            # Filter kwargs to only include parameters that the function accepts, excluding None values
+            context_kwargs = {k: v for k, v in kwargs.items() 
+                            if k in ['phase', 'output', 'phase_number', 'task_number', 'task_list', 
+                                   'default_prompt', 'compare_branch', 'target_branch', 'github_pr_url',
+                                   'include_claude_memory', 'include_cursor_rules', 'raw_context_only']
+                            and v is not None}
+            
+            context_result = generate_code_review_context_main(
+                project_path=project_path,
+                scope=scope,
+                enable_gemini_review=False,  # Don't run default AI review
+                temperature=temperature,
+                auto_prompt_content=generated_prompt,  # Pass the meta-prompt to embed in context
+                **context_kwargs
+            )
+            context_file = context_result[0]
+            
+            # Run AI review with custom prompt
+            # Convert to absolute path if needed
+            absolute_context_file = os.path.abspath(context_file)
+            ai_review_result = generate_ai_code_review(
+                context_file_path=absolute_context_file,
+                temperature=temperature,
+                custom_prompt=generated_prompt,
+                text_output=False  # We want file output for auto-prompt workflow
+            )
+            
+            return format_auto_prompt_output(prompt_result, auto_prompt_mode=True, 
+                                           ai_review_file=ai_review_result)
+        
+        return format_auto_prompt_output(prompt_result, auto_prompt_mode=False)
+        
+    except Exception as e:
+        raise Exception(f"Auto-prompt workflow failed: {str(e)}")
+
+
+def format_auto_prompt_output(prompt_result: dict, auto_prompt_mode: bool = False, 
+                            ai_review_file: Optional[str] = None) -> str:
+    """Format output for auto-prompt generation results."""
+    output_parts = []
+    
+    # Header
+    if auto_prompt_mode:
+        output_parts.append("🤖 Auto-Prompt Code Review Complete!")
+    else:
+        output_parts.append("🤖 Optimized Prompt Generated!")
+    
+    # Prompt analysis info
+    context_size = prompt_result.get("context_analyzed", 0)
+    output_parts.append(f"📊 Context analyzed: {context_size:,} characters")
+    
+    # Generated prompt
+    generated_prompt = prompt_result.get("generated_prompt", "")
+    output_parts.append("\n📝 Generated Prompt:")
+    output_parts.append("=" * 50)
+    output_parts.append(generated_prompt)
+    output_parts.append("=" * 50)
+    
+    # AI review info (if applicable)
+    if auto_prompt_mode and ai_review_file:
+        output_parts.append(f"\n✅ AI code review completed: {os.path.basename(ai_review_file)}")
+        output_parts.append(f"📄 Review file: {ai_review_file}")
+    
+    # Success message
+    if auto_prompt_mode:
+        output_parts.append("\n🎉 Auto-prompt code review workflow completed!")
+    else:
+        output_parts.append("\n🎉 Prompt generation completed!")
+        output_parts.append("💡 Use this prompt with --custom-prompt for targeted code reviews")
+    
+    return "\n".join(output_parts)
+
+
+def detect_execution_mode():
+    """Detect if running in development or installed mode."""
+    import __main__
+    if hasattr(__main__, '__file__') and __main__.__file__:
+        if 'src/' in str(__main__.__file__) or '-m' in sys.argv[0]:
+            return 'development'
+    return 'installed'
+
+def cli_main():
+    """CLI entry point for generate-code-review command."""
+    # Show execution mode for clarity in development
+    mode = detect_execution_mode()
+    if mode == 'development':
+        print("🔧 Development mode", file=sys.stderr)
+    
+    parser = create_argument_parser()
     args = parser.parse_args()
+    
+    # Validate arguments
+    try:
+        validate_cli_arguments(args)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        parser.print_help()
+        sys.exit(1)
     
     try:
         # Validate and improve argument handling
@@ -2727,7 +3342,44 @@ Working examples:
                 logger.warning(f"Invalid GEMINI_TEMPERATURE format, using default 0.5")
                 temperature = 0.5
         
-        output_path, gemini_path = main(
+        # Handle auto-prompt workflows (new functionality)
+        if args.auto_prompt or args.generate_prompt_only:
+            try:
+                # Prepare kwargs for workflow
+                workflow_kwargs = {
+                    'phase': args.phase,
+                    'output': args.output,
+                    'phase_number': getattr(args, 'phase_number'),
+                    'task_number': getattr(args, 'task_number'),
+                    'task_list': getattr(args, 'task_list'),
+                    'default_prompt': getattr(args, 'default_prompt'),
+                    'compare_branch': getattr(args, 'compare_branch'),
+                    'target_branch': getattr(args, 'target_branch'),
+                    'github_pr_url': getattr(args, 'github_pr_url'),
+                    'include_claude_memory': not args.no_claude_memory,
+                    'include_cursor_rules': args.include_cursor_rules
+                }
+                
+                # Execute auto-prompt workflow
+                result = execute_auto_prompt_workflow(
+                    project_path=args.project_path,
+                    scope=args.scope,
+                    temperature=temperature,
+                    auto_prompt=args.auto_prompt,
+                    generate_prompt_only=args.generate_prompt_only,
+                    **workflow_kwargs
+                )
+                
+                # Print the formatted result
+                print(result)
+                return  # Exit early for auto-prompt workflows
+                
+            except Exception as e:
+                print(f"Error in auto-prompt workflow: {e}", file=sys.stderr)
+                sys.exit(1)
+        
+        # Standard workflow (existing functionality)
+        output_path, gemini_path = generate_code_review_context_main(
             project_path=args.project_path,
             phase=args.phase,
             output=args.output,
@@ -2754,6 +3406,10 @@ Working examples:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
+
+def main():
+    """Entry point for installed package."""
+    cli_main()
 
 if __name__ == "__main__":
     cli_main()

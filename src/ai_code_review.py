@@ -91,7 +91,8 @@ def suggest_context_file_corrections(provided_path: str) -> str:
 
 
 def generate_ai_review(context_file_path: str, output_path: Optional[str] = None, 
-                      model: Optional[str] = None, temperature: float = 0.5) -> Optional[str]:
+                      model: Optional[str] = None, temperature: float = 0.5,
+                      custom_prompt: Optional[str] = None) -> Optional[str]:
     """
     Generate AI-powered code review from existing context file.
     
@@ -102,6 +103,8 @@ def generate_ai_review(context_file_path: str, output_path: Optional[str] = None
         context_file_path: Path to existing code review context file
         output_path: Optional custom output file path
         model: Optional model name for Gemini (e.g., 'gemini-2.0-flash-exp')
+        temperature: Temperature setting for AI model (default: 0.5)
+        custom_prompt: Optional custom prompt to override default AI instructions
         
     Returns:
         Path to generated AI review file, or None if generation failed
@@ -243,6 +246,26 @@ Working examples:
             timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
             output_filename = f"code-review-ai-feedback-{timestamp}.md"
             output_path = str(context_path.parent / output_filename)
+        
+        # Modify context if custom prompt is provided
+        if custom_prompt:
+            logger.info("Using custom prompt for AI review")
+            # Replace or modify the <user_instructions> section with custom prompt
+            if '<user_instructions>' in context_content and '</user_instructions>' in context_content:
+                # Extract everything before <user_instructions>
+                before_instructions = context_content.split('<user_instructions>')[0]
+                # Replace instructions with custom prompt
+                modified_context = f"""{before_instructions}<user_instructions>
+{custom_prompt}
+</user_instructions>"""
+                context_content = modified_context
+            else:
+                # If no <user_instructions> section exists, append custom prompt
+                context_content += f"""
+
+<user_instructions>
+{custom_prompt}
+</user_instructions>"""
         
         # Call Gemini integration
         logger.info(f"Generating AI review for context: {context_file_path}")
@@ -522,6 +545,9 @@ Working examples:
             traceback.print_exc()
         sys.exit(1)
 
+
+# Alias for test compatibility
+generate_ai_code_review = generate_ai_review
 
 if __name__ == "__main__":
     main()
