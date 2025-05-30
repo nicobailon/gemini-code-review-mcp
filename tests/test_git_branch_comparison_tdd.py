@@ -10,6 +10,7 @@ DO NOT create mock implementations.
 import pytest
 import sys
 import os
+import subprocess
 import tempfile
 from pathlib import Path
 from unittest.mock import patch, mock_open, MagicMock
@@ -225,76 +226,135 @@ D\told_file.py"""
         """Test branch comparison includes file content for changed files."""
         from git_branch_comparison import get_branch_diff
         
-        with patch('subprocess.run') as mock_run:
-            def side_effect(*args, **kwargs):
-                if '--name-status' in args[0]:
-                    # Mock file list
-                    mock_run.return_value.stdout = "M\tsrc/test.py"
-                    mock_run.return_value.returncode = 0
-                elif 'show' in args[0] and 'src/test.py' in args[0]:
-                    # Mock file content from source branch
-                    mock_run.return_value.stdout = "def test_function():\n    return 'updated'"
-                    mock_run.return_value.returncode = 0
-                return mock_run.return_value
+        # Test with a real temporary git repository
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Initialize git repo
+            subprocess.run(['git', 'init'], cwd=temp_dir, check=True, capture_output=True)
+            subprocess.run(['git', 'config', 'user.email', 'test@example.com'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'config', 'user.name', 'Test User'], cwd=temp_dir, check=True)
             
-            mock_run.side_effect = side_effect
+            # Create initial commit on main
+            os.makedirs(os.path.join(temp_dir, 'src'), exist_ok=True)
+            with open(os.path.join(temp_dir, 'src', 'test.py'), 'w') as f:
+                f.write("def test_function():\n    return 'original'")
             
-            result = get_branch_diff("/test/repo", "feature/branch", "main")
+            subprocess.run(['git', 'add', '.'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'commit', '-m', 'Initial commit'], cwd=temp_dir, check=True)
             
+            # Create feature branch and modify file
+            subprocess.run(['git', 'checkout', '-b', 'feature/branch'], cwd=temp_dir, check=True)
+            with open(os.path.join(temp_dir, 'src', 'test.py'), 'w') as f:
+                f.write("def test_function():\n    return 'updated'")
+            
+            subprocess.run(['git', 'add', '.'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'commit', '-m', 'Update function'], cwd=temp_dir, check=True)
+            
+            # Test branch comparison
+            result = get_branch_diff(temp_dir, "feature/branch", "main")
+            
+            assert len(result['changed_files']) == 1
             modified_file = result['changed_files'][0]
             assert modified_file['status'] == 'M'
             assert modified_file['path'] == 'src/test.py'
             assert 'def test_function' in modified_file['content']
+            assert 'updated' in modified_file['content']
     
     def test_get_branch_diff_handles_binary_files(self):
         """Test handling binary files in branch comparison."""
         from git_branch_comparison import get_branch_diff
         
-        with patch('subprocess.run') as mock_run:
-            def side_effect(*args, **kwargs):
-                if '--name-status' in args[0]:
-                    mock_run.return_value.stdout = "M\timage.png"
-                    mock_run.return_value.returncode = 0
-                elif 'show' in args[0]:
-                    # Mock binary file error
-                    mock_run.side_effect = subprocess.CalledProcessError(1, 'git')
-                return mock_run.return_value
+        # Test with a real temporary git repository and binary file
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Initialize git repo
+            subprocess.run(['git', 'init'], cwd=temp_dir, check=True, capture_output=True)
+            subprocess.run(['git', 'config', 'user.email', 'test@example.com'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'config', 'user.name', 'Test User'], cwd=temp_dir, check=True)
             
-            mock_run.side_effect = side_effect
+            # Create initial commit on main
+            with open(os.path.join(temp_dir, 'text.txt'), 'w') as f:
+                f.write("Initial content")
             
-            result = get_branch_diff("/test/repo", "feature/branch", "main")
+            subprocess.run(['git', 'add', '.'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'commit', '-m', 'Initial commit'], cwd=temp_dir, check=True)
             
+            # Create feature branch and add binary file
+            subprocess.run(['git', 'checkout', '-b', 'feature/branch'], cwd=temp_dir, check=True)
+            
+            # Create a simple binary file (PNG header bytes)
+            binary_content = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01'
+            with open(os.path.join(temp_dir, 'image.png'), 'wb') as f:
+                f.write(binary_content)
+            
+            subprocess.run(['git', 'add', '.'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'commit', '-m', 'Add binary file'], cwd=temp_dir, check=True)
+            
+            # Test branch comparison
+            result = get_branch_diff(temp_dir, "feature/branch", "main")
+            
+            assert len(result['changed_files']) == 1
             binary_file = result['changed_files'][0]
+            assert binary_file['status'] == 'A'  # Added file
+            assert binary_file['path'] == 'image.png'
+            # Binary files should be handled gracefully
             assert binary_file['content'] == "[Binary file or content not available]"
     
     def test_get_branch_diff_with_commit_info(self):
         """Test that branch comparison includes commit information."""
         from git_branch_comparison import get_branch_diff
         
-        with patch('subprocess.run') as mock_run:
-            def side_effect(*args, **kwargs):
-                if '--name-status' in args[0]:
-                    mock_run.return_value.stdout = "M\tsrc/test.py"
-                    mock_run.return_value.returncode = 0
-                elif 'log' in args[0] and '--oneline' in args[0]:
-                    # Mock commit log
-                    mock_run.return_value.stdout = """abc123d Fix authentication bug
-def456e Add new feature
-789ghij Update documentation"""
-                    mock_run.return_value.returncode = 0
-                elif 'show' in args[0]:
-                    mock_run.return_value.stdout = "file content"
-                    mock_run.return_value.returncode = 0
-                return mock_run.return_value
+        # Test with a real temporary git repository with multiple commits
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Initialize git repo
+            subprocess.run(['git', 'init'], cwd=temp_dir, check=True, capture_output=True)
+            subprocess.run(['git', 'config', 'user.email', 'test@example.com'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'config', 'user.name', 'Test User'], cwd=temp_dir, check=True)
             
-            mock_run.side_effect = side_effect
+            # Create initial commit on main
+            with open(os.path.join(temp_dir, 'README.md'), 'w') as f:
+                f.write("# Project")
             
-            result = get_branch_diff("/test/repo", "feature/branch", "main")
+            subprocess.run(['git', 'add', '.'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'commit', '-m', 'Initial commit'], cwd=temp_dir, check=True)
+            
+            # Create feature branch with multiple commits
+            subprocess.run(['git', 'checkout', '-b', 'feature/branch'], cwd=temp_dir, check=True)
+            
+            # First commit
+            os.makedirs(os.path.join(temp_dir, 'src'), exist_ok=True)
+            with open(os.path.join(temp_dir, 'src', 'test.py'), 'w') as f:
+                f.write("def test_function():\n    return 'new'")
+            subprocess.run(['git', 'add', '.'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'commit', '-m', 'Add new feature'], cwd=temp_dir, check=True)
+            
+            # Second commit
+            with open(os.path.join(temp_dir, 'src', 'test.py'), 'w') as f:
+                f.write("def test_function():\n    return 'updated'")
+            subprocess.run(['git', 'add', '.'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'commit', '-m', 'Fix authentication bug'], cwd=temp_dir, check=True)
+            
+            # Third commit
+            with open(os.path.join(temp_dir, 'README.md'), 'w') as f:
+                f.write("# Project\n\nDocumentation updated")
+            subprocess.run(['git', 'add', '.'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'commit', '-m', 'Update documentation'], cwd=temp_dir, check=True)
+            
+            # Test branch comparison
+            result = get_branch_diff(temp_dir, "feature/branch", "main")
             
             assert 'commits' in result
             assert len(result['commits']) == 3
-            assert result['commits'][0]['hash'] == 'abc123d'
-            assert result['commits'][0]['message'] == 'Fix authentication bug'
+            
+            # Commits are returned in reverse chronological order (newest first)
+            assert 'Update documentation' in result['commits'][0]['message']
+            assert 'Fix authentication bug' in result['commits'][1]['message'] 
+            assert 'Add new feature' in result['commits'][2]['message']
+            
+            # Each commit should have at least hash and message
+            for commit in result['commits']:
+                assert 'hash' in commit
+                assert 'message' in commit
+                assert len(commit['hash']) > 0
+                assert len(commit['message']) > 0
     
     def test_get_branch_diff_handles_no_differences(self):
         """Test handling when branches have no differences."""

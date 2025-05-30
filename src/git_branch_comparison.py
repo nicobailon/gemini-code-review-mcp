@@ -178,10 +178,11 @@ def get_branch_diff(repo_path: str, source_branch: str, target_branch: str) -> D
                         elif status == 'D':
                             files_deleted += 1
         
-        # Get commit information with detailed metadata
+        # Get commit information - try detailed format first, fallback to simple
         commits = []
+        
+        # Try detailed commit log first
         try:
-            # Get detailed commit information including author, date, and stats
             log_result = subprocess.run(
                 ['git', 'log', '--pretty=format:%H|%h|%s|%an|%ad|%ar', '--date=iso', f'{target_branch}..{source_branch}'],
                 cwd=repo_path,
@@ -204,7 +205,7 @@ def get_branch_diff(repo_path: str, source_branch: str, target_branch: str) -> D
                                 'date_relative': parts[5]
                             })
         except subprocess.CalledProcessError:
-            # Fallback to simple log if detailed log fails
+            # Fallback to simple log format
             try:
                 log_result = subprocess.run(
                     ['git', 'log', '--oneline', f'{target_branch}..{source_branch}'],
@@ -224,7 +225,7 @@ def get_branch_diff(repo_path: str, source_branch: str, target_branch: str) -> D
                                     'message': parts[1]
                                 })
             except subprocess.CalledProcessError:
-                # Log might fail, but that's OK
+                # No commits or git log failed - that's OK, leave commits empty
                 pass
         
         return {
