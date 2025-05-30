@@ -20,6 +20,7 @@ import subprocess
 import argparse
 import glob
 import json
+import time
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 import logging
@@ -728,7 +729,11 @@ def format_review_template(data: Dict[str, Any]) -> str:
 <current_phase_number>
 {data['current_phase_number']}
 </current_phase_number>
-
+"""
+    
+    # Only add previous phase if it exists
+    if data['previous_phase_completed']:
+        template += f"""
 <previous_phase_completed>
 {data['previous_phase_completed']}
 </previous_phase_completed>
@@ -736,10 +741,10 @@ def format_review_template(data: Dict[str, Any]) -> str:
     
     # Only add next phase if it exists
     if data['next_phase']:
-        template += f"""<next_phase>
+        template += f"""
+<next_phase>
 {data['next_phase']}
 </next_phase>
-
 """
     
     template += f"""<current_phase_description>
@@ -844,7 +849,25 @@ Comparison Summary:
     template += f"""
 <project_path>
 {data['project_path']}
-</project_path>
+</project_path>"""
+
+    # Add configuration content section if available
+    if data.get('configuration_content'):
+        template += f"""
+<configuration_context>
+{data['configuration_content']}
+</configuration_context>"""
+        
+        # Add applicable rules summary if available
+        applicable_rules = data.get('applicable_rules', [])
+        if applicable_rules:
+            template += f"""
+<applicable_configuration_rules>
+The following configuration rules apply to the changed files:
+{chr(10).join(f"- {rule.description} (from {rule.file_path})" for rule in applicable_rules)}
+</applicable_configuration_rules>"""
+    
+    template += f"""
 <file_tree>
 {data['file_tree']}
 </file_tree>
@@ -872,9 +895,13 @@ File: {file_info['path']} ({file_info['status']})
     branch_data = data.get('branch_comparison_data')
     
     if review_mode == 'github_pr' and branch_data:
+        config_note = ""
+        if data.get('configuration_content'):
+            config_note = "\n\nPay special attention to the configuration context (Claude memory and Cursor rules) provided above, which contains project-specific guidelines and coding standards that should be followed."
+        
         template += f"""You are reviewing a GitHub Pull Request that contains changes from branch '{branch_data['pr_data']['source_branch']}' to '{branch_data['pr_data']['target_branch']}'.
 
-The PR "{branch_data['pr_data']['title']}" by {branch_data['pr_data']['author']} includes {branch_data['summary']['files_changed']} changed files with {branch_data['summary']['files_added']} additions, {branch_data['summary']['files_modified']} modifications, and {branch_data['summary']['files_deleted']} deletions.
+The PR "{branch_data['pr_data']['title']}" by {branch_data['pr_data']['author']} includes {branch_data['summary']['files_changed']} changed files with {branch_data['summary']['files_added']} additions, {branch_data['summary']['files_modified']} modifications, and {branch_data['summary']['files_deleted']} deletions.{config_note}
 
 Based on the PR metadata, commit history, and file changes shown above, conduct a comprehensive code review focusing on:
 1. Code quality and best practices
@@ -886,10 +913,14 @@ Based on the PR metadata, commit history, and file changes shown above, conduct 
 
 Identify specific lines, files, or patterns that are concerning and provide actionable feedback."""
     elif review_mode == 'branch_comparison' and branch_data:
+        config_note = ""
+        if data.get('configuration_content'):
+            config_note = "\n\nPay special attention to the configuration context (Claude memory and Cursor rules) provided above, which contains project-specific guidelines and coding standards that should be followed."
+        
         commits_count = len(branch_data.get('commits', []))
         template += f"""You are reviewing changes between git branches '{branch_data['source_branch']}' and '{branch_data['target_branch']}'.
 
-The comparison shows {commits_count} commits ahead of the target branch, affecting {branch_data['summary']['files_changed']} files with {branch_data['summary']['files_added']} additions, {branch_data['summary']['files_modified']} modifications, and {branch_data['summary']['files_deleted']} deletions.
+The comparison shows {commits_count} commits ahead of the target branch, affecting {branch_data['summary']['files_changed']} files with {branch_data['summary']['files_added']} additions, {branch_data['summary']['files_modified']} modifications, and {branch_data['summary']['files_deleted']} deletions.{config_note}
 
 Based on the branch comparison metadata, commit history, and file changes shown above, conduct a comprehensive code review focusing on:
 1. Changes introduced in this branch compared to the target
@@ -901,15 +932,27 @@ Based on the branch comparison metadata, commit history, and file changes shown 
 
 Review the commit progression to understand the development approach and identify specific lines, files, or patterns that need attention."""
     elif data['scope'] == 'full_project':
-        template += f"""We have completed all phases (and subtasks within) of this project: {data['current_phase_description']}.
+        config_note = ""
+        if data.get('configuration_content'):
+            config_note = "\n\nImportant: Refer to the configuration context (Claude memory and Cursor rules) provided above for project-specific guidelines and coding standards that should be followed throughout the project."
+        
+        template += f"""We have completed all phases (and subtasks within) of this project: {data['current_phase_description']}.{config_note}
 
 Based on the PRD, all completed phases, all subtasks that were finished across the entire project, and the files changed in the working directory, your job is to conduct a comprehensive code review and output your code review feedback for the entire project. Identify specific lines or files that are concerning when appropriate."""
     elif data['scope'] == 'specific_task':
-        template += f"""We have just completed task #{data['current_phase_number']}: "{data['current_phase_description']}".
+        config_note = ""
+        if data.get('configuration_content'):
+            config_note = "\n\nImportant: Refer to the configuration context (Claude memory and Cursor rules) provided above for project-specific guidelines and coding standards."
+        
+        template += f"""We have just completed task #{data['current_phase_number']}: "{data['current_phase_description']}".{config_note}
 
 Based on the PRD, the completed task, and the files changed in the working directory, your job is to conduct a code review and output your code review feedback for this specific task. Identify specific lines or files that are concerning when appropriate."""
     else:
-        template += f"""We have just completed phase #{data['current_phase_number']}: "{data['current_phase_description']}".
+        config_note = ""
+        if data.get('configuration_content'):
+            config_note = "\n\nImportant: Refer to the configuration context (Claude memory and Cursor rules) provided above for project-specific guidelines and coding standards."
+        
+        template += f"""We have just completed phase #{data['current_phase_number']}: "{data['current_phase_description']}".{config_note}
 
 Based on the PRD, the completed phase, all subtasks that were finished in that phase, and the files changed in the working directory, your job is to conduct a code review and output your code review feedback for the completed phase. Identify specific lines or files that are concerning when appropriate."""
     
@@ -1209,10 +1252,581 @@ Focus on being specific and actionable. When referencing files, include line num
         return None
 
 
+class ConfigurationCache:
+    """Cache for configuration discovery to improve performance."""
+    
+    def __init__(self):
+        self.cache = {}
+        self.mtimes = {}
+    
+    def get_configurations(self, project_path: str) -> Optional[Dict[str, Any]]:
+        """Get cached configurations if they exist and are up to date, otherwise discover and cache."""
+        # Check if we have cached data
+        if project_path not in self.cache:
+            # No cached data, discover configurations
+            configurations = _discover_project_configurations_uncached(project_path)
+            self.set_configurations(project_path, configurations)
+            return configurations
+        
+        # Check if any configuration files have been modified
+        current_mtime = self._get_max_config_mtime(project_path)
+        cached_mtime = self.mtimes.get(project_path, 0)
+        
+        if current_mtime > cached_mtime:
+            # Configuration files have been modified, invalidate cache and rediscover
+            self.invalidate(project_path)
+            configurations = _discover_project_configurations_uncached(project_path)
+            self.set_configurations(project_path, configurations)
+            return configurations
+        
+        return self.cache[project_path]
+    
+    def set_configurations(self, project_path: str, configurations: Dict[str, Any]):
+        """Cache configurations for a project."""
+        self.cache[project_path] = configurations
+        self.mtimes[project_path] = self._get_max_config_mtime(project_path)
+    
+    def invalidate(self, project_path: str):
+        """Invalidate cache for a project."""
+        if project_path in self.cache:
+            del self.cache[project_path]
+        if project_path in self.mtimes:
+            del self.mtimes[project_path]
+    
+    def _get_max_config_mtime(self, project_path: str) -> float:
+        """Get the maximum modification time of configuration files."""
+        max_mtime = 0
+        
+        # Check CLAUDE.md files
+        for claude_pattern in ["CLAUDE.md", "*/CLAUDE.md", "**/CLAUDE.md"]:
+            claude_files = glob.glob(os.path.join(project_path, claude_pattern))
+            for claude_file in claude_files:
+                if os.path.isfile(claude_file):
+                    max_mtime = max(max_mtime, os.path.getmtime(claude_file))
+        
+        # Check cursor rules
+        cursorrules_file = os.path.join(project_path, ".cursorrules")
+        if os.path.isfile(cursorrules_file):
+            max_mtime = max(max_mtime, os.path.getmtime(cursorrules_file))
+        
+        cursor_rules_dir = os.path.join(project_path, ".cursor", "rules")
+        if os.path.isdir(cursor_rules_dir):
+            for root, dirs, files in os.walk(cursor_rules_dir):
+                for file in files:
+                    if file.endswith('.mdc'):
+                        file_path = os.path.join(root, file)
+                        max_mtime = max(max_mtime, os.path.getmtime(file_path))
+        
+        return max_mtime
+
+
+# Global cache instance
+_config_cache = ConfigurationCache()
+
+
+def _discover_project_configurations_uncached(project_path: str) -> Dict[str, Any]:
+    """
+    Discover Claude memory files and Cursor rules from project (uncached version).
+    
+    Args:
+        project_path: Path to project root
+        
+    Returns:
+        Dictionary with discovered configurations and any errors
+    """
+    
+    try:
+        # Import configuration modules (relative imports for same package)
+        try:
+            # Try importing from same directory first
+            import sys
+            import os
+            current_dir = os.path.dirname(__file__)
+            if current_dir not in sys.path:
+                sys.path.insert(0, current_dir)
+            
+            from configuration_discovery import discover_all_claude_md_files, discover_all_cursor_rules
+            from claude_memory_parser import parse_claude_memory_with_imports
+            from cursor_rules_parser import parse_cursor_rules_directory
+            from configuration_context import ClaudeMemoryFile, CursorRule
+        except ImportError as e:
+            # Fallback: try absolute imports
+            from src.configuration_discovery import discover_all_claude_md_files, discover_all_cursor_rules
+            from src.claude_memory_parser import parse_claude_memory_with_imports
+            from src.cursor_rules_parser import parse_cursor_rules_directory
+            from src.configuration_context import ClaudeMemoryFile, CursorRule
+        
+        claude_memory_files = []
+        cursor_rules = []
+        discovery_errors = []
+        
+        # Discover Claude memory files
+        try:
+            claude_files_data = discover_all_claude_md_files(project_path)
+            
+            for claude_file_data in claude_files_data:
+                try:
+                    # Validate file content before parsing
+                    content = claude_file_data.get('content', '')
+                    
+                    # Check for binary content (null bytes indicate binary)
+                    if '\x00' in content:
+                        raise ValueError(f"Binary content detected in CLAUDE.md file: {claude_file_data['file_path']}")
+                    
+                    # Parse with import resolution
+                    parsed_data = parse_claude_memory_with_imports(
+                        claude_file_data['file_path'],
+                        project_root=project_path
+                    )
+                    
+                    # Determine hierarchy level
+                    hierarchy_level = claude_file_data.get('scope', 'project')
+                    
+                    # Create ClaudeMemoryFile object
+                    memory_file = ClaudeMemoryFile(
+                        file_path=claude_file_data['file_path'],
+                        content=parsed_data['content'],
+                        hierarchy_level=hierarchy_level,
+                        imports=parsed_data.get('successful_imports', []),
+                        resolved_content=parsed_data.get('resolved_content', parsed_data['content'])
+                    )
+                    
+                    claude_memory_files.append(memory_file)
+                    
+                    # Add any import errors to discovery errors
+                    discovery_errors.extend(parsed_data.get('import_errors', []))
+                    
+                except Exception as e:
+                    discovery_errors.append({
+                        'file_path': claude_file_data['file_path'],
+                        'error_type': 'claude_parsing_error',
+                        'error_message': str(e)
+                    })
+                    
+        except Exception as e:
+            discovery_errors.append({
+                'error_type': 'claude_discovery_error',
+                'error_message': str(e)
+            })
+        
+        # Discover Cursor rules
+        try:
+            cursor_data = parse_cursor_rules_directory(project_path)
+            
+            # Add any parsing errors to discovery errors
+            discovery_errors.extend(cursor_data.get('parse_errors', []))
+            
+            # Convert legacy rules
+            if cursor_data.get('legacy_rules'):
+                legacy_data = cursor_data['legacy_rules']
+                legacy_rule = CursorRule(
+                    file_path=legacy_data['file_path'],
+                    content=legacy_data['content'],
+                    rule_type=legacy_data['type'],
+                    precedence=legacy_data['precedence'],
+                    description=legacy_data['description'],
+                    globs=legacy_data['globs'],
+                    always_apply=legacy_data['always_apply'],
+                    metadata=legacy_data['metadata']
+                )
+                cursor_rules.append(legacy_rule)
+            
+            # Convert modern rules
+            for modern_data in cursor_data.get('modern_rules', []):
+                modern_rule = CursorRule(
+                    file_path=modern_data['file_path'],
+                    content=modern_data['content'],
+                    rule_type=modern_data['type'],
+                    precedence=modern_data['precedence'],
+                    description=modern_data['description'],
+                    globs=modern_data['globs'],
+                    always_apply=modern_data['always_apply'],
+                    metadata=modern_data['metadata']
+                )
+                cursor_rules.append(modern_rule)
+                
+        except Exception as e:
+            discovery_errors.append({
+                'error_type': 'cursor_discovery_error',
+                'error_message': str(e)
+            })
+        
+        result = {
+            'claude_memory_files': claude_memory_files,
+            'cursor_rules': cursor_rules,
+            'discovery_errors': discovery_errors
+        }
+        
+        return result
+        
+    except ImportError as e:
+        # Configuration modules not available - return empty result
+        logger.warning(f"Configuration discovery modules not available: {e}")
+        return {
+            'claude_memory_files': [],
+            'cursor_rules': [],
+            'discovery_errors': [{
+                'error_type': 'module_import_error',
+                'error_message': str(e)
+            }]
+        }
+
+
+def discover_project_configurations(project_path: str) -> Dict[str, Any]:
+    """
+    Discover Claude memory files and Cursor rules from project (cached version).
+    
+    Args:
+        project_path: Path to project root
+        
+    Returns:
+        Dictionary with discovered configurations and any errors
+    """
+    # Use cache for performance
+    return _config_cache.get_configurations(project_path)
+
+
+def discover_project_configurations_with_fallback(project_path: str) -> Dict[str, Any]:
+    """
+    Discover configurations with comprehensive error handling and fallback.
+    
+    Args:
+        project_path: Path to project root
+        
+    Returns:
+        Dictionary with discovered configurations, always includes empty lists on failure
+    """
+    try:
+        return discover_project_configurations(project_path)
+    except Exception as e:
+        logger.warning(f"Configuration discovery failed: {e}")
+        return {
+            'claude_memory_files': [],
+            'cursor_rules': [],
+            'discovery_errors': [{
+                'error_type': 'discovery_failure',
+                'error_message': str(e)
+            }]
+        }
+
+
+def discover_project_configurations_with_flags(
+    project_path: str, 
+    include_claude_memory: bool = True, 
+    include_cursor_rules: bool = False
+) -> Dict[str, Any]:
+    """
+    Discover configurations with flag-based inclusion control.
+    
+    Args:
+        project_path: Path to project root
+        include_claude_memory: Whether to include CLAUDE.md files
+        include_cursor_rules: Whether to include Cursor rules files
+        
+    Returns:
+        Dictionary with discovered configurations based on flags
+    """
+    try:
+        # Start with empty configuration
+        result = {
+            'claude_memory_files': [],
+            'cursor_rules': [],
+            'discovery_errors': []
+        }
+        
+        # Import configuration modules
+        try:
+            from configuration_discovery import discover_all_claude_md_files, discover_all_cursor_rules
+            from claude_memory_parser import parse_claude_memory_with_imports
+            from cursor_rules_parser import parse_cursor_rules_directory
+            from configuration_context import ClaudeMemoryFile, CursorRule
+        except ImportError:
+            try:
+                from src.configuration_discovery import discover_all_claude_md_files, discover_all_cursor_rules
+                from src.claude_memory_parser import parse_claude_memory_with_imports
+                from src.cursor_rules_parser import parse_cursor_rules_directory
+                from src.configuration_context import ClaudeMemoryFile, CursorRule
+            except ImportError as e:
+                logger.warning(f"Failed to import configuration modules: {e}")
+                return result
+        
+        # Discover Claude memory files if enabled
+        if include_claude_memory:
+            try:
+                claude_files = discover_all_claude_md_files(project_path)
+                for file_info in claude_files:
+                    try:
+                        file_path = file_info['file_path']
+                        memory_file = parse_claude_memory_with_imports(file_path, project_path)
+                        result['claude_memory_files'].append(memory_file)
+                    except Exception as e:
+                        file_path = file_info.get('file_path', 'unknown')
+                        logger.warning(f"Failed to parse Claude memory file {file_path}: {e}")
+                        result['discovery_errors'].append({
+                            'error_type': 'claude_parsing_error',
+                            'file_path': file_path,
+                            'error_message': str(e)
+                        })
+            except Exception as e:
+                logger.warning(f"Failed to discover Claude memory files: {e}")
+                result['discovery_errors'].append({
+                    'error_type': 'claude_discovery_error',
+                    'error_message': str(e)
+                })
+        
+        # Discover Cursor rules if enabled
+        if include_cursor_rules:
+            try:
+                cursor_files = discover_all_cursor_rules(project_path)
+                for file_path in cursor_files:
+                    try:
+                        # Parse cursor rules directory to get structured rules
+                        rules_data = parse_cursor_rules_directory(project_path)
+                        
+                        # Add legacy rules
+                        if rules_data.get('legacy_rules'):
+                            legacy_data = rules_data['legacy_rules']
+                            rule = CursorRule(
+                                file_path=legacy_data['file_path'],
+                                content=legacy_data['content'],
+                                rule_type=legacy_data['type'],
+                                precedence=legacy_data['precedence'],
+                                description=legacy_data['description'],
+                                globs=legacy_data['globs'],
+                                always_apply=legacy_data['always_apply'],
+                                metadata=legacy_data['metadata']
+                            )
+                            result['cursor_rules'].append(rule)
+                        
+                        # Add modern rules
+                        for modern_data in rules_data.get('modern_rules', []):
+                            rule = CursorRule(
+                                file_path=modern_data['file_path'],
+                                content=modern_data['content'],
+                                rule_type=modern_data['type'],
+                                precedence=modern_data['precedence'],
+                                description=modern_data['description'],
+                                globs=modern_data['globs'],
+                                always_apply=modern_data['always_apply'],
+                                metadata=modern_data['metadata']
+                            )
+                            result['cursor_rules'].append(rule)
+                        
+                        # Add parsing errors
+                        result['discovery_errors'].extend(rules_data.get('parse_errors', []))
+                        
+                        # Break after processing the directory
+                        break
+                        
+                    except Exception as e:
+                        logger.warning(f"Failed to parse Cursor rules: {e}")
+                        result['discovery_errors'].append({
+                            'error_type': 'cursor_parsing_error',
+                            'file_path': file_path,
+                            'error_message': str(e)
+                        })
+            except Exception as e:
+                logger.warning(f"Failed to discover Cursor rules: {e}")
+                result['discovery_errors'].append({
+                    'error_type': 'cursor_discovery_error',
+                    'error_message': str(e)
+                })
+        
+        return result
+        
+    except Exception as e:
+        logger.warning(f"Configuration discovery with flags failed: {e}")
+        return {
+            'claude_memory_files': [],
+            'cursor_rules': [],
+            'discovery_errors': [{
+                'error_type': 'discovery_failure',
+                'error_message': str(e)
+            }]
+        }
+
+
+def merge_configurations_into_context(
+    existing_context: Dict[str, Any],
+    claude_memory_files: List[Any],
+    cursor_rules: List[Any]
+) -> Dict[str, Any]:
+    """
+    Merge discovered configurations into existing review context.
+    
+    Args:
+        existing_context: Existing context dictionary
+        claude_memory_files: List of ClaudeMemoryFile objects
+        cursor_rules: List of CursorRule objects
+        
+    Returns:
+        Enhanced context dictionary with configuration content
+    """
+    try:
+        try:
+            from configuration_context import create_configuration_context
+        except ImportError:
+            from src.configuration_context import create_configuration_context
+        
+        # Create configuration context
+        config_context = create_configuration_context(claude_memory_files, cursor_rules)
+        
+        # Enhanced context with configuration data
+        enhanced_context = existing_context.copy()
+        enhanced_context.update({
+            'configuration_content': config_context['merged_content'],
+            'claude_memory_files': claude_memory_files,
+            'cursor_rules': cursor_rules,
+            'auto_apply_rules': config_context['auto_apply_rules'],
+            'configuration_errors': config_context['error_summary']
+        })
+        
+        return enhanced_context
+        
+    except Exception as e:
+        logger.warning(f"Failed to merge configurations: {e}")
+        # Return original context with empty configuration sections
+        enhanced_context = existing_context.copy()
+        enhanced_context.update({
+            'configuration_content': '',
+            'claude_memory_files': claude_memory_files,
+            'cursor_rules': cursor_rules,
+            'auto_apply_rules': [],
+            'configuration_errors': [{
+                'error_type': 'merge_error',
+                'error_message': str(e)
+            }]
+        })
+        return enhanced_context
+
+
+def format_configuration_context_for_ai(
+    claude_memory_files: List[Any],
+    cursor_rules: List[Any]
+) -> str:
+    """
+    Format configuration context for optimal AI consumption.
+    
+    Args:
+        claude_memory_files: List of ClaudeMemoryFile objects
+        cursor_rules: List of CursorRule objects
+        
+    Returns:
+        Formatted configuration content string
+    """
+    try:
+        try:
+            from configuration_context import merge_claude_memory_content, merge_cursor_rules_content
+        except ImportError:
+            from src.configuration_context import merge_claude_memory_content, merge_cursor_rules_content
+        
+        # Format Claude memory content
+        claude_content = merge_claude_memory_content(claude_memory_files)
+        
+        # Format Cursor rules content
+        cursor_content = merge_cursor_rules_content(cursor_rules)
+        
+        # Combine with clear sections
+        sections = []
+        
+        if claude_content:
+            sections.append("# Claude Memory Configuration\n\n" + claude_content)
+        
+        if cursor_content:
+            sections.append("# Cursor Rules Configuration\n\n" + cursor_content)
+        
+        return "\n\n".join(sections)
+        
+    except Exception as e:
+        logger.warning(f"Failed to format configuration context: {e}")
+        return ""
+
+
+def get_applicable_rules_for_files(
+    cursor_rules: List[Any],
+    changed_files: List[str]
+) -> List[Any]:
+    """
+    Get Cursor rules applicable to changed files.
+    
+    Args:
+        cursor_rules: List of CursorRule objects
+        changed_files: List of changed file paths
+        
+    Returns:
+        List of applicable CursorRule objects
+    """
+    try:
+        try:
+            from configuration_context import get_all_cursor_rules
+        except ImportError:
+            from src.configuration_context import get_all_cursor_rules
+        
+        # Simplified approach: return all cursor rules
+        return get_all_cursor_rules(cursor_rules)
+        
+    except Exception as e:
+        logger.warning(f"Failed to get applicable rules: {e}")
+        return []
+
+
+def generate_enhanced_review_context(
+    project_path: str,
+    scope: str = "recent_phase", 
+    changed_files: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """
+    Generate enhanced review context with configuration discovery.
+    
+    Args:
+        project_path: Path to project root
+        scope: Review scope
+        changed_files: Optional list of changed file paths
+        
+    Returns:
+        Enhanced context dictionary with configuration data
+    """
+    # Discover configurations
+    configurations = discover_project_configurations_with_fallback(project_path)
+    
+    # Get changed files if not provided
+    if changed_files is None:
+        git_changed_files = get_changed_files(project_path)
+        changed_files = [f['path'] for f in git_changed_files]
+    
+    # Get applicable rules for changed files
+    applicable_rules = get_applicable_rules_for_files(
+        configurations['cursor_rules'],
+        changed_files
+    )
+    
+    # Create basic context structure
+    basic_context = {
+        'prd_summary': 'Enhanced code review with configuration context',
+        'current_phase_number': '1.0',
+        'current_phase_description': 'Configuration-enhanced review',
+        'changed_files': changed_files,
+        'project_path': project_path
+    }
+    
+    # Merge configurations
+    enhanced_context = merge_configurations_into_context(
+        basic_context,
+        configurations['claude_memory_files'],
+        configurations['cursor_rules']
+    )
+    
+    # Add applicable rules
+    enhanced_context['applicable_rules'] = applicable_rules
+    
+    return enhanced_context
+
+
 def main(project_path: str = None, phase: str = None, output: str = None, enable_gemini_review: bool = True, 
          scope: str = "recent_phase", phase_number: str = None, task_number: str = None, temperature: float = 0.5,
          task_list: str = None, default_prompt: str = None, compare_branch: str = None, 
-         target_branch: str = None, github_pr_url: str = None) -> tuple[str, Optional[str]]:
+         target_branch: str = None, github_pr_url: str = None,
+         include_claude_memory: bool = True, include_cursor_rules: bool = False) -> tuple[str, Optional[str]]:
     """
     Main function to generate code review context with enhanced scope support.
     
@@ -1224,6 +1838,8 @@ def main(project_path: str = None, phase: str = None, output: str = None, enable
         scope: Review scope - "recent_phase", "full_project", "specific_phase", "specific_task"
         phase_number: Phase number for specific_phase scope (e.g., "2.0")
         task_number: Task number for specific_task scope (e.g., "1.2")
+        include_claude_memory: Whether to include CLAUDE.md files (default: True)
+        include_cursor_rules: Whether to include Cursor rules files (default: False)
         
     Returns:
         Tuple of (context_file_path, gemini_review_path). gemini_review_path is None if not generated.
@@ -1570,6 +2186,38 @@ Working examples:
                 'subtasks_completed': [f"{target_task['number']} {target_task['description']}"]
             })
         
+        # Discover configurations early for integration
+        config_types = []
+        if include_claude_memory:
+            config_types.append("Claude memory")
+        if include_cursor_rules:
+            config_types.append("Cursor rules")
+        
+        if config_types:
+            print(f"🔍 Discovering {' and '.join(config_types)}...")
+            configurations = discover_project_configurations_with_flags(
+                project_path, include_claude_memory, include_cursor_rules
+            )
+        else:
+            print(f"ℹ️  Configuration discovery disabled")
+            configurations = {
+                'claude_memory_files': [],
+                'cursor_rules': [],
+                'discovery_errors': []
+            }
+        
+        claude_files_count = len(configurations['claude_memory_files'])
+        cursor_rules_count = len(configurations['cursor_rules'])
+        errors_count = len(configurations['discovery_errors'])
+        
+        if claude_files_count > 0 or cursor_rules_count > 0:
+            print(f"✅ Found {claude_files_count} Claude memory files, {cursor_rules_count} Cursor rules")
+        else:
+            print(f"ℹ️  No configuration files found (this is optional)")
+        
+        if errors_count > 0:
+            print(f"⚠️  {errors_count} configuration discovery errors (will continue)")
+
         # Get git changes based on review mode
         changed_files = []
         branch_comparison_data = None
@@ -1669,7 +2317,20 @@ Working examples:
         # Generate file tree
         file_tree = generate_file_tree(project_path)
         
-        # Prepare template data
+        # Get applicable configuration rules for changed files
+        changed_file_paths = [f['path'] for f in changed_files]
+        applicable_rules = get_applicable_rules_for_files(
+            configurations['cursor_rules'],
+            changed_file_paths
+        )
+        
+        # Format configuration content for AI consumption
+        configuration_content = format_configuration_context_for_ai(
+            configurations['claude_memory_files'],
+            configurations['cursor_rules']
+        )
+        
+        # Prepare template data with enhanced configuration support
         template_data = {
             'prd_summary': prd_summary,
             'total_phases': task_data['total_phases'],
@@ -1685,7 +2346,13 @@ Working examples:
             'phase_number': phase_number if scope == "specific_phase" else None,
             'task_number': task_number if scope == "specific_task" else None,
             'branch_comparison_data': branch_comparison_data,
-            'review_mode': current_mode
+            'review_mode': current_mode,
+            # Enhanced configuration data
+            'configuration_content': configuration_content,
+            'claude_memory_files': configurations['claude_memory_files'],
+            'cursor_rules': configurations['cursor_rules'],
+            'applicable_rules': applicable_rules,
+            'configuration_errors': configurations['discovery_errors']
         }
         
         # Format template
@@ -1861,6 +2528,12 @@ def cli_main():
     parser.add_argument("--target-branch", help="Target branch for comparison (default: auto-detect main/master)")
     parser.add_argument("--github-pr-url", help="GitHub PR URL to review (e.g., 'https://github.com/owner/repo/pull/123')")
     
+    # Configuration inclusion parameters
+    parser.add_argument("--no-claude-memory", action="store_true", 
+                       help="Disable CLAUDE.md file inclusion (enabled by default)")
+    parser.add_argument("--include-cursor-rules", action="store_true",
+                       help="Include Cursor rules files (.cursorrules and .cursor/rules/*.mdc)")
+    
     args = parser.parse_args()
     
     try:
@@ -1974,7 +2647,9 @@ Working examples:
             default_prompt=getattr(args, 'default_prompt'),
             compare_branch=getattr(args, 'compare_branch'),
             target_branch=getattr(args, 'target_branch'),
-            github_pr_url=getattr(args, 'github_pr_url')
+            github_pr_url=getattr(args, 'github_pr_url'),
+            include_claude_memory=not args.no_claude_memory,
+            include_cursor_rules=args.include_cursor_rules
         )
         
         print(f"\n🎉 Code review process completed!")

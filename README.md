@@ -142,6 +142,22 @@ Claude: I'll generate a code review context using smart scope detection.
 [Tool Result] Successfully generated: code-review-context-full-project-20241201-143052.md
 ```
 
+**With Configuration Control:**
+```
+Human: Review my project but include Cursor rules and disable CLAUDE.md files
+
+Claude: I'll generate a review with Cursor rules enabled and CLAUDE.md disabled.
+
+[Tool Use: generate_code_review_context]
+{
+  "project_path": "/Users/myname/projects/my-app",
+  "include_claude_memory": false,
+  "include_cursor_rules": true
+}
+
+[Tool Result] 🔍 Discovered Cursor rules... ✅ Found 0 Claude memory files, 3 Cursor rules
+```
+
 #### Claude Code CLI Integration
 
 **Add this MCP server to Claude Code:**
@@ -229,6 +245,46 @@ claude mcp remove task-list-reviewer
 - `MAX_FILE_SIZE_MB`: File size limit (default: 10)
 - `DISABLE_THINKING`: Disable thinking mode (`true`/`false`)
 - `DISABLE_GROUNDING`: Disable web grounding (`true`/`false`)
+
+### 📋 Configuration File Integration
+
+**The tool can automatically discover and include project configuration files in code reviews.**
+
+#### 🔧 CLAUDE.md Files (Default: **ENABLED**)
+- **Project-level**: `/project/CLAUDE.md` - Project-specific guidelines
+- **User-level**: `~/.claude/CLAUDE.md` - Personal coding preferences  
+- **Enterprise-level**: System-wide policies (platform-specific)
+- **With imports**: Supports `@path/to/file.md` import syntax
+
+#### ⚙️ Cursor Rules (Default: **DISABLED**)
+- **Legacy format**: `.cursorrules` - Simple text rules
+- **Modern format**: `.cursor/rules/*.mdc` - Rich metadata with frontmatter
+- **Monorepo support**: Recursive discovery in nested directories
+
+#### 🎛️ Control Flags
+
+```bash
+# Default behavior (CLAUDE.md enabled, Cursor rules disabled)
+uvx task-list-code-review-mcp /path/to/project
+
+# Disable CLAUDE.md inclusion
+uvx task-list-code-review-mcp /path/to/project --no-claude-memory
+
+# Enable Cursor rules inclusion  
+uvx task-list-code-review-mcp /path/to/project --include-cursor-rules
+
+# Enable both configuration types
+uvx task-list-code-review-mcp /path/to/project --include-cursor-rules
+
+# Disable all configurations
+uvx task-list-code-review-mcp /path/to/project --no-claude-memory
+```
+
+#### 🎯 Smart Features
+- **Deduplication**: Handles `.gitignore` cases (tracked vs untracked files)
+- **Hierarchy**: Project configs override user configs override enterprise
+- **Caching**: File modification time tracking for performance
+- **Error handling**: Graceful degradation when files are malformed/missing
 
 ### Security Best Practices
 

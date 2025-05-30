@@ -20,3 +20,5 @@ code-review-*.md
 /*.md
 !README.md
 /tasks/*.dist-info/
+.cursor/
+.cursorrules
