@@ -17,9 +17,12 @@ export GEMINI_API_KEY=your_key_here
 # Run directly without installing anything (uvx handles everything)
 uvx task-list-code-review-mcp /path/to/your/project
 
-# Output: Generates both context and AI review files automatically
-# - code-review-context-{scope}-{timestamp}.md
-# - code-review-comprehensive-feedback-{timestamp}.md
+# Shows real-time progress and model capabilities:
+# 🔍 Analyzing project: my-app
+# 📊 Review scope: recent_phase  
+# 🤖 Using Gemini model: gemini-2.0-flash
+# ✨ Enhanced features enabled: web grounding, thinking mode
+# 📄 Files generated: code-review-context-recent-phase-20241201-143052.md, ...
 ```
 
 ### Install Globally (If You Like It)
@@ -40,10 +43,10 @@ task-list-code-review-mcp /path/to/your/project
 - **Manual override** → Target specific phases or tasks
 
 ### AI-Powered Code Review
-- **Gemini Integration**: Uses Gemini 2.5 Flash/Pro for intelligent code analysis
-- **Thinking Mode**: Deep reasoning about code quality and architecture
-- **Web Grounding**: Looks up current best practices and technology information
-- **Comprehensive Analysis**: Covers security, performance, testing, and maintainability
+- **Smart Model Selection**: Auto-detects and displays enabled capabilities
+- **Enhanced Features**: Thinking mode, web grounding, URL context (when available)
+- **Real-time Feedback**: Shows model name and active features during execution
+- **Comprehensive Analysis**: Security, performance, testing, maintainability
 
 ### Flexible Architecture
 - **Context Generation**: Creates structured review context from git changes and task progress
@@ -56,10 +59,8 @@ task-list-code-review-mcp /path/to/your/project
 
 ```bash
 # Smart Default: Auto-detects project completion status and task list
-# - Finds most recent tasks-*.md file automatically
-# - If all phases complete: Reviews entire project  
-# - If phases in progress: Reviews most recent completed phase
 uvx task-list-code-review-mcp /path/to/project
+# Shows: 🔍 Project analysis → 🤖 Model capabilities → 📄 Generated files
 
 # Review entire project (force full scope)
 uvx task-list-code-review-mcp /path/to/project --scope full_project
@@ -178,17 +179,15 @@ claude mcp remove task-list-reviewer
 
 ### Environment Variables
 
-**Core Configuration:**
-- `GEMINI_API_KEY`: Required for Gemini integration
-- `MAX_FILE_SIZE_MB`: Maximum file size to read in MB (default: 10)
-- `MAX_FILE_CONTENT_LINES`: Max lines per file (default: 500)
-- `MAX_FILE_TREE_DEPTH`: Tree depth limit (default: 5)
+**Essential:**
+- `GEMINI_API_KEY`: Required for AI features
+- `GEMINI_MODEL`: Model selection (`gemini-2.0-flash`, `gemini-2.5-pro`, `gemini-2.5-flash`)
+- `GEMINI_TEMPERATURE`: AI creativity (0.0-2.0, default: 0.5)
 
-**Model Configuration:**
-- `GEMINI_MODEL`: Model for code review (default: `gemini-2.0-flash`)
-  - Use aliases: `gemini-2.5-pro`, `gemini-2.5-flash`
-  - Or full names: `gemini-2.5-pro-preview-05-06`
-- `GEMINI_TEMPERATURE`: AI creativity (default: 0.5, range: 0.0-2.0)
+**Advanced:**
+- `MAX_FILE_SIZE_MB`: File size limit (default: 10)
+- `DISABLE_THINKING`: Disable thinking mode (`true`/`false`)
+- `DISABLE_GROUNDING`: Disable web grounding (`true`/`false`)
 
 ### Security Best Practices
 **API Key Protection:**
@@ -201,62 +200,21 @@ chmod 600 .env
 echo ".env" >> .gitignore
 ```
 
-### Model Configuration File (model_config.json)
+### Model Configuration
 
-The tool uses a JSON configuration file (`src/model_config.json`) to manage model aliases and capabilities, making it easy to update when Google releases new model versions:
+**Auto-Detection**: The tool automatically detects and displays model capabilities:
+- **Thinking Mode**: Deep reasoning (gemini-2.5 models)
+- **Web Grounding**: Real-time information lookup (gemini-2.0+)
+- **URL Context**: Enhanced web understanding (supported models)
 
-```json
-{
-  "model_aliases": {
-    "gemini-2.5-pro": "gemini-2.5-pro-preview-05-06",
-    "gemini-2.5-flash": "gemini-2.5-flash-preview-05-20"
-  },
-  "model_capabilities": {
-    "url_context_supported": [
-      "gemini-2.5-pro-preview-05-06",
-      "gemini-2.5-flash-preview-05-20",
-      "gemini-2.0-flash"
-    ],
-    "thinking_mode_supported": [
-      "gemini-2.5-pro-preview-05-06",
-      "gemini-2.5-flash-preview-05-20"
-    ]
-  },
-  "defaults": {
-    "model": "gemini-2.0-flash",
-    "summary_model": "gemini-2.0-flash-lite",
-    "default_prompt": "Generate comprehensive code review for recent development changes focusing on code quality, security, performance, and best practices."
-  }
-}
-```
-
-**Capabilities Auto-Detection:**
-- **URL Context**: Enhanced web content understanding
-- **Thinking Mode**: Advanced reasoning for complex problems  
-- **Web Grounding**: Up-to-date information from search
-- **Default Prompt**: Fallback prompt when no task lists exist
-
-**Usage Examples:**
+**Simple Usage:**
 ```bash
-# Use simple alias names instead of complex preview model names
-review-with-ai context.md --model gemini-2.5-pro
+# Use friendly aliases instead of preview model names
+GEMINI_MODEL=gemini-2.5-pro uvx task-list-code-review-mcp /project
 GEMINI_MODEL=gemini-2.5-flash uvx task-list-code-review-mcp /project
 ```
 
-**Updating for New Models:**
-When Google releases new versions, simply update the JSON file:
-```json
-{
-  "model_aliases": {
-    "gemini-2.5-pro": "gemini-2.5-pro-preview-06-07"  // Updated version
-  }
-}
-```
-
-**Fallback Behavior:**
-- Missing JSON file → Uses built-in defaults
-- JSON parsing errors → Logs warning and continues
-- Invalid model names → Falls back to environment/config defaults
+**Configuration File**: `src/model_config.json` manages aliases and capabilities. Updates automatically when Google releases new models.
 
 ## 🔧 MCP Tools Reference
 
