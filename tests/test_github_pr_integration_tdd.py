@@ -147,7 +147,18 @@ class TestGitHubAPIIntegration:
         with patch('requests.get') as mock_get:
             mock_response = MagicMock()
             mock_response.status_code = 200
-            mock_response.json.return_value = {"number": 123}
+            mock_response.json.return_value = {
+                "number": 123,
+                "title": "Test PR",
+                "body": "Test description",
+                "state": "open",
+                "user": {"login": "test_user"},
+                "head": {"ref": "feature/test", "sha": "abc123"},
+                "base": {"ref": "main", "sha": "def456"},
+                "created_at": "2024-01-01T00:00:00Z",
+                "updated_at": "2024-01-02T00:00:00Z",
+                "html_url": "https://github.com/owner/repo/pull/123"
+            }
             mock_get.return_value = mock_response
             
             fetch_pr_data("owner", "repo", 123, "test_token_123")
@@ -253,7 +264,7 @@ class TestPRFileChanges:
                 "additions": 0,
                 "deletions": 30,
                 "changes": 30,
-                "patch": null
+                "patch": None
             }
         ]
         
@@ -321,7 +332,7 @@ class TestPRFileChanges:
                 "additions": 0,
                 "deletions": 0,
                 "changes": 0,
-                "patch": null  # Binary files don't have patches
+                "patch": None  # Binary files don't have patches
             }
         ]
         
@@ -433,7 +444,18 @@ class TestErrorHandlingAndEdgeCases:
         with patch('requests.get') as mock_get:
             mock_response = MagicMock()
             mock_response.status_code = 200
-            mock_response.json.return_value = {"number": 42}
+            mock_response.json.return_value = {
+                "number": 42,
+                "title": "Enterprise PR",
+                "body": "Test description",
+                "state": "open",
+                "user": {"login": "enterprise_user"},
+                "head": {"ref": "feature/enterprise", "sha": "abc123"},
+                "base": {"ref": "main", "sha": "def456"},
+                "created_at": "2024-01-01T00:00:00Z",
+                "updated_at": "2024-01-02T00:00:00Z",
+                "html_url": "https://github.mycompany.com/team/project/pull/42"
+            }
             mock_get.return_value = mock_response
             
             fetch_pr_data("team", "project", 42, "token", base_url="https://github.mycompany.com")
@@ -545,7 +567,10 @@ class TestIntegrationScenarios:
                         "state": "open",
                         "user": {"login": "contributor"},
                         "head": {"ref": "feature/new-feature", "sha": "abc123"},
-                        "base": {"ref": "main", "sha": "def456"}
+                        "base": {"ref": "main", "sha": "def456"},
+                        "created_at": "2024-01-01T00:00:00Z",
+                        "updated_at": "2024-01-02T00:00:00Z",
+                        "html_url": "https://github.com/microsoft/vscode/pull/42"
                     }
                 elif '/pulls/42/files' in url:
                     # PR files endpoint
