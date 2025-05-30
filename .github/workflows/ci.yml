@@ -28,9 +28,13 @@ jobs:
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         GEMINI_MODEL: gemini-2.0-flash-lite  # Cheapest model
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # For PR integration tests
       run: |
         # Test core functionality and user-facing behavior
         pytest tests/test_critical.py tests/test_server_behavior.py tests/test_cli_feedback_behavior.py tests/test_generate_code_review_context.py::TestMainFunctionBehavior -v --tb=short
+        
+        # Test new branch comparison and GitHub PR functionality
+        pytest tests/test_git_branch_comparison_tdd.py tests/test_github_pr_integration_tdd.py tests/test_mcp_branch_tools.py -v --tb=short
     
     - name: Test package building
       run: |

@@ -178,11 +178,12 @@ def get_branch_diff(repo_path: str, source_branch: str, target_branch: str) -> D
                         elif status == 'D':
                             files_deleted += 1
         
-        # Get commit information
+        # Get commit information with detailed metadata
         commits = []
         try:
+            # Get detailed commit information including author, date, and stats
             log_result = subprocess.run(
-                ['git', 'log', '--oneline', f'{target_branch}..{source_branch}'],
+                ['git', 'log', '--pretty=format:%H|%h|%s|%an|%ad|%ar', '--date=iso', f'{target_branch}..{source_branch}'],
                 cwd=repo_path,
                 capture_output=True,
                 text=True,
@@ -192,15 +193,39 @@ def get_branch_diff(repo_path: str, source_branch: str, target_branch: str) -> D
             if log_result.stdout.strip():
                 for line in log_result.stdout.strip().split('\n'):
                     if line:
-                        parts = line.split(' ', 1)
-                        if len(parts) == 2:
+                        parts = line.split('|')
+                        if len(parts) >= 6:
                             commits.append({
-                                'hash': parts[0],
-                                'message': parts[1]
+                                'hash': parts[1],  # Short hash
+                                'full_hash': parts[0],  # Full hash
+                                'message': parts[2],
+                                'author': parts[3],
+                                'date': parts[4],
+                                'date_relative': parts[5]
                             })
         except subprocess.CalledProcessError:
-            # Log might fail, but that's OK
-            pass
+            # Fallback to simple log if detailed log fails
+            try:
+                log_result = subprocess.run(
+                    ['git', 'log', '--oneline', f'{target_branch}..{source_branch}'],
+                    cwd=repo_path,
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                
+                if log_result.stdout.strip():
+                    for line in log_result.stdout.strip().split('\n'):
+                        if line:
+                            parts = line.split(' ', 1)
+                            if len(parts) == 2:
+                                commits.append({
+                                    'hash': parts[0],
+                                    'message': parts[1]
+                                })
+            except subprocess.CalledProcessError:
+                # Log might fail, but that's OK
+                pass
         
         return {
             'source_branch': source_branch,

@@ -316,6 +316,198 @@ class TestTemplateFormatter:
         assert '<files_changed>' in result
         assert '</files_changed>' in result
         assert '<user_instructions>' in result
+    
+    def test_format_review_template_branch_comparison(self):
+        """Test template formatting for branch comparison mode."""
+        data = {
+            'prd_summary': 'Test branch comparison review.',
+            'total_phases': 3,
+            'current_phase_number': '2.0',
+            'previous_phase_completed': '1.0 Setup phase',
+            'next_phase': '3.0 Integration phase',
+            'current_phase_description': 'Implementation phase',
+            'subtasks_completed': ['2.1', '2.2'],
+            'project_path': '/test/project',
+            'file_tree': 'test tree',
+            'changed_files': [
+                {'path': 'src/feature.py', 'content': 'new feature code', 'status': 'branch-A'}
+            ],
+            'scope': 'recent_phase',
+            'review_mode': 'branch_comparison',
+            'branch_comparison_data': {
+                'mode': 'branch_comparison',
+                'source_branch': 'feature/auth',
+                'target_branch': 'main',
+                'commits': [
+                    {
+                        'hash': 'abc123',
+                        'message': 'Add authentication system',
+                        'author': 'Test Developer',
+                        'date': '2024-01-01 12:00:00',
+                        'date_relative': '2 hours ago'
+                    },
+                    {
+                        'hash': 'def456',
+                        'message': 'Fix login validation',
+                        'author': 'Test Developer',
+                        'date': '2024-01-01 11:00:00',
+                        'date_relative': '3 hours ago'
+                    }
+                ],
+                'summary': {
+                    'files_changed': 5,
+                    'files_added': 2,
+                    'files_modified': 2,
+                    'files_deleted': 1
+                }
+            }
+        }
+        
+        result = format_review_template(data)
+        
+        # Check branch comparison specific sections
+        assert '<branch_comparison_metadata>' in result
+        assert 'Source Branch: feature/auth' in result
+        assert 'Target Branch: main' in result
+        assert 'Files Changed: 5' in result
+        assert 'Files Added: 2' in result
+        assert 'Commits Ahead: 2' in result
+        
+        # Check detailed commit information section
+        assert '<commit_information>' in result
+        assert 'Commit History' in result
+        assert '1. Commit: abc123' in result
+        assert 'Message: Add authentication system' in result
+        assert 'Author: Test Developer' in result
+        assert '2 hours ago' in result
+        
+        # Check branch statistics section
+        assert '<branch_statistics>' in result
+        assert 'Comparison Summary:' in result
+        assert 'feature/auth (2 commits ahead)' in result
+        
+        # Check enhanced user instructions for branch comparison
+        assert 'You are reviewing changes between git branches' in result
+        assert 'Changes introduced in this branch compared to the target' in result
+        assert 'Review the commit progression' in result
+    
+    def test_format_review_template_github_pr(self):
+        """Test template formatting for GitHub PR mode."""
+        data = {
+            'prd_summary': 'Test GitHub PR review.',
+            'total_phases': 3,
+            'current_phase_number': '2.0',
+            'previous_phase_completed': '1.0 Setup phase',
+            'next_phase': '3.0 Integration phase',
+            'current_phase_description': 'Implementation phase',
+            'subtasks_completed': ['2.1', '2.2'],
+            'project_path': '/test/project',
+            'file_tree': 'test tree',
+            'changed_files': [
+                {'path': 'src/api.py', 'content': 'PR changes', 'status': 'PR-modified'}
+            ],
+            'scope': 'recent_phase',
+            'review_mode': 'github_pr',
+            'branch_comparison_data': {
+                'mode': 'github_pr',
+                'repository': 'owner/repo',
+                'pr_data': {
+                    'pr_number': 123,
+                    'title': 'Add new API endpoint',
+                    'author': 'contributor',
+                    'source_branch': 'feature/api',
+                    'target_branch': 'main',
+                    'source_sha': 'abc123456789',
+                    'target_sha': 'def987654321',
+                    'state': 'open',
+                    'created_at': '2024-01-01T12:00:00Z',
+                    'updated_at': '2024-01-01T13:00:00Z',
+                    'body': 'This PR adds a new API endpoint for user management with proper validation and error handling.'
+                },
+                'summary': {
+                    'files_changed': 3,
+                    'files_added': 1,
+                    'files_modified': 2,
+                    'files_deleted': 0
+                }
+            }
+        }
+        
+        result = format_review_template(data)
+        
+        # Check GitHub PR specific sections
+        assert '<github_pr_metadata>' in result
+        assert 'Repository: owner/repo' in result
+        assert 'PR Number: 123' in result
+        assert 'Title: Add new API endpoint' in result
+        assert 'Author: contributor' in result
+        assert 'Source SHA: abc12345...' in result
+        assert 'Target SHA: def98765...' in result
+        assert 'State: open' in result
+        assert 'Description: This PR adds a new API endpoint' in result
+        
+        # Check enhanced user instructions for GitHub PR
+        assert 'You are reviewing a GitHub Pull Request' in result
+        assert 'The PR "Add new API endpoint" by contributor' in result
+        assert 'Code quality and best practices' in result
+        assert 'Security implications of the changes' in result
+        
+    def test_format_review_template_enhanced_commit_details(self):
+        """Test template formatting with enhanced commit details."""
+        data = {
+            'prd_summary': 'Test enhanced commit details.',
+            'total_phases': 1,
+            'current_phase_number': '1.0',
+            'previous_phase_completed': '',
+            'next_phase': '',
+            'current_phase_description': 'Test phase',
+            'subtasks_completed': ['1.1'],
+            'project_path': '/test/project',
+            'file_tree': 'test tree',
+            'changed_files': [],
+            'scope': 'recent_phase',
+            'review_mode': 'branch_comparison',
+            'branch_comparison_data': {
+                'mode': 'branch_comparison',
+                'source_branch': 'feature/detailed-commits',
+                'target_branch': 'main',
+                'commits': [
+                    {
+                        'hash': 'commit1',
+                        'message': 'First commit with detailed info',
+                        'author': 'Alice Developer',
+                        'date': '2024-01-01 15:30:00',
+                        'date_relative': '1 hour ago'
+                    },
+                    {
+                        'hash': 'commit2',
+                        'message': 'Second commit without detailed info'
+                        # Missing author and date to test fallback
+                    }
+                ],
+                'summary': {
+                    'files_changed': 2,
+                    'files_added': 1,
+                    'files_modified': 1,
+                    'files_deleted': 0
+                }
+            }
+        }
+        
+        result = format_review_template(data)
+        
+        # Check that detailed commit info is displayed when available
+        assert '1. Commit: commit1' in result
+        assert 'Author: Alice Developer' in result
+        assert '1 hour ago' in result
+        
+        # Check that fallback works for commits without detailed info
+        assert '2. Commit: commit2' in result
+        assert 'Second commit without detailed info' in result
+        
+        # Should handle up to 15 commits in detailed view
+        assert '<commit_information>' in result
+        assert 'Commit History (showing changes from target to source branch)' in result
 
 
 class TestMainFunctionBehavior:

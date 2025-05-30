@@ -14,6 +14,9 @@ An MCP server tool designed for **AI coding agents** (Cursor, Claude Code, etc.)
 # Set your Gemini API key (get one at https://ai.google.dev/gemini-api/docs/api-key)
 export GEMINI_API_KEY=your_key_here
 
+# Or create a .env file (copy from .env.example)
+# cp .env.example .env  # then edit with your keys
+
 # Run directly without installing anything (uvx handles everything)
 uvx task-list-code-review-mcp /path/to/your/project
 
@@ -114,12 +117,16 @@ uvx task-list-code-review-mcp . --task-list tasks-auth-system.md
       "command": "uvx",
       "args": ["task-list-code-review-mcp"],
       "env": {
-        "GEMINI_API_KEY": "your_key_here"
+        "GEMINI_API_KEY": "your_key_here",
+        "GITHUB_TOKEN": "your_github_token_here"
       }
     }
   }
 }
 ```
+
+**For GitHub PR Review Support**: Add your GitHub token to enable `generate_pr_review` tool.
+Create token at: https://github.com/settings/tokens (scopes: `repo` or `public_repo`)
 
 **Usage in Claude Desktop:**
 ```
@@ -139,8 +146,8 @@ Claude: I'll generate a code review context using smart scope detection.
 
 **Add this MCP server to Claude Code:**
 ```bash
-# Add the MCP server (set your API key)
-claude mcp add task-list-reviewer -e GEMINI_API_KEY=your_key_here -- uvx task-list-code-review-mcp
+# Add the MCP server (set your API keys)
+claude mcp add task-list-reviewer -e GEMINI_API_KEY=your_key_here -e GITHUB_TOKEN=your_github_token_here -- uvx task-list-code-review-mcp
 
 # Verify it's added
 claude mcp list
@@ -161,6 +168,40 @@ Claude: I'll analyze your project and generate a comprehensive code review.
 }
 
 [Tool Result] Generated: code-review-context-full-project-20241201-143052.md
+```
+
+**Branch Comparison Review:**
+```
+Human: Compare my feature branch against main and generate a review
+
+Claude: I'll compare your feature branch changes against the main branch.
+
+[Tool Use: generate_branch_comparison_review]
+{
+  "project_path": "/Users/myname/projects/my-app",
+  "compare_branch": "feature/auth-system",
+  "target_branch": "main"
+}
+
+[Tool Result] 🔍 Analyzed project: my-app
+🌿 Branch comparison: feature/auth-system → main
+📝 Generated review context: code-review-branch-comparison-20241201-143052.md
+```
+
+**GitHub PR Review:**
+```
+Human: Review this GitHub PR: https://github.com/owner/repo/pull/123
+
+Claude: I'll fetch the PR data and generate a comprehensive review.
+
+[Tool Use: generate_pr_review]
+{
+  "github_pr_url": "https://github.com/owner/repo/pull/123"
+}
+
+[Tool Result] 🔍 Analyzed project: repo
+🔗 GitHub PR: owner/repo/pull/123
+📝 Generated review context: code-review-github-pr-20241201-143052.md
 ```
 
 **MCP Server Management:**
@@ -190,15 +231,23 @@ claude mcp remove task-list-reviewer
 - `DISABLE_GROUNDING`: Disable web grounding (`true`/`false`)
 
 ### Security Best Practices
-**API Key Protection:**
+
+**Environment Setup:**
 ```bash
+# Copy the example file and fill in your values
+cp .env.example .env
+
 # Secure .env file permissions
-chmod 600 ~/.task-list-code-review-mcp.env
 chmod 600 .env
 
-# Never commit .env files to version control
-echo ".env" >> .gitignore
+# Never commit .env files to version control (already in .gitignore)
 ```
+
+**API Key Protection:**
+- Get your Gemini API key at: https://ai.google.dev/gemini-api/docs/api-key
+- Create GitHub token at: https://github.com/settings/tokens (scopes: `repo` or `public_repo`)
+- Use separate API keys for development and production
+- Regularly rotate your API keys for security
 
 ### Model Configuration
 
@@ -268,6 +317,97 @@ await use_mcp_tool({
   }
 });
 ```
+
+### generate_branch_comparison_review
+
+**Generate code review by comparing git branches.**
+
+```javascript
+await use_mcp_tool({
+  server_name: "task-list-code-review-mcp",
+  tool_name: "generate_branch_comparison_review",
+  arguments: {
+    project_path: "/absolute/path/to/project",
+    compare_branch: "feature/auth-system",
+    target_branch: "main"  // Optional - auto-detects main/master if omitted
+  }
+});
+```
+
+**Example output:**
+```
+🔍 Analyzed project: my-app
+🌿 Branch comparison: feature/auth-system → main
+🌡️ AI temperature: 0.5
+📝 Generated review context: code-review-branch-comparison-20241201-143052.md
+✅ AI code review completed: code-review-comprehensive-feedback-20241201-143052.md
+🎉 Branch comparison review completed!
+📄 Files generated: code-review-branch-comparison-20241201-143052.md, code-review-comprehensive-feedback-20241201-143052.md
+```
+
+### generate_pr_review
+
+**Generate code review for a GitHub Pull Request.**
+
+```javascript
+await use_mcp_tool({
+  server_name: "task-list-code-review-mcp",
+  tool_name: "generate_pr_review",
+  arguments: {
+    github_pr_url: "https://github.com/owner/repo/pull/123",
+    project_path: "/absolute/path/to/project"  // Optional - uses current directory if omitted
+  }
+});
+```
+
+**Example output:**
+```
+🔍 Analyzed project: my-app
+🔗 GitHub PR: owner/repo/pull/123
+🌡️ AI temperature: 0.5
+📝 Generated review context: code-review-github-pr-20241201-143052.md
+✅ AI code review completed: code-review-comprehensive-feedback-20241201-143052.md
+🎉 GitHub PR review completed!
+📄 Files generated: code-review-github-pr-20241201-143052.md, code-review-comprehensive-feedback-20241201-143052.md
+```
+
+## 📋 Enhanced Review Context Formats
+
+### Branch Comparison Context
+
+When using `generate_branch_comparison_review`, the generated context includes:
+
+**Enhanced Metadata Sections:**
+- **Branch Comparison Metadata**: Source/target branches, file statistics, commit counts
+- **Detailed Commit Information**: Up to 15 commits with authors, timestamps, and messages
+- **Branch Statistics**: Comprehensive summary of changes between branches
+- **Specialized Instructions**: Context-aware guidance for reviewing branch differences
+
+**Filename Format:** `code-review-context-branch-comparison-YYYYMMDD-HHMMSS.md`
+
+### GitHub PR Context
+
+When using `generate_pr_review`, the generated context includes:
+
+**Enhanced Metadata Sections:**
+- **GitHub PR Metadata**: Repository, PR number, title, author, SHA hashes, timestamps
+- **PR Description**: First 200 characters of the PR description
+- **File Change Statistics**: Detailed breakdown of additions, modifications, deletions
+- **Specialized Instructions**: PR-specific review guidance focusing on quality and security
+
+**Filename Format:** `code-review-context-github-pr-YYYYMMDD-HHMMSS.md`
+
+### Task-Based Context (Traditional)
+
+Standard task list reviews include:
+- **Phase/Task Metadata**: Current phase, completed subtasks, next steps
+- **Working Directory Changes**: Git status and modified files
+- **PRD Context**: Project requirements and scope information
+
+**Filename Formats:**
+- `code-review-context-recent-phase-YYYYMMDD-HHMMSS.md`
+- `code-review-context-full-project-YYYYMMDD-HHMMSS.md`
+- `code-review-context-phase-X-Y-YYYYMMDD-HHMMSS.md`
 
 ## 🔄 Workflow Integration for AI Agents
 

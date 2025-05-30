@@ -21,6 +21,191 @@ except ImportError as e:
 # Create FastMCP server with ERROR log level to avoid info noise
 mcp = FastMCP("MCP Server - Code Review Context Generator")
 
+# Create alias for the app to match test expectations
+app = mcp
+
+
+@mcp.tool()
+async def generate_branch_comparison_review(
+    project_path: str,
+    compare_branch: str,
+    target_branch: Optional[str] = None,
+    temperature: float = 0.5,
+    enable_gemini_review: bool = True
+) -> dict:
+    """Generate code review by comparing git branches.
+    
+    Args:
+        project_path: Absolute path to project root directory
+        compare_branch: Source branch to compare (e.g., 'feature/auth-system')
+        target_branch: Target branch for comparison (default: auto-detect main/master)
+        temperature: Temperature for AI model (default: 0.5, range: 0.0-2.0)
+        enable_gemini_review: Enable Gemini AI code review generation (default: true)
+    
+    Returns:
+        Success message with branch comparison results and generated files
+    """
+    try:
+        # Validate required parameters per test expectations
+        if not project_path:
+            return {
+                "status": "error",
+                "error": "project_path is required"
+            }
+        
+        if not compare_branch:
+            return {
+                "status": "error", 
+                "error": "compare_branch is required"
+            }
+        
+        if not os.path.isabs(project_path):
+            return "🚨 ERROR: project_path must be an absolute path"
+        
+        if not os.path.exists(project_path):
+            return f"🚨 ERROR: Project path does not exist: {project_path}"
+        
+        if not os.path.isdir(project_path):
+            return f"🚨 ERROR: Project path must be a directory: {project_path}"
+        
+        # Generate branch comparison review
+        output_file, gemini_file = generate_review_context(
+            project_path=project_path,
+            enable_gemini_review=enable_gemini_review,
+            temperature=temperature,
+            compare_branch=compare_branch,
+            target_branch=target_branch
+        )
+        
+        # Build response with user-friendly feedback
+        response_parts = []
+        response_parts.append(f"🔍 Analyzed project: {os.path.basename(os.path.abspath(project_path))}")
+        response_parts.append(f"🌿 Branch comparison: {compare_branch} → {target_branch or 'auto-detected'}")
+        response_parts.append(f"🌡️ AI temperature: {temperature}")
+        response_parts.append(f"📝 Generated review context: {os.path.basename(output_file)}")
+        
+        if gemini_file:
+            response_parts.append(f"✅ AI code review completed: {os.path.basename(gemini_file)}")
+        else:
+            response_parts.append(f"⚠️ AI code review failed or was skipped (check API key and model availability)")
+        
+        response_parts.append(f"🎉 Branch comparison review completed!")
+        
+        # List generated files
+        files_generated = [os.path.basename(output_file)]
+        if gemini_file:
+            files_generated.append(os.path.basename(gemini_file))
+        response_parts.append(f"📄 Files generated: {', '.join(files_generated)}")
+        
+        # Return structured response for MCP tools
+        return {
+            "status": "success",
+            "context_file": output_file,
+            "ai_review_file": gemini_file,
+            "branch_comparison_summary": {
+                "project": os.path.basename(os.path.abspath(project_path)),
+                "source_branch": compare_branch,
+                "target_branch": target_branch or "auto-detected",
+                "temperature": temperature,
+                "files_generated": files_generated
+            },
+            "message": "\n".join(response_parts)
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": f"Failed to generate branch comparison review: {str(e)}"
+        }
+
+
+@mcp.tool()
+async def generate_pr_review(
+    github_pr_url: str,
+    project_path: Optional[str] = None,
+    temperature: float = 0.5,
+    enable_gemini_review: bool = True
+) -> dict:
+    """Generate code review for a GitHub Pull Request.
+    
+    Args:
+        github_pr_url: GitHub PR URL (e.g., 'https://github.com/owner/repo/pull/123')
+        project_path: Optional local project path for context (default: current directory)
+        temperature: Temperature for AI model (default: 0.5, range: 0.0-2.0)
+        enable_gemini_review: Enable Gemini AI code review generation (default: true)
+    
+    Returns:
+        Success message with PR analysis results and generated files
+    """
+    try:
+        # Validate required parameters per test expectations  
+        if not github_pr_url:
+            return {
+                "status": "error",
+                "error": "github_pr_url is required"
+            }
+        
+        # Use current directory if project_path not provided
+        if not project_path:
+            project_path = os.getcwd()
+        
+        if not os.path.isabs(project_path):
+            return "🚨 ERROR: project_path must be an absolute path"
+        
+        if not os.path.exists(project_path):
+            return f"🚨 ERROR: Project path does not exist: {project_path}"
+        
+        if not os.path.isdir(project_path):
+            return f"🚨 ERROR: Project path must be a directory: {project_path}"
+        
+        # Generate GitHub PR review
+        output_file, gemini_file = generate_review_context(
+            project_path=project_path,
+            enable_gemini_review=enable_gemini_review,
+            temperature=temperature,
+            github_pr_url=github_pr_url
+        )
+        
+        # Build response with user-friendly feedback
+        response_parts = []
+        response_parts.append(f"🔍 Analyzed project: {os.path.basename(os.path.abspath(project_path))}")
+        response_parts.append(f"🔗 GitHub PR: {github_pr_url}")
+        response_parts.append(f"🌡️ AI temperature: {temperature}")
+        response_parts.append(f"📝 Generated review context: {os.path.basename(output_file)}")
+        
+        if gemini_file:
+            response_parts.append(f"✅ AI code review completed: {os.path.basename(gemini_file)}")
+        else:
+            response_parts.append(f"⚠️ AI code review failed or was skipped (check API key and model availability)")
+        
+        response_parts.append(f"🎉 GitHub PR review completed!")
+        
+        # List generated files
+        files_generated = [os.path.basename(output_file)]
+        if gemini_file:
+            files_generated.append(os.path.basename(gemini_file))
+        response_parts.append(f"📄 Files generated: {', '.join(files_generated)}")
+        
+        # Return structured response for MCP tools
+        return {
+            "status": "success",
+            "context_file": output_file,
+            "ai_review_file": gemini_file,
+            "pr_summary": {
+                "project": os.path.basename(os.path.abspath(project_path)),
+                "pr_url": github_pr_url,
+                "temperature": temperature,
+                "files_generated": files_generated
+            },
+            "message": "\n".join(response_parts)
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": f"Failed to generate GitHub PR review: {str(e)}"
+        }
+
 
 @mcp.tool()
 def generate_code_review_context(
@@ -213,6 +398,7 @@ def generate_ai_code_review(
     except Exception as e:
         # Catch-all to ensure no exceptions escape the tool function
         return f"ERROR: Unexpected error: {str(e)}"
+
 
 
 def main():
