@@ -105,24 +105,27 @@ class TestGitHubAPIIntegration:
         """Test successful PR data retrieval from GitHub API."""
         from github_pr_integration import fetch_pr_data
         
-        # Mock successful API response with realistic GitHub API data
+        # Mock data based on real GitHub API response structure
+        # (based on https://github.com/nicobailon/task-list-code-review-mcp/pull/3)
         mock_response_data = {
+            "url": "https://api.github.com/repos/testowner/testrepo/pulls/123",
+            "id": 2553516570,
+            "html_url": "https://github.com/testowner/testrepo/pull/123",
             "number": 123,
-            "title": "Add new feature",
-            "body": "This PR adds a new feature to the application.",
             "state": "open",
-            "user": {"login": "developer"},
-            "head": {
-                "ref": "feature/new-feature",
-                "sha": "abc123def456"
-            },
-            "base": {
-                "ref": "main",
-                "sha": "def456ghi789"
-            },
+            "title": "Add new feature implementation",
+            "user": {"login": "testuser"},
+            "body": "This PR adds a new feature to improve functionality",
             "created_at": "2024-01-01T00:00:00Z",
             "updated_at": "2024-01-02T00:00:00Z",
-            "html_url": "https://github.com/owner/repo/pull/123"
+            "head": {
+                "ref": "feature/new-feature",
+                "sha": "abc123def456789"
+            },
+            "base": {
+                "ref": "master",
+                "sha": "def456ghi789abc"
+            }
         }
         
         with patch('requests.get') as mock_get:
@@ -131,14 +134,17 @@ class TestGitHubAPIIntegration:
             mock_response.json.return_value = mock_response_data
             mock_get.return_value = mock_response
             
-            result = fetch_pr_data("owner", "repo", 123, "fake_token")
+            result = fetch_pr_data("testowner", "testrepo", 123, "test_token")
             
             assert result['pr_number'] == 123
-            assert result['title'] == "Add new feature"
-            assert result['author'] == "developer"
+            assert result['title'] == "Add new feature implementation"
+            assert result['author'] == "testuser"
             assert result['source_branch'] == "feature/new-feature"
-            assert result['target_branch'] == "main"
+            assert result['target_branch'] == "master"
             assert result['state'] == "open"
+            assert result['created_at'] == "2024-01-01T00:00:00Z"
+            assert result['updated_at'] == "2024-01-02T00:00:00Z"
+            assert result['url'] == "https://github.com/testowner/testrepo/pull/123"
     
     def test_fetch_pr_data_with_authentication_header(self):
         """Test that authentication token is properly included in request."""
@@ -148,16 +154,18 @@ class TestGitHubAPIIntegration:
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json.return_value = {
+                "url": "https://api.github.com/repos/owner/repo/pulls/123",
+                "id": 2553516570,
+                "html_url": "https://github.com/owner/repo/pull/123",
                 "number": 123,
-                "title": "Test PR",
-                "body": "Test description",
                 "state": "open",
+                "title": "Test authentication",
                 "user": {"login": "test_user"},
-                "head": {"ref": "feature/test", "sha": "abc123"},
-                "base": {"ref": "main", "sha": "def456"},
+                "body": "Test description",
                 "created_at": "2024-01-01T00:00:00Z",
                 "updated_at": "2024-01-02T00:00:00Z",
-                "html_url": "https://github.com/owner/repo/pull/123"
+                "head": {"ref": "feature/test", "sha": "abc123def"},
+                "base": {"ref": "main", "sha": "def456ghi"}
             }
             mock_get.return_value = mock_response
             
@@ -445,16 +453,18 @@ class TestErrorHandlingAndEdgeCases:
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json.return_value = {
+                "url": "https://github.mycompany.com/api/v3/repos/team/project/pulls/42",
+                "id": 2553516570,
+                "html_url": "https://github.mycompany.com/team/project/pull/42",
                 "number": 42,
-                "title": "Enterprise PR",
-                "body": "Test description",
                 "state": "open",
+                "title": "Enterprise feature implementation",
                 "user": {"login": "enterprise_user"},
-                "head": {"ref": "feature/enterprise", "sha": "abc123"},
-                "base": {"ref": "main", "sha": "def456"},
+                "body": "Enterprise PR description",
                 "created_at": "2024-01-01T00:00:00Z",
                 "updated_at": "2024-01-02T00:00:00Z",
-                "html_url": "https://github.mycompany.com/team/project/pull/42"
+                "head": {"ref": "feature/enterprise", "sha": "abc123def"},
+                "base": {"ref": "main", "sha": "def456ghi"}
             }
             mock_get.return_value = mock_response
             
@@ -559,18 +569,20 @@ class TestIntegrationScenarios:
                 mock_response.status_code = 200
                 
                 if '/pulls/42' in url and '/files' not in url:
-                    # PR metadata endpoint
+                    # PR metadata endpoint - based on real GitHub API structure
                     mock_response.json.return_value = {
+                        "url": "https://api.github.com/repos/microsoft/vscode/pulls/42",
+                        "id": 2553516570,
+                        "html_url": "https://github.com/microsoft/vscode/pull/42",
                         "number": 42,
-                        "title": "Add new feature",
-                        "body": "Description of changes",
                         "state": "open",
+                        "title": "Add new feature",
                         "user": {"login": "contributor"},
-                        "head": {"ref": "feature/new-feature", "sha": "abc123"},
-                        "base": {"ref": "main", "sha": "def456"},
+                        "body": "Description of changes",
                         "created_at": "2024-01-01T00:00:00Z",
                         "updated_at": "2024-01-02T00:00:00Z",
-                        "html_url": "https://github.com/microsoft/vscode/pull/42"
+                        "head": {"ref": "feature/new-feature", "sha": "abc123def"},
+                        "base": {"ref": "main", "sha": "def456ghi"}
                     }
                 elif '/pulls/42/files' in url:
                     # PR files endpoint
