@@ -1204,6 +1204,7 @@ Working examples:
             
             # Create minimal task data for template
             task_data = {
+                'total_phases': 0,
                 'current_phase_number': 'General Review',
                 'current_phase_description': 'Code review without specific task context',
                 'previous_phase_completed': '',

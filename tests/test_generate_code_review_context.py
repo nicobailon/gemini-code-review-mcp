@@ -318,33 +318,135 @@ class TestTemplateFormatter:
         assert '<user_instructions>' in result
 
 
-class TestIntegration:
-    """Integration tests for complete workflow."""
+class TestMainFunctionBehavior:
+    """Test main function behavior and output."""
     
-    @patch('builtins.open', new_callable=mock_open)
-    @patch('os.listdir')
-    @patch('subprocess.run')
-    def test_end_to_end_generation(self, mock_run, mock_listdir, mock_file):
-        """Test complete flow from input files to output."""
-        # Mock file discovery
-        mock_listdir.return_value = ['prd-test.md', 'tasks-prd-test.md']
+    @patch('generate_code_review_context.find_project_files')
+    @patch('generate_code_review_context.get_changed_files')
+    @patch('generate_code_review_context.generate_file_tree')
+    @patch('builtins.print')  # Mock print to avoid output during tests
+    def test_main_returns_tuple_with_context_and_gemini_paths(self, mock_print, mock_tree, mock_files, mock_find):
+        """Test that main function returns tuple of (context_path, gemini_path)."""
+        import tempfile
+        import os
+        from generate_code_review_context import main
         
-        # Mock file contents
-        prd_content = "# Test PRD\n\n## Summary\nTest summary content."
-        task_content = "- [x] 1.0 Phase One\n  - [x] 1.1 Done\n- [ ] 2.0 Phase Two\n  - [ ] 2.1 Todo"
+        # Mock dependencies
+        mock_find.return_value = (None, None)  # No PRD/task files
+        mock_files.return_value = []
+        mock_tree.return_value = "mock tree"
         
-        mock_file.side_effect = [
-            mock_open(read_data=prd_content).return_value,
-            mock_open(read_data=task_content).return_value
-        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Test without Gemini review
+            context_file, gemini_file = main(
+                project_path=temp_dir,
+                enable_gemini_review=False
+            )
+            
+            # Should return context file path and None for gemini
+            assert isinstance(context_file, str)
+            assert os.path.exists(context_file)
+            assert gemini_file is None
+    
+    @patch('generate_code_review_context.find_project_files')
+    @patch('generate_code_review_context.get_changed_files')
+    @patch('generate_code_review_context.generate_file_tree') 
+    @patch('generate_code_review_context.send_to_gemini_for_review')
+    @patch('builtins.print')
+    def test_main_returns_both_files_when_gemini_succeeds(self, mock_print, mock_gemini, mock_tree, mock_files, mock_find):
+        """Test that main returns both files when Gemini review succeeds."""
+        import tempfile
+        import os
+        from generate_code_review_context import main
         
-        # Mock git operations
-        mock_run.return_value.stdout = "M\ttest.py"
-        mock_run.return_value.returncode = 0
+        # Mock dependencies
+        mock_find.return_value = (None, None)
+        mock_files.return_value = []
+        mock_tree.return_value = "mock tree"
+        mock_gemini.return_value = "/path/to/gemini_review.md"
         
-        # This test will pass once main function is implemented
-        # For now, it defines the expected interface
-        assert True  # Placeholder - will implement main function to make this pass
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context_file, gemini_file = main(
+                project_path=temp_dir,
+                enable_gemini_review=True
+            )
+            
+            # Should return both file paths
+            assert isinstance(context_file, str)
+            assert os.path.exists(context_file)
+            assert gemini_file == "/path/to/gemini_review.md"
+    
+    @patch('generate_code_review_context.find_project_files')
+    @patch('generate_code_review_context.get_changed_files')
+    @patch('generate_code_review_context.generate_file_tree')
+    @patch('generate_code_review_context.send_to_gemini_for_review')
+    @patch('builtins.print')
+    def test_main_handles_gemini_failure_gracefully(self, mock_print, mock_gemini, mock_tree, mock_files, mock_find):
+        """Test that main handles Gemini failure gracefully."""
+        import tempfile
+        import os
+        from generate_code_review_context import main
+        
+        # Mock dependencies with Gemini failure
+        mock_find.return_value = (None, None)
+        mock_files.return_value = []
+        mock_tree.return_value = "mock tree" 
+        mock_gemini.return_value = None  # Gemini failed
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context_file, gemini_file = main(
+                project_path=temp_dir,
+                enable_gemini_review=True
+            )
+            
+            # Should still return context file, but gemini_file should be None
+            assert isinstance(context_file, str)
+            assert os.path.exists(context_file)
+            assert gemini_file is None
+    
+    def test_main_validates_scope_parameters(self):
+        """Test that main function validates scope-specific parameters."""
+        from generate_code_review_context import main
+        
+        # Test specific_phase without phase_number
+        with pytest.raises(ValueError, match="phase_number is required"):
+            main(
+                project_path="/tmp",
+                scope="specific_phase"
+                # Missing phase_number
+            )
+        
+        # Test specific_task without task_number  
+        with pytest.raises(ValueError, match="task_number is required"):
+            main(
+                project_path="/tmp",
+                scope="specific_task"
+                # Missing task_number
+            )
+    
+    def test_main_validates_phase_number_format(self):
+        """Test that main validates phase number format."""
+        from generate_code_review_context import main
+        
+        # Test invalid phase number format
+        with pytest.raises(ValueError, match="Invalid phase_number format"):
+            main(
+                project_path="/tmp",
+                scope="specific_phase",
+                phase_number="1.1"  # Should be X.0 format
+            )
+    
+    def test_main_validates_task_number_format(self):
+        """Test that main validates task number format.""" 
+        from generate_code_review_context import main
+        
+        # Test invalid task number format
+        with pytest.raises(ValueError, match="Invalid task_number format"):
+            main(
+                project_path="/tmp", 
+                scope="specific_task",
+                task_number="1.0"  # Should be X.Y format (not X.0)
+            )
 
 
 if __name__ == "__main__":

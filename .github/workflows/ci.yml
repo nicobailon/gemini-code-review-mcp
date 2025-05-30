@@ -21,16 +21,16 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest pytest-mock pytest-asyncio build
-        pip install -e .
+        pip install build
+        pip install -e ".[dev]"
     
-    - name: Run critical tests only
+    - name: Run critical and behavior tests
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         GEMINI_MODEL: gemini-2.0-flash-lite  # Cheapest model
       run: |
-        # Test core functionality that actually exists
-        pytest tests/test_critical.py -v --tb=short
+        # Test core functionality and user-facing behavior
+        pytest tests/test_critical.py tests/test_server_behavior.py tests/test_cli_feedback_behavior.py tests/test_generate_code_review_context.py::TestMainFunctionBehavior -v --tb=short
     
     - name: Test package building
       run: |
