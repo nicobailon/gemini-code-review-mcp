@@ -505,7 +505,7 @@ def main():
     """Entry point for uvx execution"""
     # FastMCP handles all the server setup, protocol, and routing
     # Use stdio transport explicitly (more reliable than SSE/streamable-http)
-    mcp.run(transport="stdio", log_level="ERROR")
+    mcp.run(transport="stdio")
 
 
 if __name__ == "__main__":

@@ -24,6 +24,18 @@ import time
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 import logging
+
+# Import git branch comparison functionality
+try:
+    from .git_branch_comparison import detect_primary_branch, validate_branch_exists, get_branch_diff
+except ImportError:
+    try:
+        from git_branch_comparison import detect_primary_branch, validate_branch_exists, get_branch_diff
+    except ImportError:
+        print("⚠️  Git branch comparison not available")
+        detect_primary_branch = None
+        validate_branch_exists = None
+        get_branch_diff = None
 # Load environment variables from .env file (optional)
 try:
     from dotenv import load_dotenv
@@ -992,7 +1004,7 @@ def find_project_files(project_path: str, task_list_name: Optional[str] = None) 
         prd_file = max(prd_files, key=os.path.getmtime)
         logger.info(f"Found PRD file: {os.path.basename(prd_file)}")
     else:
-        logger.info("No PRD files found. Will generate project summary from task list or use default prompt.")
+        print("ℹ️  No PRD files found - using task list or default prompt for context generation")
     
     # Find task list files
     task_file = None
@@ -2259,7 +2271,9 @@ Working examples:
             # Git branch comparison mode  
             print(f"🔄 Comparing git branches...")
             try:
-                from git_branch_comparison import detect_primary_branch, validate_branch_exists, get_branch_diff
+                # Check if git branch comparison functions are available
+                if not all([detect_primary_branch, validate_branch_exists, get_branch_diff]):
+                    raise ImportError("Git branch comparison functions not available")
                 
                 # Determine source and target branches
                 if not target_branch:
