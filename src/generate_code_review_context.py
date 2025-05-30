@@ -1081,7 +1081,7 @@ Focus on being specific and actionable. When referencing files, include line num
 
 def main(project_path: str = None, phase: str = None, output: str = None, enable_gemini_review: bool = True, 
          scope: str = "recent_phase", phase_number: str = None, task_number: str = None, temperature: float = 0.5,
-         task_list: str = None, default_prompt: str = None) -> str:
+         task_list: str = None, default_prompt: str = None) -> tuple[str, Optional[str]]:
     """
     Main function to generate code review context with enhanced scope support.
     
