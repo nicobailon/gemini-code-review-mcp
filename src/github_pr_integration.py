@@ -128,7 +128,7 @@ def validate_github_token(token: str, base_url: str = "https://api.github.com") 
         return False
 
 
-def fetch_pr_data(owner: str, repo: str, pr_number: int, token: str, 
+def fetch_pr_data(owner: str, repo: str, pr_number: int, token: Optional[str] = None, 
                   base_url: str = "https://api.github.com") -> Dict[str, Any]:
     """
     Fetch PR metadata from GitHub API.
@@ -137,7 +137,7 @@ def fetch_pr_data(owner: str, repo: str, pr_number: int, token: str,
         owner: Repository owner
         repo: Repository name
         pr_number: Pull request number
-        token: GitHub authentication token
+        token: GitHub authentication token (optional for public repos, required for private repos)
         base_url: Base URL for GitHub API
         
     Returns:

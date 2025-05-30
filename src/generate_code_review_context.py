@@ -36,6 +36,17 @@ except ImportError:
         detect_primary_branch = None
         validate_branch_exists = None
         get_branch_diff = None
+
+# Import GitHub PR integration functionality
+try:
+    from .github_pr_integration import parse_github_pr_url, get_complete_pr_analysis
+except ImportError:
+    try:
+        from github_pr_integration import parse_github_pr_url, get_complete_pr_analysis
+    except ImportError:
+        print("⚠️  GitHub PR integration not available")
+        parse_github_pr_url = None
+        get_complete_pr_analysis = None
 # Load environment variables from .env file (optional)
 try:
     from dotenv import load_dotenv
@@ -1338,13 +1349,15 @@ _config_cache = ConfigurationCache()
 
 def _discover_project_configurations_uncached(project_path: str) -> Dict[str, Any]:
     """
-    Discover Claude memory files and Cursor rules from project (uncached version).
+    High-performance discovery of Claude memory files and Cursor rules from project.
+    
+    Uses async/concurrent operations by default with bulletproof fallbacks.
     
     Args:
         project_path: Path to project root
         
     Returns:
-        Dictionary with discovered configurations and any errors
+        Dictionary with discovered configurations, performance stats, and any errors
     """
     
     try:
@@ -1357,13 +1370,13 @@ def _discover_project_configurations_uncached(project_path: str) -> Dict[str, An
             if current_dir not in sys.path:
                 sys.path.insert(0, current_dir)
             
-            from configuration_discovery import discover_all_claude_md_files, discover_all_cursor_rules
+            from async_configuration_discovery import discover_all_configurations
             from claude_memory_parser import parse_claude_memory_with_imports
             from cursor_rules_parser import parse_cursor_rules_directory
             from configuration_context import ClaudeMemoryFile, CursorRule
         except ImportError as e:
             # Fallback: try absolute imports
-            from src.configuration_discovery import discover_all_claude_md_files, discover_all_cursor_rules
+            from src.async_configuration_discovery import discover_all_configurations
             from src.claude_memory_parser import parse_claude_memory_with_imports
             from src.cursor_rules_parser import parse_cursor_rules_directory
             from src.configuration_context import ClaudeMemoryFile, CursorRule
@@ -1372,9 +1385,26 @@ def _discover_project_configurations_uncached(project_path: str) -> Dict[str, An
         cursor_rules = []
         discovery_errors = []
         
-        # Discover Claude memory files
+        # Use high-performance discovery (includes performance stats)
+        discovery_result = discover_all_configurations(
+            project_path,
+            include_claude_memory=True,
+            include_cursor_rules=True
+        )
+        
+        # Log performance stats
+        perf_stats = discovery_result.get('performance_stats', {})
+        discovery_time = perf_stats.get('discovery_time_ms', 0)
+        files_count = perf_stats.get('total_files_read', 0)
+        fallback_method = perf_stats.get('fallback_method', 'async')
+        
+        if discovery_time > 0:
+            logger.info(f"🚀 Configuration discovery completed in {discovery_time}ms "
+                       f"({files_count} files) using {fallback_method} method")
+        
+        # Process Claude memory files with improved error handling
         try:
-            claude_files_data = discover_all_claude_md_files(project_path)
+            claude_files_data = discovery_result.get('claude_memory_files', [])
             
             for claude_file_data in claude_files_data:
                 try:
@@ -1421,41 +1451,85 @@ def _discover_project_configurations_uncached(project_path: str) -> Dict[str, An
                 'error_message': str(e)
             })
         
-        # Discover Cursor rules
+        # Process Cursor rules from high-performance discovery
         try:
-            cursor_data = parse_cursor_rules_directory(project_path)
+            cursor_files_data = discovery_result.get('cursor_rules', [])
             
-            # Add any parsing errors to discovery errors
-            discovery_errors.extend(cursor_data.get('parse_errors', []))
+            for cursor_file_data in cursor_files_data:
+                try:
+                    # Handle both legacy and modern formats
+                    if cursor_file_data.get('format') == 'cursorrules':
+                        # Legacy .cursorrules file
+                        legacy_rule = CursorRule(
+                            file_path=cursor_file_data['file_path'],
+                            content=cursor_file_data['content'],
+                            rule_type='legacy',
+                            precedence=1000,  # Lower precedence than modern rules
+                            description='Legacy cursorrules file',
+                            globs=['**/*'],  # Apply to all files by default
+                            always_apply=True,
+                            metadata={'source': 'legacy_cursorrules'}
+                        )
+                        cursor_rules.append(legacy_rule)
+                        
+                    elif cursor_file_data.get('format') == 'mdc':
+                        # Modern .mdc file
+                        parsed_data = cursor_file_data.get('parsed_data', {})
+                        
+                        modern_rule = CursorRule(
+                            file_path=cursor_file_data['file_path'],
+                            content=cursor_file_data['content'],
+                            rule_type='modern',
+                            precedence=parsed_data.get('precedence', 500),
+                            description=parsed_data.get('description', 'Modern MDC rule'),
+                            globs=parsed_data.get('globs', ['**/*']),
+                            always_apply=parsed_data.get('alwaysApply', False),
+                            metadata=parsed_data.get('metadata', {})
+                        )
+                        cursor_rules.append(modern_rule)
+                        
+                except Exception as e:
+                    discovery_errors.append({
+                        'file_path': cursor_file_data.get('file_path', 'unknown'),
+                        'error_type': 'cursor_parsing_error', 
+                        'error_message': str(e)
+                    })
             
-            # Convert legacy rules
-            if cursor_data.get('legacy_rules'):
-                legacy_data = cursor_data['legacy_rules']
-                legacy_rule = CursorRule(
-                    file_path=legacy_data['file_path'],
-                    content=legacy_data['content'],
-                    rule_type=legacy_data['type'],
-                    precedence=legacy_data['precedence'],
-                    description=legacy_data['description'],
-                    globs=legacy_data['globs'],
-                    always_apply=legacy_data['always_apply'],
-                    metadata=legacy_data['metadata']
-                )
-                cursor_rules.append(legacy_rule)
-            
-            # Convert modern rules
-            for modern_data in cursor_data.get('modern_rules', []):
-                modern_rule = CursorRule(
-                    file_path=modern_data['file_path'],
-                    content=modern_data['content'],
-                    rule_type=modern_data['type'],
-                    precedence=modern_data['precedence'],
-                    description=modern_data['description'],
-                    globs=modern_data['globs'],
-                    always_apply=modern_data['always_apply'],
-                    metadata=modern_data['metadata']
-                )
-                cursor_rules.append(modern_rule)
+            # Legacy fallback: use original parser if new format doesn't work
+            if not cursor_files_data:
+                cursor_data = parse_cursor_rules_directory(project_path)
+                
+                # Add any parsing errors to discovery errors
+                discovery_errors.extend(cursor_data.get('parse_errors', []))
+                
+                # Convert legacy rules
+                if cursor_data.get('legacy_rules'):
+                    legacy_data = cursor_data['legacy_rules']
+                    legacy_rule = CursorRule(
+                        file_path=legacy_data['file_path'],
+                        content=legacy_data['content'],
+                        rule_type=legacy_data['type'],
+                        precedence=legacy_data['precedence'],
+                        description=legacy_data['description'],
+                        globs=legacy_data['globs'],
+                        always_apply=legacy_data['always_apply'],
+                        metadata=legacy_data['metadata']
+                    )
+                    cursor_rules.append(legacy_rule)
+                
+                # Convert modern rules
+                for modern_data in cursor_data.get('modern_rules', []):
+                    modern_rule = CursorRule(
+                        file_path=modern_data['file_path'],
+                        content=modern_data['content'],
+                        rule_type=modern_data['type'],
+                        precedence=modern_data['precedence'],
+                        description=modern_data['description'],
+                        globs=modern_data['globs'],
+                        always_apply=modern_data['always_apply'],
+                        metadata=modern_data['metadata']
+                    )
+                    cursor_rules.append(modern_rule)
                 
         except Exception as e:
             discovery_errors.append({
@@ -1466,7 +1540,8 @@ def _discover_project_configurations_uncached(project_path: str) -> Dict[str, An
         result = {
             'claude_memory_files': claude_memory_files,
             'cursor_rules': cursor_rules,
-            'discovery_errors': discovery_errors
+            'discovery_errors': discovery_errors,
+            'performance_stats': perf_stats  # Include performance metrics
         }
         
         return result
@@ -1954,7 +2029,9 @@ Working examples:
     if github_pr_url:
         try:
             # Import here to avoid circular imports
-            from github_pr_integration import parse_github_pr_url
+            # Check if GitHub PR integration is available
+            if not parse_github_pr_url:
+                raise ImportError("GitHub PR integration not available")
             parse_github_pr_url(github_pr_url)  # This will raise ValueError if invalid
         except ValueError as e:
             error_msg = f"""Invalid GitHub PR URL: {e}
@@ -2238,7 +2315,9 @@ Working examples:
             # GitHub PR analysis mode
             print(f"🔄 Fetching PR data from GitHub...")
             try:
-                from github_pr_integration import get_complete_pr_analysis
+                # Check if GitHub PR integration is available
+                if not get_complete_pr_analysis:
+                    raise ImportError("GitHub PR integration not available")
                 pr_analysis = get_complete_pr_analysis(github_pr_url)
                 
                 # Convert PR file changes to our expected format
