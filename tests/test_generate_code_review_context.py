@@ -316,35 +316,329 @@ class TestTemplateFormatter:
         assert '<files_changed>' in result
         assert '</files_changed>' in result
         assert '<user_instructions>' in result
-
-
-class TestIntegration:
-    """Integration tests for complete workflow."""
     
-    @patch('builtins.open', new_callable=mock_open)
-    @patch('os.listdir')
-    @patch('subprocess.run')
-    def test_end_to_end_generation(self, mock_run, mock_listdir, mock_file):
-        """Test complete flow from input files to output."""
-        # Mock file discovery
-        mock_listdir.return_value = ['prd-test.md', 'tasks-prd-test.md']
+    def test_format_review_template_branch_comparison(self):
+        """Test template formatting for branch comparison mode."""
+        data = {
+            'prd_summary': 'Test branch comparison review.',
+            'total_phases': 3,
+            'current_phase_number': '2.0',
+            'previous_phase_completed': '1.0 Setup phase',
+            'next_phase': '3.0 Integration phase',
+            'current_phase_description': 'Implementation phase',
+            'subtasks_completed': ['2.1', '2.2'],
+            'project_path': '/test/project',
+            'file_tree': 'test tree',
+            'changed_files': [
+                {'path': 'src/feature.py', 'content': 'new feature code', 'status': 'branch-A'}
+            ],
+            'scope': 'recent_phase',
+            'review_mode': 'branch_comparison',
+            'branch_comparison_data': {
+                'mode': 'branch_comparison',
+                'source_branch': 'feature/auth',
+                'target_branch': 'main',
+                'commits': [
+                    {
+                        'hash': 'abc123',
+                        'message': 'Add authentication system',
+                        'author': 'Test Developer',
+                        'date': '2024-01-01 12:00:00',
+                        'date_relative': '2 hours ago'
+                    },
+                    {
+                        'hash': 'def456',
+                        'message': 'Fix login validation',
+                        'author': 'Test Developer',
+                        'date': '2024-01-01 11:00:00',
+                        'date_relative': '3 hours ago'
+                    }
+                ],
+                'summary': {
+                    'files_changed': 5,
+                    'files_added': 2,
+                    'files_modified': 2,
+                    'files_deleted': 1
+                }
+            }
+        }
         
-        # Mock file contents
-        prd_content = "# Test PRD\n\n## Summary\nTest summary content."
-        task_content = "- [x] 1.0 Phase One\n  - [x] 1.1 Done\n- [ ] 2.0 Phase Two\n  - [ ] 2.1 Todo"
+        result = format_review_template(data)
         
-        mock_file.side_effect = [
-            mock_open(read_data=prd_content).return_value,
-            mock_open(read_data=task_content).return_value
-        ]
+        # Check branch comparison specific sections
+        assert '<branch_comparison_metadata>' in result
+        assert 'Source Branch: feature/auth' in result
+        assert 'Target Branch: main' in result
+        assert 'Files Changed: 5' in result
+        assert 'Files Added: 2' in result
+        assert 'Commits Ahead: 2' in result
         
-        # Mock git operations
-        mock_run.return_value.stdout = "M\ttest.py"
-        mock_run.return_value.returncode = 0
+        # Check detailed commit information section
+        assert '<commit_information>' in result
+        assert 'Commit History' in result
+        assert '1. Commit: abc123' in result
+        assert 'Message: Add authentication system' in result
+        assert 'Author: Test Developer' in result
+        assert '2 hours ago' in result
         
-        # This test will pass once main function is implemented
-        # For now, it defines the expected interface
-        assert True  # Placeholder - will implement main function to make this pass
+        # Check branch statistics section
+        assert '<branch_statistics>' in result
+        assert 'Comparison Summary:' in result
+        assert 'feature/auth (2 commits ahead)' in result
+        
+        # Check enhanced user instructions for branch comparison
+        assert 'You are reviewing changes between git branches' in result
+        assert 'Changes introduced in this branch compared to the target' in result
+        assert 'Review the commit progression' in result
+    
+    def test_format_review_template_github_pr(self):
+        """Test template formatting for GitHub PR mode."""
+        data = {
+            'prd_summary': 'Test GitHub PR review.',
+            'total_phases': 3,
+            'current_phase_number': '2.0',
+            'previous_phase_completed': '1.0 Setup phase',
+            'next_phase': '3.0 Integration phase',
+            'current_phase_description': 'Implementation phase',
+            'subtasks_completed': ['2.1', '2.2'],
+            'project_path': '/test/project',
+            'file_tree': 'test tree',
+            'changed_files': [
+                {'path': 'src/api.py', 'content': 'PR changes', 'status': 'PR-modified'}
+            ],
+            'scope': 'recent_phase',
+            'review_mode': 'github_pr',
+            'branch_comparison_data': {
+                'mode': 'github_pr',
+                'repository': 'owner/repo',
+                'pr_data': {
+                    'pr_number': 123,
+                    'title': 'Add new API endpoint',
+                    'author': 'contributor',
+                    'source_branch': 'feature/api',
+                    'target_branch': 'main',
+                    'source_sha': 'abc123456789',
+                    'target_sha': 'def987654321',
+                    'state': 'open',
+                    'created_at': '2024-01-01T12:00:00Z',
+                    'updated_at': '2024-01-01T13:00:00Z',
+                    'body': 'This PR adds a new API endpoint for user management with proper validation and error handling.'
+                },
+                'summary': {
+                    'files_changed': 3,
+                    'files_added': 1,
+                    'files_modified': 2,
+                    'files_deleted': 0
+                }
+            }
+        }
+        
+        result = format_review_template(data)
+        
+        # Check GitHub PR specific sections
+        assert '<github_pr_metadata>' in result
+        assert 'Repository: owner/repo' in result
+        assert 'PR Number: 123' in result
+        assert 'Title: Add new API endpoint' in result
+        assert 'Author: contributor' in result
+        assert 'Source SHA: abc12345...' in result
+        assert 'Target SHA: def98765...' in result
+        assert 'State: open' in result
+        assert 'Description: This PR adds a new API endpoint' in result
+        
+        # Check enhanced user instructions for GitHub PR
+        assert 'You are reviewing a GitHub Pull Request' in result
+        assert 'The PR "Add new API endpoint" by contributor' in result
+        assert 'Code quality and best practices' in result
+        assert 'Security implications of the changes' in result
+        
+    def test_format_review_template_enhanced_commit_details(self):
+        """Test template formatting with enhanced commit details."""
+        data = {
+            'prd_summary': 'Test enhanced commit details.',
+            'total_phases': 1,
+            'current_phase_number': '1.0',
+            'previous_phase_completed': '',
+            'next_phase': '',
+            'current_phase_description': 'Test phase',
+            'subtasks_completed': ['1.1'],
+            'project_path': '/test/project',
+            'file_tree': 'test tree',
+            'changed_files': [],
+            'scope': 'recent_phase',
+            'review_mode': 'branch_comparison',
+            'branch_comparison_data': {
+                'mode': 'branch_comparison',
+                'source_branch': 'feature/detailed-commits',
+                'target_branch': 'main',
+                'commits': [
+                    {
+                        'hash': 'commit1',
+                        'message': 'First commit with detailed info',
+                        'author': 'Alice Developer',
+                        'date': '2024-01-01 15:30:00',
+                        'date_relative': '1 hour ago'
+                    },
+                    {
+                        'hash': 'commit2',
+                        'message': 'Second commit without detailed info'
+                        # Missing author and date to test fallback
+                    }
+                ],
+                'summary': {
+                    'files_changed': 2,
+                    'files_added': 1,
+                    'files_modified': 1,
+                    'files_deleted': 0
+                }
+            }
+        }
+        
+        result = format_review_template(data)
+        
+        # Check that detailed commit info is displayed when available
+        assert '1. Commit: commit1' in result
+        assert 'Author: Alice Developer' in result
+        assert '1 hour ago' in result
+        
+        # Check that fallback works for commits without detailed info
+        assert '2. Commit: commit2' in result
+        assert 'Second commit without detailed info' in result
+        
+        # Should handle up to 15 commits in detailed view
+        assert '<commit_information>' in result
+        assert 'Commit History (showing changes from target to source branch)' in result
+
+
+class TestMainFunctionBehavior:
+    """Test main function behavior and output."""
+    
+    @patch('generate_code_review_context.find_project_files')
+    @patch('generate_code_review_context.get_changed_files')
+    @patch('generate_code_review_context.generate_file_tree')
+    @patch('builtins.print')  # Mock print to avoid output during tests
+    def test_main_returns_tuple_with_context_and_gemini_paths(self, mock_print, mock_tree, mock_files, mock_find):
+        """Test that main function returns tuple of (context_path, gemini_path)."""
+        import tempfile
+        import os
+        from generate_code_review_context import main
+        
+        # Mock dependencies
+        mock_find.return_value = (None, None)  # No PRD/task files
+        mock_files.return_value = []
+        mock_tree.return_value = "mock tree"
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Test without Gemini review
+            context_file, gemini_file = main(
+                project_path=temp_dir,
+                enable_gemini_review=False
+            )
+            
+            # Should return context file path and None for gemini
+            assert isinstance(context_file, str)
+            assert os.path.exists(context_file)
+            assert gemini_file is None
+    
+    @patch('generate_code_review_context.find_project_files')
+    @patch('generate_code_review_context.get_changed_files')
+    @patch('generate_code_review_context.generate_file_tree') 
+    @patch('generate_code_review_context.send_to_gemini_for_review')
+    @patch('builtins.print')
+    def test_main_returns_both_files_when_gemini_succeeds(self, mock_print, mock_gemini, mock_tree, mock_files, mock_find):
+        """Test that main returns both files when Gemini review succeeds."""
+        import tempfile
+        import os
+        from generate_code_review_context import main
+        
+        # Mock dependencies
+        mock_find.return_value = (None, None)
+        mock_files.return_value = []
+        mock_tree.return_value = "mock tree"
+        mock_gemini.return_value = "/path/to/gemini_review.md"
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context_file, gemini_file = main(
+                project_path=temp_dir,
+                enable_gemini_review=True
+            )
+            
+            # Should return both file paths
+            assert isinstance(context_file, str)
+            assert os.path.exists(context_file)
+            assert gemini_file == "/path/to/gemini_review.md"
+    
+    @patch('generate_code_review_context.find_project_files')
+    @patch('generate_code_review_context.get_changed_files')
+    @patch('generate_code_review_context.generate_file_tree')
+    @patch('generate_code_review_context.send_to_gemini_for_review')
+    @patch('builtins.print')
+    def test_main_handles_gemini_failure_gracefully(self, mock_print, mock_gemini, mock_tree, mock_files, mock_find):
+        """Test that main handles Gemini failure gracefully."""
+        import tempfile
+        import os
+        from generate_code_review_context import main
+        
+        # Mock dependencies with Gemini failure
+        mock_find.return_value = (None, None)
+        mock_files.return_value = []
+        mock_tree.return_value = "mock tree" 
+        mock_gemini.return_value = None  # Gemini failed
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            context_file, gemini_file = main(
+                project_path=temp_dir,
+                enable_gemini_review=True
+            )
+            
+            # Should still return context file, but gemini_file should be None
+            assert isinstance(context_file, str)
+            assert os.path.exists(context_file)
+            assert gemini_file is None
+    
+    def test_main_validates_scope_parameters(self):
+        """Test that main function validates scope-specific parameters."""
+        from generate_code_review_context import main
+        
+        # Test specific_phase without phase_number
+        with pytest.raises(ValueError, match="phase_number is required"):
+            main(
+                project_path="/tmp",
+                scope="specific_phase"
+                # Missing phase_number
+            )
+        
+        # Test specific_task without task_number  
+        with pytest.raises(ValueError, match="task_number is required"):
+            main(
+                project_path="/tmp",
+                scope="specific_task"
+                # Missing task_number
+            )
+    
+    def test_main_validates_phase_number_format(self):
+        """Test that main validates phase number format."""
+        from generate_code_review_context import main
+        
+        # Test invalid phase number format
+        with pytest.raises(ValueError, match="Invalid phase_number format"):
+            main(
+                project_path="/tmp",
+                scope="specific_phase",
+                phase_number="1.1"  # Should be X.0 format
+            )
+    
+    def test_main_validates_task_number_format(self):
+        """Test that main validates task number format.""" 
+        from generate_code_review_context import main
+        
+        # Test invalid task number format
+        with pytest.raises(ValueError, match="Invalid task_number format"):
+            main(
+                project_path="/tmp", 
+                scope="specific_task",
+                task_number="1.0"  # Should be X.Y format (not X.0)
+            )
 
 
 if __name__ == "__main__":

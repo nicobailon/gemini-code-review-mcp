@@ -14,12 +14,18 @@ An MCP server tool designed for **AI coding agents** (Cursor, Claude Code, etc.)
 # Set your Gemini API key (get one at https://ai.google.dev/gemini-api/docs/api-key)
 export GEMINI_API_KEY=your_key_here
 
+# Or create a .env file (copy from .env.example)
+# cp .env.example .env  # then edit with your keys
+
 # Run directly without installing anything (uvx handles everything)
 uvx task-list-code-review-mcp /path/to/your/project
 
-# Output: Generates both context and AI review files automatically
-# - code-review-context-{scope}-{timestamp}.md
-# - code-review-comprehensive-feedback-{timestamp}.md
+# Shows real-time progress and model capabilities:
+# 🔍 Analyzing project: my-app
+# 📊 Review scope: recent_phase  
+# 🤖 Using Gemini model: gemini-2.0-flash
+# ✨ Enhanced features enabled: web grounding, thinking mode
+# 📄 Files generated: code-review-context-recent-phase-20241201-143052.md, ...
 ```
 
 ### Install Globally (If You Like It)
@@ -40,10 +46,10 @@ task-list-code-review-mcp /path/to/your/project
 - **Manual override** → Target specific phases or tasks
 
 ### AI-Powered Code Review
-- **Gemini Integration**: Uses Gemini 2.5 Flash/Pro for intelligent code analysis
-- **Thinking Mode**: Deep reasoning about code quality and architecture
-- **Web Grounding**: Looks up current best practices and technology information
-- **Comprehensive Analysis**: Covers security, performance, testing, and maintainability
+- **Smart Model Selection**: Auto-detects and displays enabled capabilities
+- **Enhanced Features**: Thinking mode, web grounding, URL context (when available)
+- **Real-time Feedback**: Shows model name and active features during execution
+- **Comprehensive Analysis**: Security, performance, testing, maintainability
 
 ### Flexible Architecture
 - **Context Generation**: Creates structured review context from git changes and task progress
@@ -56,10 +62,8 @@ task-list-code-review-mcp /path/to/your/project
 
 ```bash
 # Smart Default: Auto-detects project completion status and task list
-# - Finds most recent tasks-*.md file automatically
-# - If all phases complete: Reviews entire project  
-# - If phases in progress: Reviews most recent completed phase
 uvx task-list-code-review-mcp /path/to/project
+# Shows: 🔍 Project analysis → 🤖 Model capabilities → 📄 Generated files
 
 # Review entire project (force full scope)
 uvx task-list-code-review-mcp /path/to/project --scope full_project
@@ -113,12 +117,16 @@ uvx task-list-code-review-mcp . --task-list tasks-auth-system.md
       "command": "uvx",
       "args": ["task-list-code-review-mcp"],
       "env": {
-        "GEMINI_API_KEY": "your_key_here"
+        "GEMINI_API_KEY": "your_key_here",
+        "GITHUB_TOKEN": "your_github_token_here"
       }
     }
   }
 }
 ```
+
+**For GitHub PR Review Support**: Add your GitHub token to enable `generate_pr_review` tool.
+Create token at: https://github.com/settings/tokens (scopes: `repo` or `public_repo`)
 
 **Usage in Claude Desktop:**
 ```
@@ -138,8 +146,8 @@ Claude: I'll generate a code review context using smart scope detection.
 
 **Add this MCP server to Claude Code:**
 ```bash
-# Add the MCP server (set your API key)
-claude mcp add task-list-reviewer -e GEMINI_API_KEY=your_key_here -- uvx task-list-code-review-mcp
+# Add the MCP server (set your API keys)
+claude mcp add task-list-reviewer -e GEMINI_API_KEY=your_key_here -e GITHUB_TOKEN=your_github_token_here -- uvx task-list-code-review-mcp
 
 # Verify it's added
 claude mcp list
@@ -162,6 +170,40 @@ Claude: I'll analyze your project and generate a comprehensive code review.
 [Tool Result] Generated: code-review-context-full-project-20241201-143052.md
 ```
 
+**Branch Comparison Review:**
+```
+Human: Compare my feature branch against main and generate a review
+
+Claude: I'll compare your feature branch changes against the main branch.
+
+[Tool Use: generate_branch_comparison_review]
+{
+  "project_path": "/Users/myname/projects/my-app",
+  "compare_branch": "feature/auth-system",
+  "target_branch": "main"
+}
+
+[Tool Result] 🔍 Analyzed project: my-app
+🌿 Branch comparison: feature/auth-system → main
+📝 Generated review context: code-review-branch-comparison-20241201-143052.md
+```
+
+**GitHub PR Review:**
+```
+Human: Review this GitHub PR: https://github.com/owner/repo/pull/123
+
+Claude: I'll fetch the PR data and generate a comprehensive review.
+
+[Tool Use: generate_pr_review]
+{
+  "github_pr_url": "https://github.com/owner/repo/pull/123"
+}
+
+[Tool Result] 🔍 Analyzed project: repo
+🔗 GitHub PR: owner/repo/pull/123
+📝 Generated review context: code-review-github-pr-20241201-143052.md
+```
+
 **MCP Server Management:**
 ```bash
 # List all MCP servers
@@ -178,85 +220,50 @@ claude mcp remove task-list-reviewer
 
 ### Environment Variables
 
-**Core Configuration:**
-- `GEMINI_API_KEY`: Required for Gemini integration
-- `MAX_FILE_SIZE_MB`: Maximum file size to read in MB (default: 10)
-- `MAX_FILE_CONTENT_LINES`: Max lines per file (default: 500)
-- `MAX_FILE_TREE_DEPTH`: Tree depth limit (default: 5)
+**Essential:**
+- `GEMINI_API_KEY`: Required for AI features
+- `GEMINI_MODEL`: Model selection (`gemini-2.0-flash`, `gemini-2.5-pro`, `gemini-2.5-flash`)
+- `GEMINI_TEMPERATURE`: AI creativity (0.0-2.0, default: 0.5)
 
-**Model Configuration:**
-- `GEMINI_MODEL`: Model for code review (default: `gemini-2.0-flash`)
-  - Use aliases: `gemini-2.5-pro`, `gemini-2.5-flash`
-  - Or full names: `gemini-2.5-pro-preview-05-06`
-- `GEMINI_TEMPERATURE`: AI creativity (default: 0.5, range: 0.0-2.0)
+**Advanced:**
+- `MAX_FILE_SIZE_MB`: File size limit (default: 10)
+- `DISABLE_THINKING`: Disable thinking mode (`true`/`false`)
+- `DISABLE_GROUNDING`: Disable web grounding (`true`/`false`)
 
 ### Security Best Practices
-**API Key Protection:**
+
+**Environment Setup:**
 ```bash
+# Copy the example file and fill in your values
+cp .env.example .env
+
 # Secure .env file permissions
-chmod 600 ~/.task-list-code-review-mcp.env
 chmod 600 .env
 
-# Never commit .env files to version control
-echo ".env" >> .gitignore
+# Never commit .env files to version control (already in .gitignore)
 ```
 
-### Model Configuration File (model_config.json)
+**API Key Protection:**
+- Get your Gemini API key at: https://ai.google.dev/gemini-api/docs/api-key
+- Create GitHub token at: https://github.com/settings/tokens (scopes: `repo` or `public_repo`)
+- Use separate API keys for development and production
+- Regularly rotate your API keys for security
 
-The tool uses a JSON configuration file (`src/model_config.json`) to manage model aliases and capabilities, making it easy to update when Google releases new model versions:
+### Model Configuration
 
-```json
-{
-  "model_aliases": {
-    "gemini-2.5-pro": "gemini-2.5-pro-preview-05-06",
-    "gemini-2.5-flash": "gemini-2.5-flash-preview-05-20"
-  },
-  "model_capabilities": {
-    "url_context_supported": [
-      "gemini-2.5-pro-preview-05-06",
-      "gemini-2.5-flash-preview-05-20",
-      "gemini-2.0-flash"
-    ],
-    "thinking_mode_supported": [
-      "gemini-2.5-pro-preview-05-06",
-      "gemini-2.5-flash-preview-05-20"
-    ]
-  },
-  "defaults": {
-    "model": "gemini-2.0-flash",
-    "summary_model": "gemini-2.0-flash-lite",
-    "default_prompt": "Generate comprehensive code review for recent development changes focusing on code quality, security, performance, and best practices."
-  }
-}
-```
+**Auto-Detection**: The tool automatically detects and displays model capabilities:
+- **Thinking Mode**: Deep reasoning (gemini-2.5 models)
+- **Web Grounding**: Real-time information lookup (gemini-2.0+)
+- **URL Context**: Enhanced web understanding (supported models)
 
-**Capabilities Auto-Detection:**
-- **URL Context**: Enhanced web content understanding
-- **Thinking Mode**: Advanced reasoning for complex problems  
-- **Web Grounding**: Up-to-date information from search
-- **Default Prompt**: Fallback prompt when no task lists exist
-
-**Usage Examples:**
+**Simple Usage:**
 ```bash
-# Use simple alias names instead of complex preview model names
-review-with-ai context.md --model gemini-2.5-pro
+# Use friendly aliases instead of preview model names
+GEMINI_MODEL=gemini-2.5-pro uvx task-list-code-review-mcp /project
 GEMINI_MODEL=gemini-2.5-flash uvx task-list-code-review-mcp /project
 ```
 
-**Updating for New Models:**
-When Google releases new versions, simply update the JSON file:
-```json
-{
-  "model_aliases": {
-    "gemini-2.5-pro": "gemini-2.5-pro-preview-06-07"  // Updated version
-  }
-}
-```
-
-**Fallback Behavior:**
-- Missing JSON file → Uses built-in defaults
-- JSON parsing errors → Logs warning and continues
-- Invalid model names → Falls back to environment/config defaults
+**Configuration File**: `src/model_config.json` manages aliases and capabilities. Updates automatically when Google releases new models.
 
 ## 🔧 MCP Tools Reference
 
@@ -311,6 +318,97 @@ await use_mcp_tool({
 });
 ```
 
+### generate_branch_comparison_review
+
+**Generate code review by comparing git branches.**
+
+```javascript
+await use_mcp_tool({
+  server_name: "task-list-code-review-mcp",
+  tool_name: "generate_branch_comparison_review",
+  arguments: {
+    project_path: "/absolute/path/to/project",
+    compare_branch: "feature/auth-system",
+    target_branch: "main"  // Optional - auto-detects main/master if omitted
+  }
+});
+```
+
+**Example output:**
+```
+🔍 Analyzed project: my-app
+🌿 Branch comparison: feature/auth-system → main
+🌡️ AI temperature: 0.5
+📝 Generated review context: code-review-branch-comparison-20241201-143052.md
+✅ AI code review completed: code-review-comprehensive-feedback-20241201-143052.md
+🎉 Branch comparison review completed!
+📄 Files generated: code-review-branch-comparison-20241201-143052.md, code-review-comprehensive-feedback-20241201-143052.md
+```
+
+### generate_pr_review
+
+**Generate code review for a GitHub Pull Request.**
+
+```javascript
+await use_mcp_tool({
+  server_name: "task-list-code-review-mcp",
+  tool_name: "generate_pr_review",
+  arguments: {
+    github_pr_url: "https://github.com/owner/repo/pull/123",
+    project_path: "/absolute/path/to/project"  // Optional - uses current directory if omitted
+  }
+});
+```
+
+**Example output:**
+```
+🔍 Analyzed project: my-app
+🔗 GitHub PR: owner/repo/pull/123
+🌡️ AI temperature: 0.5
+📝 Generated review context: code-review-github-pr-20241201-143052.md
+✅ AI code review completed: code-review-comprehensive-feedback-20241201-143052.md
+🎉 GitHub PR review completed!
+📄 Files generated: code-review-github-pr-20241201-143052.md, code-review-comprehensive-feedback-20241201-143052.md
+```
+
+## 📋 Enhanced Review Context Formats
+
+### Branch Comparison Context
+
+When using `generate_branch_comparison_review`, the generated context includes:
+
+**Enhanced Metadata Sections:**
+- **Branch Comparison Metadata**: Source/target branches, file statistics, commit counts
+- **Detailed Commit Information**: Up to 15 commits with authors, timestamps, and messages
+- **Branch Statistics**: Comprehensive summary of changes between branches
+- **Specialized Instructions**: Context-aware guidance for reviewing branch differences
+
+**Filename Format:** `code-review-context-branch-comparison-YYYYMMDD-HHMMSS.md`
+
+### GitHub PR Context
+
+When using `generate_pr_review`, the generated context includes:
+
+**Enhanced Metadata Sections:**
+- **GitHub PR Metadata**: Repository, PR number, title, author, SHA hashes, timestamps
+- **PR Description**: First 200 characters of the PR description
+- **File Change Statistics**: Detailed breakdown of additions, modifications, deletions
+- **Specialized Instructions**: PR-specific review guidance focusing on quality and security
+
+**Filename Format:** `code-review-context-github-pr-YYYYMMDD-HHMMSS.md`
+
+### Task-Based Context (Traditional)
+
+Standard task list reviews include:
+- **Phase/Task Metadata**: Current phase, completed subtasks, next steps
+- **Working Directory Changes**: Git status and modified files
+- **PRD Context**: Project requirements and scope information
+
+**Filename Formats:**
+- `code-review-context-recent-phase-YYYYMMDD-HHMMSS.md`
+- `code-review-context-full-project-YYYYMMDD-HHMMSS.md`
+- `code-review-context-phase-X-Y-YYYYMMDD-HHMMSS.md`
+
 ## 🔄 Workflow Integration for AI Agents
 
 ### Smart Completion Detection
@@ -319,14 +417,16 @@ The tool automatically detects project completion status:
 
 **Project Complete Workflow:**
 ```
-AI Agent: "I've completed the final phase. Let me generate a code review."
+Human: "Generate a code review for my completed project"
+AI Agent: I'll analyze your project and generate a comprehensive review.
 Tool detects: All phases (1.0-7.0) complete → Full project review
 Output: code-review-context-full-project-{timestamp}.md
 ```
 
 **Mid-Development Workflow:**
 ```
-AI Agent: "I've completed Phase 2.0 of 5.0. Let me generate a review."
+Human: "I just finished Phase 2.0, can you review what I've done?"
+AI Agent: I'll review your recent work using the MCP server.
 Tool detects: Phases in progress → Recent completed phase
 Output: code-review-context-recent-phase-{timestamp}.md
 ```

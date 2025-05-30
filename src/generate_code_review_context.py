@@ -703,11 +703,17 @@ def format_review_template(data: Dict[str, Any]) -> str:
         Formatted markdown template
     """
     # Add scope information to header
-    scope_info = f"Review Scope: {data['scope']}"
-    if data.get('phase_number'):
-        scope_info += f" (Phase: {data['phase_number']})"
-    elif data.get('task_number'):
-        scope_info += f" (Task: {data['task_number']})"
+    review_mode = data.get('review_mode', 'task_list_based')
+    if review_mode == 'github_pr':
+        scope_info = f"Review Mode: GitHub PR Analysis"
+    elif review_mode == 'branch_comparison':
+        scope_info = f"Review Mode: Git Branch Comparison"
+    else:
+        scope_info = f"Review Scope: {data['scope']}"
+        if data.get('phase_number'):
+            scope_info += f" (Phase: {data['phase_number']})"
+        elif data.get('task_number'):
+            scope_info += f" (Task: {data['task_number']})"
     
     template = f"""# Code Review Context - {scope_info}
 
@@ -742,8 +748,100 @@ def format_review_template(data: Dict[str, Any]) -> str:
 
 <subtasks_completed>
 {chr(10).join(f"- {subtask}" for subtask in data['subtasks_completed'])}
-</subtasks_completed>
+</subtasks_completed>"""
+    
+    # Add branch comparison metadata if available
+    branch_data = data.get('branch_comparison_data')
+    if branch_data:
+        if branch_data['mode'] == 'github_pr':
+            pr_data = branch_data['pr_data']
+            summary = branch_data.get('summary', {})
+            template += f"""
+<github_pr_metadata>
+Repository: {branch_data['repository']}
+PR Number: {pr_data['pr_number']}
+Title: {pr_data['title']}
+Author: {pr_data['author']}
+Source Branch: {pr_data['source_branch']}
+Target Branch: {pr_data['target_branch']}
+Source SHA: {pr_data.get('source_sha', 'N/A')[:8]}...
+Target SHA: {pr_data.get('target_sha', 'N/A')[:8]}...
+State: {pr_data['state']}
+Created: {pr_data['created_at']}
+Updated: {pr_data['updated_at']}
+Files Changed: {summary.get('files_changed', 'N/A')}
+Files Added: {summary.get('files_added', 'N/A')}
+Files Modified: {summary.get('files_modified', 'N/A')}
+Files Deleted: {summary.get('files_deleted', 'N/A')}"""
+            if pr_data.get('body') and pr_data['body'].strip():
+                # Show first 200 chars of PR description
+                description = pr_data['body'].strip()[:200]
+                if len(pr_data['body']) > 200:
+                    description += "..."
+                template += f"""
+Description: {description}"""
+            template += """
+</github_pr_metadata>"""
+        
+        elif branch_data['mode'] == 'branch_comparison':
+            template += f"""
+<branch_comparison_metadata>
+Source Branch: {branch_data['source_branch']}
+Target Branch: {branch_data['target_branch']}
+Files Changed: {branch_data['summary']['files_changed']}
+Files Added: {branch_data['summary']['files_added']}
+Files Modified: {branch_data['summary']['files_modified']}
+Files Deleted: {branch_data['summary']['files_deleted']}"""
+            if branch_data.get('commits'):
+                template += f"""
+Commits Ahead: {len(branch_data['commits'])}
+Recent Commits:"""
+                for commit in branch_data['commits'][:10]:  # Show up to 10 commits
+                    if commit.get('author') and commit.get('date_relative'):
+                        template += f"""
+- {commit['hash']}: {commit['message']} (by {commit['author']}, {commit['date_relative']})"""
+                    else:
+                        template += f"""
+- {commit['hash']}: {commit['message']}"""
+            template += """
+</branch_comparison_metadata>"""
+            
+            # Add detailed commit information section
+            if branch_data.get('commits'):
+                template += """
 
+<commit_information>
+Commit History (showing changes from target to source branch):"""
+                for i, commit in enumerate(branch_data['commits'][:15], 1):  # Show up to 15 commits
+                    if commit.get('author') and commit.get('date_relative'):
+                        template += f"""
+
+{i}. Commit: {commit['hash']}
+   Message: {commit['message']}
+   Author: {commit['author']}
+   Date: {commit.get('date', 'N/A')} ({commit['date_relative']})"""
+                    else:
+                        template += f"""
+
+{i}. Commit: {commit['hash']}
+   Message: {commit['message']}"""
+                template += """
+</commit_information>"""
+            
+            # Add branch statistics section
+            template += f"""
+
+<branch_statistics>
+Comparison Summary:
+- Source Branch: {branch_data['source_branch']} ({len(branch_data.get('commits', []))} commits ahead)
+- Target Branch: {branch_data['target_branch']}
+- Total Files Changed: {branch_data['summary']['files_changed']}
+- Files Added: {branch_data['summary']['files_added']}
+- Files Modified: {branch_data['summary']['files_modified']}
+- Files Deleted: {branch_data['summary']['files_deleted']}
+</branch_statistics>"""
+    
+    template += f"""
 <project_path>
 {data['project_path']}
 </project_path>
@@ -769,19 +867,51 @@ File: {file_info['path']} ({file_info['status']})
 
 <user_instructions>"""
     
-    # Customize instructions based on scope
-    if data['scope'] == 'full_project':
+    # Customize instructions based on review mode and scope
+    review_mode = data.get('review_mode', 'task_list_based')
+    branch_data = data.get('branch_comparison_data')
+    
+    if review_mode == 'github_pr' and branch_data:
+        template += f"""You are reviewing a GitHub Pull Request that contains changes from branch '{branch_data['pr_data']['source_branch']}' to '{branch_data['pr_data']['target_branch']}'.
+
+The PR "{branch_data['pr_data']['title']}" by {branch_data['pr_data']['author']} includes {branch_data['summary']['files_changed']} changed files with {branch_data['summary']['files_added']} additions, {branch_data['summary']['files_modified']} modifications, and {branch_data['summary']['files_deleted']} deletions.
+
+Based on the PR metadata, commit history, and file changes shown above, conduct a comprehensive code review focusing on:
+1. Code quality and best practices
+2. Security implications of the changes
+3. Performance considerations
+4. Testing coverage and approach
+5. Documentation completeness
+6. Integration and compatibility issues
+
+Identify specific lines, files, or patterns that are concerning and provide actionable feedback."""
+    elif review_mode == 'branch_comparison' and branch_data:
+        commits_count = len(branch_data.get('commits', []))
+        template += f"""You are reviewing changes between git branches '{branch_data['source_branch']}' and '{branch_data['target_branch']}'.
+
+The comparison shows {commits_count} commits ahead of the target branch, affecting {branch_data['summary']['files_changed']} files with {branch_data['summary']['files_added']} additions, {branch_data['summary']['files_modified']} modifications, and {branch_data['summary']['files_deleted']} deletions.
+
+Based on the branch comparison metadata, commit history, and file changes shown above, conduct a comprehensive code review focusing on:
+1. Changes introduced in this branch compared to the target
+2. Code quality and architectural decisions
+3. Security implications of the modifications
+4. Performance impact of the changes
+5. Testing strategy and coverage
+6. Documentation updates needed
+
+Review the commit progression to understand the development approach and identify specific lines, files, or patterns that need attention."""
+    elif data['scope'] == 'full_project':
         template += f"""We have completed all phases (and subtasks within) of this project: {data['current_phase_description']}.
 
-Based on the PRD, all completed phases, all subtasks that were finished across the entire project, and the files changed, your job is to conduct a comprehensive code review and output your code review feedback for the entire project. Identify specific lines or files that are concerning when appropriate."""
+Based on the PRD, all completed phases, all subtasks that were finished across the entire project, and the files changed in the working directory, your job is to conduct a comprehensive code review and output your code review feedback for the entire project. Identify specific lines or files that are concerning when appropriate."""
     elif data['scope'] == 'specific_task':
         template += f"""We have just completed task #{data['current_phase_number']}: "{data['current_phase_description']}".
 
-Based on the PRD, the completed task, and the files changed, your job is to conduct a code review and output your code review feedback for this specific task. Identify specific lines or files that are concerning when appropriate."""
+Based on the PRD, the completed task, and the files changed in the working directory, your job is to conduct a code review and output your code review feedback for this specific task. Identify specific lines or files that are concerning when appropriate."""
     else:
         template += f"""We have just completed phase #{data['current_phase_number']}: "{data['current_phase_description']}".
 
-Based on the PRD, the completed phase, all subtasks that were finished in that phase, and the files changed, your job is to conduct a code review and output your code review feedback for the completed phase. Identify specific lines or files that are concerning when appropriate."""
+Based on the PRD, the completed phase, all subtasks that were finished in that phase, and the files changed in the working directory, your job is to conduct a code review and output your code review feedback for the completed phase. Identify specific lines or files that are concerning when appropriate."""
     
     template += """
 </user_instructions>"""
@@ -914,30 +1044,53 @@ def send_to_gemini_for_review(context_content: str, project_path: str, temperatu
         supports_grounding = 'gemini-1.5' in model_config or 'gemini-2.0' in model_config or 'gemini-2.5' in model_config
         supports_thinking = model_config in config['model_capabilities']['thinking_mode_supported']
         
-        # Log model and capabilities
-        capabilities = []
-        if supports_url_context: capabilities.append("URL context")
-        if supports_grounding: capabilities.append("web grounding") 
-        if supports_thinking: capabilities.append("thinking mode")
+        # Determine what features will actually be enabled (considering disable flags)
+        actual_capabilities = []
+        disable_url_context = os.getenv('DISABLE_URL_CONTEXT', 'false').lower() == 'true'
+        disable_grounding = os.getenv('DISABLE_GROUNDING', 'false').lower() == 'true'
+        disable_thinking = os.getenv('DISABLE_THINKING', 'false').lower() == 'true'
         
-        capabilities_text = f" (capabilities: {', '.join(capabilities)})" if capabilities else " (basic capabilities)"
-        logger.info(f"Using Gemini model: {model_config}{capabilities_text}")
+        # Check what will actually be enabled
+        url_context_enabled = supports_url_context and not disable_url_context
+        grounding_enabled = supports_grounding and not disable_grounding
+        thinking_enabled = supports_thinking and not disable_thinking
+        
+        # Build capabilities list for user feedback
+        if url_context_enabled: actual_capabilities.append("URL context")
+        if grounding_enabled: actual_capabilities.append("web grounding") 
+        if thinking_enabled: actual_capabilities.append("thinking mode")
+        
+        # Enhanced user feedback for CLI
+        print(f"🤖 Using Gemini model: {model_config}")
+        if actual_capabilities:
+            print(f"✨ Enhanced features enabled: {', '.join(actual_capabilities)}")
+            if thinking_enabled:
+                thinking_budget = os.getenv('THINKING_BUDGET')
+                budget_info = f" (budget: {thinking_budget} tokens)" if thinking_budget else " (auto-budget)"
+                print(f"   💭 Thinking mode: Deep reasoning{budget_info}")
+            if grounding_enabled:
+                print(f"   🌐 Web grounding: Real-time information lookup")
+            if url_context_enabled:
+                print(f"   🔗 URL context: Enhanced web content understanding")
+        else:
+            print(f"⚡ Standard features: Basic text generation")
+        
+        # Log for debugging (less verbose than user output)
+        capabilities_text = f" (features: {', '.join(actual_capabilities)})" if actual_capabilities else " (basic)"
+        logger.info(f"Gemini configuration: {model_config}{capabilities_text}")
         
         # Configure tools (enabled by default with opt-out)
         tools = []
         
         # URL Context - enabled by default for supported models
-        disable_url_context = os.getenv('DISABLE_URL_CONTEXT', 'false').lower() == 'true'
-        if supports_url_context and not disable_url_context:
+        if url_context_enabled:
             try:
                 tools.append(types.Tool(url_context=types.UrlContext()))
             except (AttributeError, TypeError) as e:
                 logger.warning(f"URL context configuration failed: {e}")
         
         # Google Search Grounding - enabled by default for supported models
-        disable_grounding = os.getenv('DISABLE_GROUNDING', 'false').lower() == 'true'
-        
-        if supports_grounding and not disable_grounding:
+        if grounding_enabled:
             try:
                 # Use GoogleSearch for newer models (Gemini 2.0+, 2.5+)
                 if 'gemini-2.0' in model_config or 'gemini-2.5' in model_config:
@@ -952,11 +1105,10 @@ def send_to_gemini_for_review(context_content: str, project_path: str, temperatu
         
         # Configure thinking mode - enabled by default for supported models
         thinking_config = None
-        disable_thinking = os.getenv('DISABLE_THINKING', 'false').lower() == 'true'
         thinking_budget = os.getenv('THINKING_BUDGET')  # Let model auto-adjust if not specified
         include_thoughts = os.getenv('INCLUDE_THOUGHTS', 'true').lower() == 'true'
         
-        if supports_thinking and not disable_thinking:
+        if thinking_enabled:
             try:
                 if 'gemini-2.5-flash' in model_config:
                     # Full thinking support with optional budget control
@@ -1059,7 +1211,8 @@ Focus on being specific and actionable. When referencing files, include line num
 
 def main(project_path: str = None, phase: str = None, output: str = None, enable_gemini_review: bool = True, 
          scope: str = "recent_phase", phase_number: str = None, task_number: str = None, temperature: float = 0.5,
-         task_list: str = None, default_prompt: str = None) -> str:
+         task_list: str = None, default_prompt: str = None, compare_branch: str = None, 
+         target_branch: str = None, github_pr_url: str = None) -> tuple[str, Optional[str]]:
     """
     Main function to generate code review context with enhanced scope support.
     
@@ -1073,10 +1226,37 @@ def main(project_path: str = None, phase: str = None, output: str = None, enable
         task_number: Task number for specific_task scope (e.g., "1.2")
         
     Returns:
-        Path to generated file
+        Tuple of (context_file_path, gemini_review_path). gemini_review_path is None if not generated.
     """
     if project_path is None:
         project_path = os.getcwd()
+    
+    # Detect and validate review mode
+    review_modes = []
+    if github_pr_url:
+        review_modes.append("github_pr")
+    if compare_branch or target_branch:
+        review_modes.append("branch_comparison")
+    if not review_modes:
+        review_modes.append("task_list_based")
+    
+    # Validate mutually exclusive modes
+    if len(review_modes) > 1:
+        error_msg = """Multiple review modes detected. Please use only one:
+
+Working examples:
+  # Task list based review (default)
+  generate-code-review .
+  
+  # Branch comparison review
+  generate-code-review . --compare-branch feature/auth
+  
+  # GitHub PR review  
+  generate-code-review --github-pr-url https://github.com/owner/repo/pull/123
+  
+  # NOT valid - conflicting modes
+  generate-code-review . --compare-branch feature/auth --github-pr-url https://github.com/owner/repo/pull/123"""
+        raise ValueError(error_msg)
     
     # Validate scope parameter
     valid_scopes = ["recent_phase", "full_project", "specific_phase", "specific_task"]
@@ -1127,7 +1307,7 @@ Working examples:
   # Use with custom temperature
   generate-code-review . --scope specific_task --task-number 3.4 --temperature 0.3"""
             raise ValueError(error_msg)
-        if not re.match(r'^\d+\.\d+$', task_number):
+        if not re.match(r'^\d+\.\d+$', task_number) or task_number.endswith('.0'):
             error_msg = f"""Invalid task_number format '{task_number}'. Must be in format 'X.Y'
 
 Working examples:
@@ -1142,7 +1322,47 @@ Working examples:
   --task-number 1.a   ❌ (must be numeric)"""
             raise ValueError(error_msg)
     
+    # Validate GitHub PR URL if provided
+    if github_pr_url:
+        try:
+            # Import here to avoid circular imports
+            from github_pr_integration import parse_github_pr_url
+            parse_github_pr_url(github_pr_url)  # This will raise ValueError if invalid
+        except ValueError as e:
+            error_msg = f"""Invalid GitHub PR URL: {e}
+
+Working examples:
+  # Standard GitHub PR
+  generate-code-review --github-pr-url https://github.com/microsoft/vscode/pull/123
+  
+  # GitHub Enterprise
+  generate-code-review --github-pr-url https://github.company.com/team/project/pull/456
+  
+  # With additional parameters
+  generate-code-review --github-pr-url https://github.com/owner/repo/pull/789 --temperature 0.3"""
+            raise ValueError(error_msg)
+    
     try:
+        # Initial user feedback  
+        print(f"🔍 Analyzing project: {os.path.basename(os.path.abspath(project_path))}")
+        
+        # Display review mode
+        current_mode = review_modes[0]
+        if current_mode == "github_pr":
+            print(f"🔗 Review mode: GitHub PR analysis")
+            print(f"🌐 PR URL: {github_pr_url}")
+        elif current_mode == "branch_comparison":
+            print(f"🔀 Review mode: Git branch comparison")
+            if compare_branch:
+                print(f"📦 Source branch: {compare_branch}")
+            if target_branch:
+                print(f"🎯 Target branch: {target_branch}")
+        else:
+            print(f"📊 Review scope: {scope}")
+        
+        if enable_gemini_review:
+            print(f"🌡️  AI temperature: {temperature}")
+        
         # Load model config for default prompt
         config = load_model_config()
         
@@ -1176,6 +1396,7 @@ Working examples:
             
             # Create minimal task data for template
             task_data = {
+                'total_phases': 0,
                 'current_phase_number': 'General Review',
                 'current_phase_description': 'Code review without specific task context',
                 'previous_phase_completed': '',
@@ -1267,7 +1488,7 @@ Working examples:
                     break
             
             if target_phase is None:
-                available_phases = [p['number'] for p in task_phases]
+                available_phases = [p['number'] for p in task_data['phases']]
                 error_msg = f"""Phase {phase_number} not found in task list
 
 Available phases: {', '.join(available_phases) if available_phases else 'none found'}
@@ -1321,7 +1542,7 @@ Working examples:
             if target_task is None:
                 # Get available tasks from all phases
                 available_tasks = []
-                for phase in task_phases:
+                for phase in task_data['phases']:
                     available_tasks.extend([t['number'] for t in phase.get('subtasks', [])])
                 
                 error_msg = f"""Task {task_number} not found in task list
@@ -1349,8 +1570,101 @@ Working examples:
                 'subtasks_completed': [f"{target_task['number']} {target_task['description']}"]
             })
         
-        # Get git changes
-        changed_files = get_changed_files(project_path)
+        # Get git changes based on review mode
+        changed_files = []
+        branch_comparison_data = None
+        
+        if current_mode == "github_pr":
+            # GitHub PR analysis mode
+            print(f"🔄 Fetching PR data from GitHub...")
+            try:
+                from github_pr_integration import get_complete_pr_analysis
+                pr_analysis = get_complete_pr_analysis(github_pr_url)
+                
+                # Convert PR file changes to our expected format
+                for file_change in pr_analysis['file_changes']['changed_files']:
+                    changed_files.append({
+                        'path': os.path.join(project_path, file_change['path']),
+                        'status': f"PR-{file_change['status']}",
+                        'content': file_change.get('patch', '[Content not available]')
+                    })
+                
+                # Store PR metadata for template
+                branch_comparison_data = {
+                    'mode': 'github_pr',
+                    'pr_data': pr_analysis['pr_data'],
+                    'summary': pr_analysis['file_changes']['summary'],
+                    'repository': pr_analysis['repository']
+                }
+                
+                print(f"✅ Found {len(changed_files)} changed files in PR")
+                print(f"📊 Files: +{branch_comparison_data['summary']['files_added']} "
+                      f"~{branch_comparison_data['summary']['files_modified']} "
+                      f"-{branch_comparison_data['summary']['files_deleted']}")
+                
+            except Exception as e:
+                print(f"❌ Failed to fetch PR data: {e}")
+                # Fallback to task list mode
+                changed_files = get_changed_files(project_path)
+                
+        elif current_mode == "branch_comparison":
+            # Git branch comparison mode  
+            print(f"🔄 Comparing git branches...")
+            try:
+                from git_branch_comparison import detect_primary_branch, validate_branch_exists, get_branch_diff
+                
+                # Determine source and target branches
+                if not target_branch:
+                    target_branch = detect_primary_branch(project_path)
+                    print(f"🎯 Auto-detected target branch: {target_branch}")
+                
+                if not compare_branch:
+                    # Get current branch
+                    result = subprocess.run(['git', 'branch', '--show-current'], 
+                                          cwd=project_path, capture_output=True, text=True, check=True)
+                    compare_branch = result.stdout.strip()
+                    print(f"📦 Using current branch: {compare_branch}")
+                
+                # Validate branches exist
+                if not validate_branch_exists(project_path, compare_branch):
+                    raise ValueError(f"Source branch '{compare_branch}' does not exist")
+                if not validate_branch_exists(project_path, target_branch):
+                    raise ValueError(f"Target branch '{target_branch}' does not exist")
+                
+                # Get branch diff
+                diff_data = get_branch_diff(project_path, compare_branch, target_branch)
+                
+                # Convert branch diff to our expected format
+                for file_change in diff_data['changed_files']:
+                    changed_files.append({
+                        'path': os.path.join(project_path, file_change['path']),
+                        'status': f"branch-{file_change['status']}",
+                        'content': file_change['content']
+                    })
+                
+                # Store branch comparison metadata
+                branch_comparison_data = {
+                    'mode': 'branch_comparison',
+                    'source_branch': compare_branch,
+                    'target_branch': target_branch,
+                    'commits': diff_data.get('commits', []),
+                    'summary': diff_data['summary']
+                }
+                
+                print(f"✅ Found {len(changed_files)} changed files between branches")
+                print(f"📊 Files: +{branch_comparison_data['summary']['files_added']} "
+                      f"~{branch_comparison_data['summary']['files_modified']} "
+                      f"-{branch_comparison_data['summary']['files_deleted']}")
+                if diff_data.get('commits'):
+                    print(f"📝 Commits: {len(diff_data['commits'])} commits ahead of {target_branch}")
+                
+            except Exception as e:
+                print(f"❌ Failed to compare branches: {e}")
+                # Fallback to task list mode
+                changed_files = get_changed_files(project_path)
+        else:
+            # Task list based mode (default)
+            changed_files = get_changed_files(project_path)
         
         # Generate file tree
         file_tree = generate_file_tree(project_path)
@@ -1369,7 +1683,9 @@ Working examples:
             'changed_files': changed_files,
             'scope': scope,
             'phase_number': phase_number if scope == "specific_phase" else None,
-            'task_number': task_number if scope == "specific_task" else None
+            'task_number': task_number if scope == "specific_task" else None,
+            'branch_comparison_data': branch_comparison_data,
+            'review_mode': current_mode
         }
         
         # Format template
@@ -1379,37 +1695,44 @@ Working examples:
         if output is None:
             timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
             
-            # Generate scope-specific filename
-            if scope == "recent_phase":
-                scope_suffix = "recent-phase"
-            elif scope == "full_project":
-                scope_suffix = "full-project"
-            elif scope == "specific_phase":
-                phase_safe = phase_number.replace(".", "-")
-                scope_suffix = f"phase-{phase_safe}"
-            elif scope == "specific_task":
-                task_safe = task_number.replace(".", "-")
-                scope_suffix = f"task-{task_safe}"
+            # Generate mode and scope-specific filename
+            if current_mode == "github_pr":
+                mode_prefix = "github-pr"
+            elif current_mode == "branch_comparison":
+                mode_prefix = "branch-comparison"
             else:
-                scope_suffix = "unknown"
+                # Task list based mode - use scope-specific naming
+                if scope == "recent_phase":
+                    mode_prefix = "recent-phase"
+                elif scope == "full_project":
+                    mode_prefix = "full-project"
+                elif scope == "specific_phase":
+                    phase_safe = phase_number.replace(".", "-")
+                    mode_prefix = f"phase-{phase_safe}"
+                elif scope == "specific_task":
+                    task_safe = task_number.replace(".", "-")
+                    mode_prefix = f"task-{task_safe}"
+                else:
+                    mode_prefix = "unknown"
             
-            output = os.path.join(project_path, f'code-review-context-{scope_suffix}-{timestamp}.md')
+            output = os.path.join(project_path, f'code-review-context-{mode_prefix}-{timestamp}.md')
         
         with open(output, 'w', encoding='utf-8') as f:
             f.write(review_context)
         
-        logger.info(f"Generated review context: {output}")
+        print(f"📝 Generated review context: {os.path.basename(output)}")
         
         # Send to Gemini for comprehensive review if enabled
         gemini_output = None
         if enable_gemini_review:
+            print(f"🔄 Sending to Gemini for AI code review...")
             gemini_output = send_to_gemini_for_review(review_context, project_path, temperature)
             if gemini_output:
-                logger.info(f"Gemini review generated: {gemini_output}")
+                print(f"✅ AI code review completed: {os.path.basename(gemini_output)}")
             else:
-                logger.warning("Gemini review generation failed or was skipped")
+                print(f"⚠️  AI code review failed or was skipped (check API key and model availability)")
         
-        return output
+        return output, gemini_output
         
     except Exception as e:
         logger.error(f"Error generating review context: {e}")
@@ -1440,6 +1763,19 @@ def cli_main():
   
   # Review individual task
   generate-code-review . --scope specific_task --task-number 1.3
+
+🔀 GIT BRANCH COMPARISON:
+  # Compare current branch against main/master
+  generate-code-review . --compare-branch feature/auth-system
+  
+  # Compare specific branches
+  generate-code-review . --compare-branch feature/payment --target-branch develop
+  
+  # Review GitHub Pull Request
+  generate-code-review --github-pr-url https://github.com/owner/repo/pull/123
+  
+  # Combined with existing features
+  generate-code-review . --compare-branch feature/new-ui --temperature 0.3
 
 🎛️ TEMPERATURE CONTROL:
   # Focused/deterministic review (good for production code)
@@ -1519,6 +1855,11 @@ def cli_main():
     parser.add_argument("--default-prompt", help="Custom default prompt when no task list exists")
     parser.add_argument("--temperature", type=float, default=0.5,
                       help="Temperature for AI model (default: 0.5, range: 0.0-2.0)")
+    
+    # Git branch comparison parameters
+    parser.add_argument("--compare-branch", help="Compare this branch against target branch (default: current branch)")
+    parser.add_argument("--target-branch", help="Target branch for comparison (default: auto-detect main/master)")
+    parser.add_argument("--github-pr-url", help="GitHub PR URL to review (e.g., 'https://github.com/owner/repo/pull/123')")
     
     args = parser.parse_args()
     
@@ -1620,7 +1961,7 @@ Working examples:
                 logger.warning(f"Invalid GEMINI_TEMPERATURE format, using default 0.5")
                 temperature = 0.5
         
-        output_path = main(
+        output_path, gemini_path = main(
             project_path=args.project_path,
             phase=args.phase,
             output=args.output,
@@ -1630,9 +1971,17 @@ Working examples:
             task_number=getattr(args, 'task_number'),
             temperature=temperature,
             task_list=getattr(args, 'task_list'),
-            default_prompt=getattr(args, 'default_prompt')
+            default_prompt=getattr(args, 'default_prompt'),
+            compare_branch=getattr(args, 'compare_branch'),
+            target_branch=getattr(args, 'target_branch'),
+            github_pr_url=getattr(args, 'github_pr_url')
         )
-        print(f"Review context generated: {output_path}")
+        
+        print(f"\n🎉 Code review process completed!")
+        files_generated = [os.path.basename(output_path)]
+        if gemini_path:
+            files_generated.append(os.path.basename(gemini_path))
+        print(f"📄 Files generated: {', '.join(files_generated)}")
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

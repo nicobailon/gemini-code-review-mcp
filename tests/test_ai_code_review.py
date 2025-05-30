@@ -120,7 +120,7 @@ Test PRD summary
                 # Removed builtins.open mock that conflicts with real file reading
 
                 result = generate_ai_review(str(context_file))
-                    assert result is not None
+                assert result is not None
     
     def test_validates_context_file_format(self):
         """Test validation of context file format"""
@@ -133,9 +133,9 @@ Test PRD summary
             with patch('ai_code_review.send_to_gemini_for_review') as mock_gemini:
                 mock_gemini.return_value = str(Path(temp_dir) / "review.md")
                 # Removed builtins.open mock that conflicts with real file reading
-                    # Should handle gracefully even with invalid format
-                    result = generate_ai_review(str(context_file))
-                    assert result is not None
+                # Should handle gracefully even with invalid format
+                result = generate_ai_review(str(context_file))
+                assert result is not None
 
 
 class TestModelParameterHandlingAndValidation:
@@ -152,9 +152,9 @@ class TestModelParameterHandlingAndValidation:
             with patch('ai_code_review.send_to_gemini_for_review') as mock_gemini:
                 mock_gemini.return_value = str(Path(temp_dir) / "review.md")
                 # Removed builtins.open mock that conflicts with real file reading
-                    # Should work without model parameter
-                    result = generate_ai_review(str(context_file))
-                    assert result is not None
+                # Should work without model parameter
+                result = generate_ai_review(str(context_file))
+                assert result is not None
     
     def test_accepts_valid_model_parameter(self):
         """Test that valid model parameter is accepted"""
@@ -172,7 +172,7 @@ class TestModelParameterHandlingAndValidation:
                     # Removed builtins.open mock that conflicts with real file reading
 
                     result = generate_ai_review(str(context_file), model=model)
-                        assert result is not None
+                    assert result is not None
     
     def test_validates_invalid_model_parameter(self):
         """Test validation of invalid model parameter"""
@@ -188,14 +188,14 @@ class TestModelParameterHandlingAndValidation:
                 with patch('ai_code_review.send_to_gemini_for_review') as mock_gemini:
                     mock_gemini.return_value = str(Path(temp_dir) / "review.md")
                     # Removed builtins.open mock that conflicts with real file reading
-                        # Should handle gracefully or raise appropriate error
-                        try:
-                            result = generate_ai_review(str(context_file), model=invalid_model)
-                            # If it doesn't raise an error, it should still work
-                            assert result is not None
-                        except (ValueError, TypeError):
-                            # Acceptable to raise validation errors
-                            pass
+                    # Should handle gracefully or raise appropriate error
+                    try:
+                        result = generate_ai_review(str(context_file), model=invalid_model)
+                        # If it doesn't raise an error, it should still work
+                        assert result is not None
+                    except (ValueError, TypeError):
+                        # Acceptable to raise validation errors
+                        pass
     
     def test_model_parameter_passed_to_gemini(self):
         """Test that model parameter is passed to Gemini integration"""
@@ -212,10 +212,10 @@ class TestModelParameterHandlingAndValidation:
                 # Removed builtins.open mock that conflicts with real file reading
 
                 with patch.dict(os.environ, {}, clear=True):  # Start with clean environment
-                        generate_ai_review(str(context_file), model=test_model)
-                        
-                        # Verify model was passed to Gemini function
-                        mock_gemini.assert_called_once()
+                    generate_ai_review(str(context_file), model=test_model)
+                    
+                    # Verify model was passed to Gemini function
+                    mock_gemini.assert_called_once()
     
     def test_model_parameter_sets_gemini_model_env_var(self):
         """Test that model parameter correctly sets GEMINI_MODEL environment variable"""
@@ -238,10 +238,10 @@ class TestModelParameterHandlingAndValidation:
                 # Removed builtins.open mock that conflicts with real file reading
 
                 with patch.dict(os.environ, {}, clear=True):  # Start with clean environment
-                        generate_ai_review(str(context_file), model=test_model)
-                        
-                        # Verify GEMINI_MODEL was set correctly during the call
-                        assert env_var_captured == test_model
+                    generate_ai_review(str(context_file), model=test_model)
+                    
+                    # Verify GEMINI_MODEL was set correctly during the call
+                    assert env_var_captured == test_model
             
             # Verify environment is cleaned up after the call
             assert 'GEMINI_MODEL' not in os.environ or os.environ.get('GEMINI_MODEL') != test_model
@@ -262,10 +262,10 @@ class TestModelParameterHandlingAndValidation:
                 # Removed builtins.open mock that conflicts with real file reading
 
                 with patch.dict(os.environ, {'GEMINI_MODEL': original_model}):
-                        generate_ai_review(str(context_file), model=test_model)
-                        
-                        # Verify original model is restored
-                        assert os.environ.get('GEMINI_MODEL') == original_model
+                    generate_ai_review(str(context_file), model=test_model)
+                    
+                    # Verify original model is restored
+                    assert os.environ.get('GEMINI_MODEL') == original_model
 
 
 class TestAIReviewOutputFormattingAndFileNaming:
@@ -501,7 +501,7 @@ class TestStandaloneToolSeparation:
                 # Removed builtins.open mock that conflicts with real file reading
 
                 result = generate_ai_review(str(context_file))
-                    assert result is not None
+                assert result is not None
     
     def test_clean_api_separation(self):
         """Test clean API separation between tools"""
@@ -516,6 +516,6 @@ class TestStandaloneToolSeparation:
             with patch('ai_code_review.send_to_gemini_for_review') as mock_gemini:
                 mock_gemini.return_value = str(Path(temp_dir) / "review.md")
                 # Removed builtins.open mock that conflicts with real file reading
-                    # Should only need context file path
-                    result = generate_ai_review(str(context_file))
-                    assert result is not None
+                # Should only need context file path
+                result = generate_ai_review(str(context_file))
+                assert result is not None
