@@ -34,9 +34,11 @@ async def generate_branch_comparison_review(
     compare_branch: Optional[str] = None,
     target_branch: Optional[str] = None,
     temperature: float = 0.5,
-    enable_gemini_review: bool = True
+    enable_gemini_review: bool = True,
+    include_claude_memory: bool = True,
+    include_cursor_rules: bool = False
 ) -> dict:
-    """Generate code review by comparing git branches.
+    """Generate code review by comparing git branches with configuration discovery.
     
     Args:
         project_path: Absolute path to project root directory
@@ -44,6 +46,8 @@ async def generate_branch_comparison_review(
         target_branch: Target branch for comparison (default: auto-detect main/master)
         temperature: Temperature for AI model (default: 0.5, range: 0.0-2.0)
         enable_gemini_review: Enable Gemini AI code review generation (default: true)
+        include_claude_memory: Include CLAUDE.md files in context (default: true)
+        include_cursor_rules: Include Cursor rules files in context (default: false)
     
     Returns:
         Success message with branch comparison results and generated files
@@ -96,7 +100,9 @@ async def generate_branch_comparison_review(
                     enable_gemini_review=enable_gemini_review,
                     temperature=temperature,
                     compare_branch=compare_branch,
-                    target_branch=target_branch
+                    target_branch=target_branch,
+                    include_claude_memory=include_claude_memory,
+                    include_cursor_rules=include_cursor_rules
                 )
             
             # Check captured output for error indicators
@@ -162,15 +168,19 @@ async def generate_pr_review(
     github_pr_url: Optional[str] = None,
     project_path: Optional[str] = None,
     temperature: float = 0.5,
-    enable_gemini_review: bool = True
+    enable_gemini_review: bool = True,
+    include_claude_memory: bool = True,
+    include_cursor_rules: bool = False
 ) -> dict:
-    """Generate code review for a GitHub Pull Request.
+    """Generate code review for a GitHub Pull Request with configuration discovery.
     
     Args:
         github_pr_url: GitHub PR URL (e.g., 'https://github.com/owner/repo/pull/123')
         project_path: Optional local project path for context (default: current directory)
         temperature: Temperature for AI model (default: 0.5, range: 0.0-2.0)
         enable_gemini_review: Enable Gemini AI code review generation (default: true)
+        include_claude_memory: Include CLAUDE.md files in context (default: true)
+        include_cursor_rules: Include Cursor rules files in context (default: false)
     
     Returns:
         Success message with PR analysis results and generated files
@@ -220,7 +230,9 @@ async def generate_pr_review(
                     project_path=project_path,
                     enable_gemini_review=enable_gemini_review,
                     temperature=temperature,
-                    github_pr_url=github_pr_url
+                    github_pr_url=github_pr_url,
+                    include_claude_memory=include_claude_memory,
+                    include_cursor_rules=include_cursor_rules
                 )
             
             # Check captured output for error indicators
@@ -298,9 +310,11 @@ def generate_code_review_context(
     current_phase: Optional[str] = None,
     output_path: Optional[str] = None,
     enable_gemini_review: bool = True,
-    temperature: float = 0.5
+    temperature: float = 0.5,
+    include_claude_memory: bool = True,
+    include_cursor_rules: bool = False
 ) -> str:
-    """Generate code review context with flexible scope options.
+    """Generate code review context with flexible scope options and configuration discovery.
     
     Args:
         project_path: Absolute path to project root directory
@@ -311,6 +325,8 @@ def generate_code_review_context(
         output_path: Custom output file path. If not provided, uses default timestamped path
         enable_gemini_review: Enable Gemini AI code review generation (default: true)
         temperature: Temperature for AI model (default: 0.5, range: 0.0-2.0)
+        include_claude_memory: Include CLAUDE.md files in context (default: true)
+        include_cursor_rules: Include Cursor rules files in context (default: false)
     
     Returns:
         Success message with generated content and output file path
@@ -367,7 +383,9 @@ def generate_code_review_context(
                 scope=scope,
                 phase_number=phase_number,
                 task_number=task_number,
-                temperature=temperature
+                temperature=temperature,
+                include_claude_memory=include_claude_memory,
+                include_cursor_rules=include_cursor_rules
             )
             
             # Build response with same feedback format as CLI
@@ -487,7 +505,7 @@ def main():
     """Entry point for uvx execution"""
     # FastMCP handles all the server setup, protocol, and routing
     # Use stdio transport explicitly (more reliable than SSE/streamable-http)
-    mcp.run(transport="stdio", log_level="ERROR")
+    mcp.run(transport="stdio")
 
 
 if __name__ == "__main__":

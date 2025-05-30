@@ -142,6 +142,22 @@ Claude: I'll generate a code review context using smart scope detection.
 [Tool Result] Successfully generated: code-review-context-full-project-20241201-143052.md
 ```
 
+**With Configuration Control:**
+```
+Human: Review my project but include Cursor rules and disable CLAUDE.md files
+
+Claude: I'll generate a review with Cursor rules enabled and CLAUDE.md disabled.
+
+[Tool Use: generate_code_review_context]
+{
+  "project_path": "/Users/myname/projects/my-app",
+  "include_claude_memory": false,
+  "include_cursor_rules": true
+}
+
+[Tool Result] 🔍 Discovered Cursor rules... ✅ Found 0 Claude memory files, 3 Cursor rules
+```
+
 #### Claude Code CLI Integration
 
 **Add this MCP server to Claude Code:**
@@ -229,6 +245,46 @@ claude mcp remove task-list-reviewer
 - `MAX_FILE_SIZE_MB`: File size limit (default: 10)
 - `DISABLE_THINKING`: Disable thinking mode (`true`/`false`)
 - `DISABLE_GROUNDING`: Disable web grounding (`true`/`false`)
+
+### 📋 Configuration File Integration
+
+**The tool can automatically discover and include project configuration files in code reviews.**
+
+#### 🔧 CLAUDE.md Files (Default: **ENABLED**)
+- **Project-level**: `/project/CLAUDE.md` - Project-specific guidelines
+- **User-level**: `~/.claude/CLAUDE.md` - Personal coding preferences  
+- **Enterprise-level**: System-wide policies (platform-specific)
+- **With imports**: Supports `@path/to/file.md` import syntax
+
+#### ⚙️ Cursor Rules (Default: **DISABLED**)
+- **Legacy format**: `.cursorrules` - Simple text rules
+- **Modern format**: `.cursor/rules/*.mdc` - Rich metadata with frontmatter
+- **Monorepo support**: Recursive discovery in nested directories
+
+#### 🎛️ Control Flags
+
+```bash
+# Default behavior (CLAUDE.md enabled, Cursor rules disabled)
+uvx task-list-code-review-mcp /path/to/project
+
+# Disable CLAUDE.md inclusion
+uvx task-list-code-review-mcp /path/to/project --no-claude-memory
+
+# Enable Cursor rules inclusion  
+uvx task-list-code-review-mcp /path/to/project --include-cursor-rules
+
+# Enable both configuration types
+uvx task-list-code-review-mcp /path/to/project --include-cursor-rules
+
+# Disable all configurations
+uvx task-list-code-review-mcp /path/to/project --no-claude-memory
+```
+
+#### 🎯 Smart Features
+- **Deduplication**: Handles `.gitignore` cases (tracked vs untracked files)
+- **Hierarchy**: Project configs override user configs override enterprise
+- **Caching**: File modification time tracking for performance
+- **Error handling**: Graceful degradation when files are malformed/missing
 
 ### Security Best Practices
 
@@ -444,68 +500,11 @@ Output: code-review-context-recent-phase-{timestamp}.md
 - Checkbox progress tracking (`- [ ]` / `- [x]`)
 - **Flexible**: Multiple task lists supported, auto-discovery available
 
-## 🚨 Troubleshooting
+## 🆘 Need Help?
 
-### Common Issues
-
-**API Key Not Found:**
-```bash
-ERROR: GEMINI_API_KEY not found
-```
-**Solution:**
-```bash
-# Get API key: https://ai.google.dev/gemini-api/docs/api-key
-export GEMINI_API_KEY=your_key_here
-# Or create ~/.task-list-code-review-mcp.env file
-```
-
-**Scope Parameter Errors:**
-```bash
-ERROR: phase_number is required when scope is 'specific_phase'
-```
-**Solution:**
-```bash
-uvx task-list-code-review-mcp /project --scope specific_phase --phase-number 2.0
-```
-
-**Task List Selection:**
-```bash
-Multiple task lists found: tasks-auth.md, tasks-payment.md
-Auto-selected most recent: tasks-payment.md
-```
-**Override Selection:**
-```bash
-uvx task-list-code-review-mcp . --task-list tasks-auth.md
-```
-
-**No Task Lists Found:**
-```bash
-INFO: No task list files found. Will use default prompt for code review.
-```
-**This is OK!** The tool works without task lists using intelligent defaults.
-
-**Custom Default Prompt:**
-```bash
-uvx task-list-code-review-mcp . --default-prompt "Focus on security vulnerabilities and performance issues"
-```
-
-### File Permissions
-```bash
-# Fix .env file permissions
-chmod 600 ~/.task-list-code-review-mcp.env
-
-# Fix context file permissions  
-chmod 644 /path/to/context.md
-```
-
-### Git Repository Issues
-```bash
-# Initialize git if needed
-git init
-
-# Ensure you're in a git repository
-ls -la .git
-```
+**Missing API key?** Get one at: https://ai.google.dev/gemini-api/docs/api-key  
+**Error messages?** The tool provides specific solutions for each issue  
+**Still stuck?** Check the [MCP Inspector Guide](./MCP_INSPECTOR_GUIDE.md) for testing
 
 ## 📋 What This Tool Generates
 
