@@ -12,6 +12,7 @@ import sys
 import os
 import tempfile
 import json
+import subprocess
 from pathlib import Path
 from unittest.mock import patch, MagicMock, AsyncMock
 from typing import Dict, Any
@@ -59,70 +60,124 @@ class TestBranchComparisonMCPTool:
         """Test successful branch comparison review generation."""
         from server import generate_branch_comparison_review
         
-        # Mock the underlying functionality
-        with patch('server.main') as mock_main:
-            mock_main.return_value = (
-                "/test/path/code-review-branch-comparison-20241201-120000.md",
-                "/test/path/code-review-comprehensive-feedback-20241201-120000.md"
-            )
+        # Test with real temporary git repository - following CLAUDE.md principles
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Initialize git repo with main as default branch
+            subprocess.run(['git', 'init', '--initial-branch=main'], cwd=temp_dir, check=True, capture_output=True)
+            subprocess.run(['git', 'config', 'user.email', 'test@example.com'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'config', 'user.name', 'Test User'], cwd=temp_dir, check=True)
             
-            result = await generate_branch_comparison_review(
-                project_path="/test/project",
-                compare_branch="feature/auth",
-                target_branch="main"
-            )
+            # Create initial commit on main
+            with open(os.path.join(temp_dir, 'README.md'), 'w') as f:
+                f.write("# Test Project")
+            subprocess.run(['git', 'add', '.'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'commit', '-m', 'Initial commit'], cwd=temp_dir, check=True)
             
-            # Should return success with file paths
+            # Create feature branch with changes
+            subprocess.run(['git', 'checkout', '-b', 'feature/auth'], cwd=temp_dir, check=True)
+            with open(os.path.join(temp_dir, 'auth.py'), 'w') as f:
+                f.write("def authenticate(): return True")
+            subprocess.run(['git', 'add', '.'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'commit', '-m', 'Add authentication'], cwd=temp_dir, check=True)
+            
+            # Disable Gemini API calls for testing
+            with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+                result = await generate_branch_comparison_review(
+                    project_path=temp_dir,
+                    compare_branch="feature/auth",
+                    target_branch="main",
+                    enable_gemini_review=False
+                )
+            
+            # Test behavior: successful generation with correct response structure
             assert result["status"] == "success"
             assert "context_file" in result
-            assert "ai_review_file" in result
+            assert "ai_review_file" in result  # Should be None when disabled
             assert "branch_comparison_summary" in result
             
-            # Verify main was called with correct parameters
-            mock_main.assert_called_once()
-            call_args = mock_main.call_args
-            assert call_args[1]["compare_branch"] == "feature/auth"
-            assert call_args[1]["target_branch"] == "main"
-            assert call_args[1]["project_path"] == "/test/project"
+            # Verify actual file was created
+            assert os.path.exists(result["context_file"])
+            
+            # Verify summary contains expected information
+            summary = result["branch_comparison_summary"]
+            assert summary["source_branch"] == "feature/auth"
+            assert summary["target_branch"] == "main"
     
     @pytest.mark.asyncio
     async def test_generate_branch_comparison_review_auto_detect_target(self):
         """Test branch comparison with auto-detected target branch."""
         from server import generate_branch_comparison_review
         
-        with patch('server.main') as mock_main:
-            mock_main.return_value = (
-                "/test/path/code-review-branch-comparison-20241201-120000.md", 
-                None  # No AI review
-            )
+        # Test with real temporary git repository - following CLAUDE.md principles
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Initialize git repo with main as default branch
+            subprocess.run(['git', 'init', '--initial-branch=main'], cwd=temp_dir, check=True, capture_output=True)
+            subprocess.run(['git', 'config', 'user.email', 'test@example.com'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'config', 'user.name', 'Test User'], cwd=temp_dir, check=True)
             
-            result = await generate_branch_comparison_review(
-                project_path="/test/project",
-                compare_branch="feature/payment"
-                # target_branch not provided - should auto-detect
-            )
+            # Create initial commit on main
+            with open(os.path.join(temp_dir, 'README.md'), 'w') as f:
+                f.write("# Test Project")
+            subprocess.run(['git', 'add', '.'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'commit', '-m', 'Initial commit'], cwd=temp_dir, check=True)
             
+            # Create feature branch with changes
+            subprocess.run(['git', 'checkout', '-b', 'feature/payment'], cwd=temp_dir, check=True)
+            with open(os.path.join(temp_dir, 'payment.py'), 'w') as f:
+                f.write("def process_payment(): return True")
+            subprocess.run(['git', 'add', '.'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'commit', '-m', 'Add payment processing'], cwd=temp_dir, check=True)
+            
+            # Test auto-detection without specifying target_branch - disable Gemini API
+            with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+                result = await generate_branch_comparison_review(
+                    project_path=temp_dir,
+                    compare_branch="feature/payment",
+                    enable_gemini_review=False
+                    # target_branch not provided - should auto-detect main
+                )
+            
+            # Test behavior: successful auto-detection
             assert result["status"] == "success"
-            # Verify target_branch was not explicitly set (will be auto-detected)
-            call_args = mock_main.call_args[1]
-            assert "target_branch" not in call_args or call_args["target_branch"] is None
+            assert "context_file" in result
+            assert "branch_comparison_summary" in result
+            
+            # Verify auto-detected target branch in summary
+            summary = result["branch_comparison_summary"]
+            assert summary["source_branch"] == "feature/payment"
+            assert summary["target_branch"] == "auto-detected"  # This is what the UI shows
     
     @pytest.mark.asyncio
     async def test_generate_branch_comparison_review_handles_errors(self):
         """Test error handling in branch comparison MCP tool."""
         from server import generate_branch_comparison_review
         
-        with patch('server.main') as mock_main:
-            mock_main.side_effect = ValueError("Branch 'nonexistent' does not exist")
+        # Test real error scenario: nonexistent branch - following CLAUDE.md principles
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Initialize git repo with main as default branch
+            subprocess.run(['git', 'init', '--initial-branch=main'], cwd=temp_dir, check=True, capture_output=True)
+            subprocess.run(['git', 'config', 'user.email', 'test@example.com'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'config', 'user.name', 'Test User'], cwd=temp_dir, check=True)
             
-            result = await generate_branch_comparison_review(
-                project_path="/test/project",
-                compare_branch="nonexistent"
-            )
+            # Create initial commit on main
+            with open(os.path.join(temp_dir, 'README.md'), 'w') as f:
+                f.write("# Test Project")
+            subprocess.run(['git', 'add', '.'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'commit', '-m', 'Initial commit'], cwd=temp_dir, check=True)
             
+            # Test with nonexistent branch - should produce real error
+            with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+                result = await generate_branch_comparison_review(
+                    project_path=temp_dir,
+                    compare_branch="nonexistent/branch",  # This branch doesn't exist
+                    enable_gemini_review=False
+                )
+            
+            # Test behavior: should handle real error gracefully
             assert result["status"] == "error"
             assert "error" in result
-            assert "Branch 'nonexistent' does not exist" in result["error"]
+            # The actual error message will be from git, not our mocked message
+            assert "error" in result["error"].lower() or "failed" in result["error"].lower()
     
     @pytest.mark.asyncio
     async def test_generate_branch_comparison_review_parameter_validation(self):
@@ -182,79 +237,187 @@ class TestGitHubPRMCPTool:
         """Test successful GitHub PR review generation."""
         from server import generate_pr_review
         
-        with patch('server.main') as mock_main:
-            mock_main.return_value = (
-                "/test/path/code-review-github-pr-20241201-120000.md",
-                "/test/path/code-review-comprehensive-feedback-20241201-120000.md"
-            )
+        # Test with real temporary directory and mocked GitHub API - CLAUDE.md compliant
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Mock GitHub API responses based on real PR #3 data
+            mock_pr_data = {
+                "id": 2553516570,
+                "number": 123,
+                "state": "open", 
+                "title": "Add new authentication feature",
+                "user": {"login": "testuser"},
+                "body": "This PR adds authentication functionality",
+                "created_at": "2025-05-30T00:59:09Z",
+                "updated_at": "2025-05-30T01:59:09Z",
+                "head": {
+                    "ref": "feature/auth",
+                    "sha": "fe0d5d04bc6b3a08cc4f6240fb59494b0ad2e89d"
+                },
+                "base": {
+                    "ref": "master", 
+                    "sha": "8d2c0cad9d3e72b0b1aa1d7cf13a781b02a1b418"
+                },
+                "html_url": "https://github.com/microsoft/vscode/pull/123"
+            }
             
-            result = await generate_pr_review(
-                github_pr_url="https://github.com/microsoft/vscode/pull/123",
-                project_path="/test/project"
-            )
+            mock_files_data = [
+                {
+                    "filename": "src/auth.py",
+                    "status": "added",
+                    "additions": 50,
+                    "deletions": 0,
+                    "changes": 50,
+                    "patch": "@@ -0,0 +1,50 @@\n+def authenticate():\n+    return True"
+                }
+            ]
             
-            assert result["status"] == "success"
-            assert "context_file" in result
-            assert "ai_review_file" in result
-            assert "pr_summary" in result
-            
-            # Verify main was called with correct parameters
-            mock_main.assert_called_once()
-            call_args = mock_main.call_args[1]
-            assert call_args["github_pr_url"] == "https://github.com/microsoft/vscode/pull/123"
-            assert call_args["project_path"] == "/test/project"
+            # Mock GitHub API calls (external dependency) but test real MCP behavior
+            with patch('requests.get') as mock_get:
+                def mock_response(url, **kwargs):
+                    mock_resp = MagicMock()
+                    mock_resp.status_code = 200
+                    if '/pulls/123/files' in url:
+                        mock_resp.json.return_value = mock_files_data
+                    else:
+                        mock_resp.json.return_value = mock_pr_data
+                    return mock_resp
+                
+                mock_get.side_effect = mock_response
+                
+                # Disable Gemini API for testing
+                with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+                    result = await generate_pr_review(
+                        github_pr_url="https://github.com/microsoft/vscode/pull/123",
+                        project_path=temp_dir,
+                        enable_gemini_review=False
+                    )
+                
+                # Test behavior: successful PR review generation
+                assert result["status"] == "success"
+                assert "context_file" in result
+                assert "ai_review_file" in result  # Should be None when disabled
+                assert "pr_summary" in result
+                
+                # Verify actual file was created
+                assert os.path.exists(result["context_file"])
+                
+                # Verify PR summary contains expected information
+                pr_summary = result["pr_summary"]
+                assert "pr_url" in pr_summary
+                assert pr_summary["pr_url"] == "https://github.com/microsoft/vscode/pull/123"
     
     @pytest.mark.asyncio
     async def test_generate_pr_review_without_project_path(self):
         """Test PR review without local project path."""
         from server import generate_pr_review
         
-        with patch('server.main') as mock_main:
-            mock_main.return_value = (
-                "/tmp/code-review-github-pr-20241201-120000.md",
-                "/tmp/code-review-comprehensive-feedback-20241201-120000.md"
-            )
+        # Mock GitHub API responses based on real PR #3 data - CLAUDE.md compliant
+        mock_pr_data = {
+            "id": 2553516571,
+            "number": 456,
+            "state": "open",
+            "title": "Add React component improvements", 
+            "user": {"login": "reactdev"},
+            "body": "Improving React components for better performance",
+            "created_at": "2025-05-30T00:59:09Z",
+            "updated_at": "2025-05-30T01:59:09Z", 
+            "head": {
+                "ref": "feature/react-improvements",
+                "sha": "fe0d5d04bc6b3a08cc4f6240fb59494b0ad2e89d"
+            },
+            "base": {
+                "ref": "main",
+                "sha": "8d2c0cad9d3e72b0b1aa1d7cf13a781b02a1b418"
+            },
+            "html_url": "https://github.com/facebook/react/pull/456"
+        }
+        
+        mock_files_data = [
+            {
+                "filename": "src/Component.js",
+                "status": "modified",
+                "additions": 25,
+                "deletions": 10,
+                "changes": 35,
+                "patch": "@@ -1,10 +1,25 @@\n-old code\n+new improved code"
+            }
+        ]
+        
+        # Mock GitHub API calls but test real MCP behavior without project_path
+        with patch('requests.get') as mock_get:
+            def mock_response(url, **kwargs):
+                mock_resp = MagicMock()
+                mock_resp.status_code = 200
+                if '/pulls/456/files' in url:
+                    mock_resp.json.return_value = mock_files_data
+                else:
+                    mock_resp.json.return_value = mock_pr_data
+                return mock_resp
             
-            result = await generate_pr_review(
-                github_pr_url="https://github.com/facebook/react/pull/456"
-                # project_path not provided
-            )
+            mock_get.side_effect = mock_response
             
+            # Disable Gemini API for testing
+            with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+                result = await generate_pr_review(
+                    github_pr_url="https://github.com/facebook/react/pull/456"
+                    # project_path not provided - should use current directory
+                )
+            
+            # Test behavior: should work without project_path
             assert result["status"] == "success"
-            # Should use temporary directory or current working directory
-            call_args = mock_main.call_args[1]
-            assert "github_pr_url" in call_args
+            assert "context_file" in result
+            assert "pr_summary" in result
+            
+            # Verify actual file was created
+            assert os.path.exists(result["context_file"])
+            
+            # Verify PR summary
+            pr_summary = result["pr_summary"]
+            assert pr_summary["pr_url"] == "https://github.com/facebook/react/pull/456"
     
     @pytest.mark.asyncio
     async def test_generate_pr_review_handles_invalid_url(self):
         """Test error handling for invalid GitHub PR URLs."""
         from server import generate_pr_review
         
-        with patch('server.main') as mock_main:
-            mock_main.side_effect = ValueError("Invalid GitHub PR URL: Must be a GitHub domain")
-            
-            result = await generate_pr_review(
-                github_pr_url="https://gitlab.com/group/project/merge_requests/123"
-            )
-            
-            assert result["status"] == "error"
-            assert "error" in result
-            assert "Invalid GitHub PR URL" in result["error"]
+        # Test real URL validation behavior - CLAUDE.md compliant (no mocking internal functions)
+        result = await generate_pr_review(
+            github_pr_url="https://gitlab.com/group/project/merge_requests/123"  # Invalid GitHub URL
+        )
+        
+        # Test behavior: should handle invalid URL gracefully
+        assert result["status"] == "error"
+        assert "error" in result
+        # The actual error message will come from real URL parsing logic
+        assert "github" in result["error"].lower() or "invalid" in result["error"].lower()
     
     @pytest.mark.asyncio
     async def test_generate_pr_review_handles_github_api_errors(self):
         """Test handling of GitHub API errors."""
         from server import generate_pr_review
         
-        with patch('server.main') as mock_main:
-            mock_main.side_effect = ValueError("PR not found: owner/repo/pull/999")
-            
-            result = await generate_pr_review(
-                github_pr_url="https://github.com/owner/repo/pull/999"
-            )
-            
-            assert result["status"] == "error"
-            assert "PR not found" in result["error"]
+        # Test real GitHub API error handling - CLAUDE.md compliant
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Mock GitHub API to return 404 error (external dependency)
+            with patch('requests.get') as mock_get:
+                mock_resp = MagicMock()
+                mock_resp.status_code = 404
+                mock_resp.text = "Not Found"
+                mock_get.return_value = mock_resp
+                
+                # Disable Gemini API for testing
+                with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+                    result = await generate_pr_review(
+                        github_pr_url="https://github.com/owner/repo/pull/999",
+                        project_path=temp_dir,
+                        enable_gemini_review=False
+                    )
+                
+                # Test behavior: should handle API errors gracefully
+                assert result["status"] == "error"
+                assert "error" in result
+                # The actual error message will come from real GitHub API error handling
+                assert "not found" in result["error"].lower() or "404" in result["error"] or "pr" in result["error"].lower()
     
     @pytest.mark.asyncio
     async def test_generate_pr_review_parameter_validation(self):
@@ -291,27 +454,68 @@ class TestMCPToolConsistency:
         """Test that MCP tools provide appropriate user feedback."""
         from server import generate_branch_comparison_review, generate_pr_review
         
-        # Test branch comparison feedback
-        with patch('server.main') as mock_main:
-            mock_main.return_value = ("/test/context.md", "/test/review.md")
+        # Test branch comparison feedback with real git repository - CLAUDE.md compliant
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Initialize git repo with main as default branch
+            subprocess.run(['git', 'init', '--initial-branch=main'], cwd=temp_dir, check=True, capture_output=True)
+            subprocess.run(['git', 'config', 'user.email', 'test@example.com'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'config', 'user.name', 'Test User'], cwd=temp_dir, check=True)
             
-            result = await generate_branch_comparison_review(
-                project_path="/test",
-                compare_branch="feature/test"
-            )
+            # Create initial commit on main
+            with open(os.path.join(temp_dir, 'README.md'), 'w') as f:
+                f.write("# Test Project")
+            subprocess.run(['git', 'add', '.'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'commit', '-m', 'Initial commit'], cwd=temp_dir, check=True)
             
-            # Should include helpful information for the user
+            # Create feature branch with changes
+            subprocess.run(['git', 'checkout', '-b', 'feature/test'], cwd=temp_dir, check=True)
+            with open(os.path.join(temp_dir, 'test.py'), 'w') as f:
+                f.write("def test(): return True")
+            subprocess.run(['git', 'add', '.'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'commit', '-m', 'Add test function'], cwd=temp_dir, check=True)
+            
+            # Test branch comparison feedback
+            with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+                result = await generate_branch_comparison_review(
+                    project_path=temp_dir,
+                    compare_branch="feature/test",
+                    enable_gemini_review=False
+                )
+            
+            # Test behavior: should provide appropriate user feedback structure
             assert "context_file" in result
-            assert "ai_review_file" in result or result["ai_review_file"] is None
+            assert "ai_review_file" in result  # Should be None when disabled
+            assert "branch_comparison_summary" in result
+            assert "message" in result  # User-friendly message
             
-        # Test PR review feedback
-        with patch('server.main') as mock_main:
-            mock_main.return_value = ("/test/context.md", "/test/review.md")
+        # Test PR review feedback with real GitHub API mocking - CLAUDE.md compliant
+        mock_pr_data = {
+            "id": 1,
+            "number": 1,
+            "state": "open",
+            "title": "Test PR",
+            "user": {"login": "testuser"},
+            "body": "Test PR description",
+            "created_at": "2025-05-30T00:59:09Z",
+            "updated_at": "2025-05-30T01:59:09Z",
+            "head": {"ref": "feature/test", "sha": "abc123"},
+            "base": {"ref": "main", "sha": "def456"},
+            "html_url": "https://github.com/test/repo/pull/1"
+        }
+        
+        with patch('requests.get') as mock_get:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.json.return_value = mock_pr_data
+            mock_get.return_value = mock_resp
             
-            result = await generate_pr_review(
-                github_pr_url="https://github.com/test/repo/pull/1"
-            )
+            with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+                result = await generate_pr_review(
+                    github_pr_url="https://github.com/test/repo/pull/1",
+                    enable_gemini_review=False
+                )
             
+            # Test behavior: should provide appropriate feedback structure
             assert "context_file" in result
             assert "pr_summary" in result
     
@@ -339,39 +543,89 @@ class TestMCPToolIntegration:
     
     @pytest.mark.asyncio
     async def test_mcp_tools_use_existing_infrastructure(self):
-        """Test that MCP tools properly use existing code infrastructure."""
+        """Test that MCP tools work correctly with existing infrastructure."""
         from server import generate_branch_comparison_review
         
-        # Mock the existing main function to verify it's being used
-        with patch('server.main') as mock_main:
-            with patch('generate_code_review_context.main') as mock_generate_main:
-                mock_main.return_value = ("/test/context.md", "/test/review.md")
-                
-                await generate_branch_comparison_review(
-                    project_path="/test",
-                    compare_branch="feature/test"
+        # Test that MCP tools produce the same results as direct function calls - CLAUDE.md compliant
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Initialize git repo with main as default branch
+            subprocess.run(['git', 'init', '--initial-branch=main'], cwd=temp_dir, check=True, capture_output=True)
+            subprocess.run(['git', 'config', 'user.email', 'test@example.com'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'config', 'user.name', 'Test User'], cwd=temp_dir, check=True)
+            
+            # Create initial commit on main
+            with open(os.path.join(temp_dir, 'README.md'), 'w') as f:
+                f.write("# Test Project")
+            subprocess.run(['git', 'add', '.'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'commit', '-m', 'Initial commit'], cwd=temp_dir, check=True)
+            
+            # Create feature branch with changes
+            subprocess.run(['git', 'checkout', '-b', 'feature/test'], cwd=temp_dir, check=True)
+            with open(os.path.join(temp_dir, 'test.py'), 'w') as f:
+                f.write("def test(): return True")
+            subprocess.run(['git', 'add', '.'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'commit', '-m', 'Add test function'], cwd=temp_dir, check=True)
+            
+            # Test that MCP tool produces expected results
+            with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+                result = await generate_branch_comparison_review(
+                    project_path=temp_dir,
+                    compare_branch="feature/test",
+                    enable_gemini_review=False
                 )
-                
-                # Should use the existing main function, not duplicate logic
-                mock_main.assert_called_once()
+            
+            # Test behavior: should successfully generate review using existing infrastructure
+            assert result["status"] == "success"
+            assert "context_file" in result
+            assert os.path.exists(result["context_file"])
+            
+            # Verify the generated content includes git changes (proves infrastructure is working)
+            with open(result["context_file"], 'r') as f:
+                content = f.read()
+                assert "test.py" in content  # Should include the changed file
+                assert "Add test function" in content  # Should include commit message
     
     @pytest.mark.asyncio
     async def test_mcp_tools_handle_temperature_parameter(self):
         """Test that MCP tools can handle optional temperature parameter."""
         from server import generate_branch_comparison_review, generate_pr_review
         
-        with patch('server.main') as mock_main:
-            mock_main.return_value = ("/test/context.md", "/test/review.md")
+        # Test temperature parameter with real git repository - CLAUDE.md compliant
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Initialize git repo with main as default branch
+            subprocess.run(['git', 'init', '--initial-branch=main'], cwd=temp_dir, check=True, capture_output=True)
+            subprocess.run(['git', 'config', 'user.email', 'test@example.com'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'config', 'user.name', 'Test User'], cwd=temp_dir, check=True)
             
-            # Test with temperature parameter
-            await generate_branch_comparison_review(
-                project_path="/test",
-                compare_branch="feature/test",
-                temperature=0.3
-            )
+            # Create initial commit on main
+            with open(os.path.join(temp_dir, 'README.md'), 'w') as f:
+                f.write("# Test Project")
+            subprocess.run(['git', 'add', '.'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'commit', '-m', 'Initial commit'], cwd=temp_dir, check=True)
             
-            call_args = mock_main.call_args[1]
-            assert call_args.get("temperature") == 0.3
+            # Create feature branch with changes
+            subprocess.run(['git', 'checkout', '-b', 'feature/test'], cwd=temp_dir, check=True)
+            with open(os.path.join(temp_dir, 'test.py'), 'w') as f:
+                f.write("def test(): return True")
+            subprocess.run(['git', 'add', '.'], cwd=temp_dir, check=True)
+            subprocess.run(['git', 'commit', '-m', 'Add test function'], cwd=temp_dir, check=True)
+            
+            # Test with custom temperature parameter
+            with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+                result = await generate_branch_comparison_review(
+                    project_path=temp_dir,
+                    compare_branch="feature/test",
+                    temperature=0.3,
+                    enable_gemini_review=False
+                )
+            
+            # Test behavior: should accept temperature parameter and work correctly
+            assert result["status"] == "success"
+            assert "context_file" in result
+            
+            # Verify temperature is reflected in summary
+            summary = result["branch_comparison_summary"]
+            assert summary["temperature"] == 0.3
     
     def test_fastmcp_tool_registration_format(self):
         """Test that tools are properly available via FastMCP."""

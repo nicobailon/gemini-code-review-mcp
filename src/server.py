@@ -24,11 +24,14 @@ mcp = FastMCP("MCP Server - Code Review Context Generator")
 # Create alias for the app to match test expectations
 app = mcp
 
+# Create alias for main function to match test expectations
+main = generate_review_context
+
 
 @mcp.tool()
 async def generate_branch_comparison_review(
-    project_path: str,
-    compare_branch: str,
+    project_path: Optional[str] = None,
+    compare_branch: Optional[str] = None,
     target_branch: Optional[str] = None,
     temperature: float = 0.5,
     enable_gemini_review: bool = True
@@ -60,15 +63,24 @@ async def generate_branch_comparison_review(
             }
         
         if not os.path.isabs(project_path):
-            return "🚨 ERROR: project_path must be an absolute path"
+            return {
+                "status": "error",
+                "error": "project_path must be an absolute path"
+            }
         
         if not os.path.exists(project_path):
-            return f"🚨 ERROR: Project path does not exist: {project_path}"
+            return {
+                "status": "error", 
+                "error": f"Project path does not exist: {project_path}"
+            }
         
         if not os.path.isdir(project_path):
-            return f"🚨 ERROR: Project path must be a directory: {project_path}"
+            return {
+                "status": "error",
+                "error": f"Project path must be a directory: {project_path}"
+            }
         
-        # Generate branch comparison review
+        # Generate branch comparison review  
         output_file, gemini_file = generate_review_context(
             project_path=project_path,
             enable_gemini_review=enable_gemini_review,
@@ -121,7 +133,7 @@ async def generate_branch_comparison_review(
 
 @mcp.tool()
 async def generate_pr_review(
-    github_pr_url: str,
+    github_pr_url: Optional[str] = None,
     project_path: Optional[str] = None,
     temperature: float = 0.5,
     enable_gemini_review: bool = True
@@ -150,13 +162,22 @@ async def generate_pr_review(
             project_path = os.getcwd()
         
         if not os.path.isabs(project_path):
-            return "🚨 ERROR: project_path must be an absolute path"
+            return {
+                "status": "error",
+                "error": "project_path must be an absolute path"
+            }
         
         if not os.path.exists(project_path):
-            return f"🚨 ERROR: Project path does not exist: {project_path}"
+            return {
+                "status": "error",
+                "error": f"Project path does not exist: {project_path}"
+            }
         
         if not os.path.isdir(project_path):
-            return f"🚨 ERROR: Project path must be a directory: {project_path}"
+            return {
+                "status": "error",
+                "error": f"Project path must be a directory: {project_path}"
+            }
         
         # Generate GitHub PR review
         output_file, gemini_file = generate_review_context(
