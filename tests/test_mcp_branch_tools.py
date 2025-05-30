@@ -284,8 +284,8 @@ class TestGitHubPRMCPTool:
                 
                 mock_get.side_effect = mock_response
                 
-                # Disable Gemini API for testing
-                with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+                # Disable Gemini API for testing, provide GitHub token for authentication
+                with patch.dict(os.environ, {'GEMINI_API_KEY': '', 'GITHUB_TOKEN': 'test_token_123'}):
                     result = await generate_pr_review(
                         github_pr_url="https://github.com/microsoft/vscode/pull/123",
                         project_path=temp_dir,
@@ -356,8 +356,8 @@ class TestGitHubPRMCPTool:
             
             mock_get.side_effect = mock_response
             
-            # Disable Gemini API for testing
-            with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+            # Disable Gemini API for testing, provide GitHub token for authentication
+            with patch.dict(os.environ, {'GEMINI_API_KEY': '', 'GITHUB_TOKEN': 'test_token_456'}):
                 result = await generate_pr_review(
                     github_pr_url="https://github.com/facebook/react/pull/456"
                     # project_path not provided - should use current directory
@@ -405,8 +405,8 @@ class TestGitHubPRMCPTool:
                 mock_resp.text = "Not Found"
                 mock_get.return_value = mock_resp
                 
-                # Disable Gemini API for testing
-                with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+                # Disable Gemini API for testing, provide GitHub token for authentication  
+                with patch.dict(os.environ, {'GEMINI_API_KEY': '', 'GITHUB_TOKEN': 'test_token_999'}):
                     result = await generate_pr_review(
                         github_pr_url="https://github.com/owner/repo/pull/999",
                         project_path=temp_dir,
@@ -503,13 +503,31 @@ class TestMCPToolConsistency:
             "html_url": "https://github.com/test/repo/pull/1"
         }
         
+        # Mock files data as well
+        mock_files_data = [
+            {
+                "filename": "test.py",
+                "status": "added",
+                "additions": 1,
+                "deletions": 0,
+                "changes": 1,
+                "patch": "@@ -0,0 +1,1 @@\n+def test(): return True"
+            }
+        ]
+        
         with patch('requests.get') as mock_get:
-            mock_resp = MagicMock()
-            mock_resp.status_code = 200
-            mock_resp.json.return_value = mock_pr_data
-            mock_get.return_value = mock_resp
+            def mock_response(url, **kwargs):
+                mock_resp = MagicMock()
+                mock_resp.status_code = 200
+                if '/pulls/1/files' in url:
+                    mock_resp.json.return_value = mock_files_data
+                else:
+                    mock_resp.json.return_value = mock_pr_data
+                return mock_resp
             
-            with patch.dict(os.environ, {'GEMINI_API_KEY': ''}):
+            mock_get.side_effect = mock_response
+            
+            with patch.dict(os.environ, {'GEMINI_API_KEY': '', 'GITHUB_TOKEN': 'test_token_123'}):
                 result = await generate_pr_review(
                     github_pr_url="https://github.com/test/repo/pull/1",
                     enable_gemini_review=False
