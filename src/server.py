@@ -81,13 +81,39 @@ async def generate_branch_comparison_review(
             }
         
         # Generate branch comparison review  
-        output_file, gemini_file = generate_review_context(
-            project_path=project_path,
-            enable_gemini_review=enable_gemini_review,
-            temperature=temperature,
-            compare_branch=compare_branch,
-            target_branch=target_branch
-        )
+        import io
+        import sys
+        from contextlib import redirect_stdout, redirect_stderr
+        
+        # Capture stdout to detect error messages
+        stdout_capture = io.StringIO()
+        stderr_capture = io.StringIO()
+        
+        try:
+            with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
+                output_file, gemini_file = generate_review_context(
+                    project_path=project_path,
+                    enable_gemini_review=enable_gemini_review,
+                    temperature=temperature,
+                    compare_branch=compare_branch,
+                    target_branch=target_branch
+                )
+            
+            # Check captured output for error indicators
+            captured_output = stdout_capture.getvalue()
+            if ("❌ Failed to compare branches" in captured_output or 
+                "Source branch" in captured_output and "does not exist" in captured_output):
+                return {
+                    "status": "error", 
+                    "error": f"Branch comparison failed: Source branch '{compare_branch}' does not exist"
+                }
+                
+        except ValueError as e:
+            # This catches explicit errors from the generate_review_context function
+            return {
+                "status": "error",
+                "error": f"Branch comparison failed: {str(e)}"
+            }
         
         # Build response with user-friendly feedback
         response_parts = []
@@ -180,12 +206,47 @@ async def generate_pr_review(
             }
         
         # Generate GitHub PR review
-        output_file, gemini_file = generate_review_context(
-            project_path=project_path,
-            enable_gemini_review=enable_gemini_review,
-            temperature=temperature,
-            github_pr_url=github_pr_url
-        )
+        import io
+        import sys
+        from contextlib import redirect_stdout, redirect_stderr
+        
+        # Capture stdout to detect error messages
+        stdout_capture = io.StringIO()
+        stderr_capture = io.StringIO()
+        
+        try:
+            with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
+                output_file, gemini_file = generate_review_context(
+                    project_path=project_path,
+                    enable_gemini_review=enable_gemini_review,
+                    temperature=temperature,
+                    github_pr_url=github_pr_url
+                )
+            
+            # Check captured output for error indicators
+            captured_output = stdout_capture.getvalue()
+            if ("❌ Failed to fetch PR data" in captured_output):
+                # Extract the specific error message
+                if "Invalid GitHub token" in captured_output:
+                    error_msg = "Invalid GitHub token or insufficient permissions"
+                elif "PR not found" in captured_output:
+                    error_msg = "PR not found"
+                elif "Invalid GitHub PR URL" in captured_output:
+                    error_msg = "Invalid GitHub PR URL"
+                else:
+                    error_msg = "Failed to fetch PR data"
+                
+                return {
+                    "status": "error",
+                    "error": f"GitHub PR review failed: {error_msg}"
+                }
+                
+        except ValueError as e:
+            # This catches explicit errors from the generate_review_context function
+            return {
+                "status": "error",
+                "error": f"GitHub PR review failed: {str(e)}"
+            }
         
         # Build response with user-friendly feedback
         response_parts = []
