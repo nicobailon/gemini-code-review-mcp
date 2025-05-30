@@ -1343,7 +1343,7 @@ Working examples:
             raise ValueError(error_msg)
     
     try:
-        # Initial user feedback
+        # Initial user feedback  
         print(f"🔍 Analyzing project: {os.path.basename(os.path.abspath(project_path))}")
         
         # Display review mode
@@ -1358,7 +1358,7 @@ Working examples:
             if target_branch:
                 print(f"🎯 Target branch: {target_branch}")
         else:
-            print(f"📊 Review mode: Task list based ({scope})")
+            print(f"📊 Review scope: {scope}")
         
         if enable_gemini_review:
             print(f"🌡️  AI temperature: {temperature}")

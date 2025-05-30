@@ -105,7 +105,7 @@ class TestGitHubAPIIntegration:
         """Test successful PR data retrieval from GitHub API."""
         from github_pr_integration import fetch_pr_data
         
-        # Mock successful API response
+        # Mock successful API response with realistic GitHub API data
         mock_response_data = {
             "number": 123,
             "title": "Add new feature",
@@ -121,7 +121,8 @@ class TestGitHubAPIIntegration:
                 "sha": "def456ghi789"
             },
             "created_at": "2024-01-01T00:00:00Z",
-            "updated_at": "2024-01-02T00:00:00Z"
+            "updated_at": "2024-01-02T00:00:00Z",
+            "html_url": "https://github.com/owner/repo/pull/123"
         }
         
         with patch('requests.get') as mock_get:
