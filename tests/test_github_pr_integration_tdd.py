@@ -272,7 +272,7 @@ class TestPRFileChanges:
                 "additions": 0,
                 "deletions": 30,
                 "changes": 30,
-                "patch": None
+                "patch": "@@ -1,30 +0,0 @@\n-# This file is being deleted\n-def old_function():\n-    pass\n-# ... (30 lines deleted)"
             }
         ]
         
@@ -301,7 +301,8 @@ class TestPRFileChanges:
             # Check deleted file
             deleted_file = next(f for f in result['changed_files'] if f['status'] == 'removed')
             assert deleted_file['path'] == 'old_file.py'
-            assert deleted_file['patch'] is None
+            # Real GitHub API returns patch data for deleted files, not None
+            assert deleted_file['patch'] is not None
     
     def test_get_pr_file_changes_includes_statistics(self):
         """Test that file changes include summary statistics."""

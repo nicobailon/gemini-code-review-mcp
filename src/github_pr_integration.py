@@ -257,13 +257,12 @@ def get_pr_file_changes(owner: str, repo: str, pr_number: int, token: str,
             elif status == 'removed':
                 files_deleted += 1
             
-            # Handle patch data
+            # Handle patch data - pass through what GitHub API provides
             patch = file_data.get('patch')
             if patch is None:
-                if status == 'removed':
-                    patch = "[File deleted]"
-                else:
-                    patch = "[Binary file]"
+                # Only replace None patches for binary files, not deleted files
+                # Real GitHub API provides patch data for deleted files
+                patch = "[Binary file]"
             
             total_additions += file_data.get('additions', 0)
             total_deletions += file_data.get('deletions', 0)
