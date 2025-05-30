@@ -228,8 +228,8 @@ D\told_file.py"""
         
         # Test with a real temporary git repository
         with tempfile.TemporaryDirectory() as temp_dir:
-            # Initialize git repo
-            subprocess.run(['git', 'init'], cwd=temp_dir, check=True, capture_output=True)
+            # Initialize git repo with main as default branch
+            subprocess.run(['git', 'init', '--initial-branch=main'], cwd=temp_dir, check=True, capture_output=True)
             subprocess.run(['git', 'config', 'user.email', 'test@example.com'], cwd=temp_dir, check=True)
             subprocess.run(['git', 'config', 'user.name', 'Test User'], cwd=temp_dir, check=True)
             
@@ -265,8 +265,8 @@ D\told_file.py"""
         
         # Test with a real temporary git repository and binary file
         with tempfile.TemporaryDirectory() as temp_dir:
-            # Initialize git repo
-            subprocess.run(['git', 'init'], cwd=temp_dir, check=True, capture_output=True)
+            # Initialize git repo with main as default branch
+            subprocess.run(['git', 'init', '--initial-branch=main'], cwd=temp_dir, check=True, capture_output=True)
             subprocess.run(['git', 'config', 'user.email', 'test@example.com'], cwd=temp_dir, check=True)
             subprocess.run(['git', 'config', 'user.name', 'Test User'], cwd=temp_dir, check=True)
             
@@ -304,8 +304,8 @@ D\told_file.py"""
         
         # Test with a real temporary git repository with multiple commits
         with tempfile.TemporaryDirectory() as temp_dir:
-            # Initialize git repo
-            subprocess.run(['git', 'init'], cwd=temp_dir, check=True, capture_output=True)
+            # Initialize git repo with main as default branch
+            subprocess.run(['git', 'init', '--initial-branch=main'], cwd=temp_dir, check=True, capture_output=True)
             subprocess.run(['git', 'config', 'user.email', 'test@example.com'], cwd=temp_dir, check=True)
             subprocess.run(['git', 'config', 'user.name', 'Test User'], cwd=temp_dir, check=True)
             
