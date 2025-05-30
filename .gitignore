@@ -19,6 +19,7 @@ review-context-*.md
 code-review-*.md
 /*.md
 !README.md
+/tasks/*.md
 /tasks/*.dist-info/
 .cursor/
 .cursorrules
