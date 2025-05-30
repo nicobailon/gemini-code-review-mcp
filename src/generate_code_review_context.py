@@ -914,30 +914,53 @@ def send_to_gemini_for_review(context_content: str, project_path: str, temperatu
         supports_grounding = 'gemini-1.5' in model_config or 'gemini-2.0' in model_config or 'gemini-2.5' in model_config
         supports_thinking = model_config in config['model_capabilities']['thinking_mode_supported']
         
-        # Log model and capabilities
-        capabilities = []
-        if supports_url_context: capabilities.append("URL context")
-        if supports_grounding: capabilities.append("web grounding") 
-        if supports_thinking: capabilities.append("thinking mode")
+        # Determine what features will actually be enabled (considering disable flags)
+        actual_capabilities = []
+        disable_url_context = os.getenv('DISABLE_URL_CONTEXT', 'false').lower() == 'true'
+        disable_grounding = os.getenv('DISABLE_GROUNDING', 'false').lower() == 'true'
+        disable_thinking = os.getenv('DISABLE_THINKING', 'false').lower() == 'true'
         
-        capabilities_text = f" (capabilities: {', '.join(capabilities)})" if capabilities else " (basic capabilities)"
-        logger.info(f"Using Gemini model: {model_config}{capabilities_text}")
+        # Check what will actually be enabled
+        url_context_enabled = supports_url_context and not disable_url_context
+        grounding_enabled = supports_grounding and not disable_grounding
+        thinking_enabled = supports_thinking and not disable_thinking
+        
+        # Build capabilities list for user feedback
+        if url_context_enabled: actual_capabilities.append("URL context")
+        if grounding_enabled: actual_capabilities.append("web grounding") 
+        if thinking_enabled: actual_capabilities.append("thinking mode")
+        
+        # Enhanced user feedback for CLI
+        print(f"🤖 Using Gemini model: {model_config}")
+        if actual_capabilities:
+            print(f"✨ Enhanced features enabled: {', '.join(actual_capabilities)}")
+            if thinking_enabled:
+                thinking_budget = os.getenv('THINKING_BUDGET')
+                budget_info = f" (budget: {thinking_budget} tokens)" if thinking_budget else " (auto-budget)"
+                print(f"   💭 Thinking mode: Deep reasoning{budget_info}")
+            if grounding_enabled:
+                print(f"   🌐 Web grounding: Real-time information lookup")
+            if url_context_enabled:
+                print(f"   🔗 URL context: Enhanced web content understanding")
+        else:
+            print(f"⚡ Standard features: Basic text generation")
+        
+        # Log for debugging (less verbose than user output)
+        capabilities_text = f" (features: {', '.join(actual_capabilities)})" if actual_capabilities else " (basic)"
+        logger.info(f"Gemini configuration: {model_config}{capabilities_text}")
         
         # Configure tools (enabled by default with opt-out)
         tools = []
         
         # URL Context - enabled by default for supported models
-        disable_url_context = os.getenv('DISABLE_URL_CONTEXT', 'false').lower() == 'true'
-        if supports_url_context and not disable_url_context:
+        if url_context_enabled:
             try:
                 tools.append(types.Tool(url_context=types.UrlContext()))
             except (AttributeError, TypeError) as e:
                 logger.warning(f"URL context configuration failed: {e}")
         
         # Google Search Grounding - enabled by default for supported models
-        disable_grounding = os.getenv('DISABLE_GROUNDING', 'false').lower() == 'true'
-        
-        if supports_grounding and not disable_grounding:
+        if grounding_enabled:
             try:
                 # Use GoogleSearch for newer models (Gemini 2.0+, 2.5+)
                 if 'gemini-2.0' in model_config or 'gemini-2.5' in model_config:
@@ -952,11 +975,10 @@ def send_to_gemini_for_review(context_content: str, project_path: str, temperatu
         
         # Configure thinking mode - enabled by default for supported models
         thinking_config = None
-        disable_thinking = os.getenv('DISABLE_THINKING', 'false').lower() == 'true'
         thinking_budget = os.getenv('THINKING_BUDGET')  # Let model auto-adjust if not specified
         include_thoughts = os.getenv('INCLUDE_THOUGHTS', 'true').lower() == 'true'
         
-        if supports_thinking and not disable_thinking:
+        if thinking_enabled:
             try:
                 if 'gemini-2.5-flash' in model_config:
                     # Full thinking support with optional budget control
@@ -1073,7 +1095,7 @@ def main(project_path: str = None, phase: str = None, output: str = None, enable
         task_number: Task number for specific_task scope (e.g., "1.2")
         
     Returns:
-        Path to generated file
+        Tuple of (context_file_path, gemini_review_path). gemini_review_path is None if not generated.
     """
     if project_path is None:
         project_path = os.getcwd()
@@ -1143,6 +1165,12 @@ Working examples:
             raise ValueError(error_msg)
     
     try:
+        # Initial user feedback
+        print(f"🔍 Analyzing project: {os.path.basename(os.path.abspath(project_path))}")
+        print(f"📊 Review scope: {scope}")
+        if enable_gemini_review:
+            print(f"🌡️  AI temperature: {temperature}")
+        
         # Load model config for default prompt
         config = load_model_config()
         
@@ -1398,18 +1426,19 @@ Working examples:
         with open(output, 'w', encoding='utf-8') as f:
             f.write(review_context)
         
-        logger.info(f"Generated review context: {output}")
+        print(f"📝 Generated review context: {os.path.basename(output)}")
         
         # Send to Gemini for comprehensive review if enabled
         gemini_output = None
         if enable_gemini_review:
+            print(f"🔄 Sending to Gemini for AI code review...")
             gemini_output = send_to_gemini_for_review(review_context, project_path, temperature)
             if gemini_output:
-                logger.info(f"Gemini review generated: {gemini_output}")
+                print(f"✅ AI code review completed: {os.path.basename(gemini_output)}")
             else:
-                logger.warning("Gemini review generation failed or was skipped")
+                print(f"⚠️  AI code review failed or was skipped (check API key and model availability)")
         
-        return output
+        return output, gemini_output
         
     except Exception as e:
         logger.error(f"Error generating review context: {e}")
@@ -1620,7 +1649,7 @@ Working examples:
                 logger.warning(f"Invalid GEMINI_TEMPERATURE format, using default 0.5")
                 temperature = 0.5
         
-        output_path = main(
+        output_path, gemini_path = main(
             project_path=args.project_path,
             phase=args.phase,
             output=args.output,
@@ -1632,7 +1661,12 @@ Working examples:
             task_list=getattr(args, 'task_list'),
             default_prompt=getattr(args, 'default_prompt')
         )
-        print(f"Review context generated: {output_path}")
+        
+        print(f"\n🎉 Code review process completed!")
+        files_generated = [os.path.basename(output_path)]
+        if gemini_path:
+            files_generated.append(os.path.basename(gemini_path))
+        print(f"📄 Files generated: {', '.join(files_generated)}")
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
