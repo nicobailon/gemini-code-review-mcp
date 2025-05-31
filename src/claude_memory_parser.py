@@ -72,7 +72,7 @@ def detect_imports(content: str) -> List[str]:
     # Must be at start of line or after whitespace, followed by path ending in .md
     # Excludes email addresses and social handles
 
-    imports = []
+    imports: List[str] = []
     for line in content.split("\n"):
         line = line.strip()
         if line.startswith("@") and line.endswith(".md"):
@@ -153,7 +153,7 @@ def resolve_imports(
     """
     parsed_file = parse_claude_md_file(file_path)
 
-    resolved_imports = []
+    resolved_imports: List[Dict[str, str]] = []
 
     for import_path in parsed_file["imports"]:
         try:
@@ -245,11 +245,11 @@ def resolve_imports_with_recursion_protection(
         # Parse current file
         parsed_file = parse_claude_md_file(file_path)
 
-        all_imports = []
-        circular_detected = False
-        recursion_hit = False
-        max_depth_reached = current_depth
-        circular_refs = []
+        all_imports: List[Dict[str, Any]] = []
+        circular_detected: bool = False
+        recursion_hit: bool = False
+        max_depth_reached: int = current_depth
+        circular_refs: List[str] = []
 
         # Resolve each import recursively
         for import_path in parsed_file["imports"]:
@@ -387,8 +387,8 @@ def resolve_imports_with_error_handling(
             ],
         }
 
-    successful_imports = []
-    import_errors = []
+    successful_imports: List[Dict[str, str]] = []
+    import_errors: List[Dict[str, str]] = []
 
     for import_path in parsed_file["imports"]:
         try:
@@ -504,7 +504,7 @@ def parse_claude_memory_with_imports(
 
     # Build resolved content by combining original content with successful imports
     resolved_content = recursion_result.get("content", "")
-    import_graph = {file_path: []}
+    import_graph: Dict[str, List[str]] = {file_path: []}
 
     # Add import content to resolved content
     for import_info in recursion_result["all_imports"]:
@@ -512,7 +512,8 @@ def parse_claude_memory_with_imports(
             f"\n\n<!-- IMPORTED FROM: {import_info['import_path']} -->\n"
         )
         resolved_content += import_info["content"]
-        import_graph[file_path].append(import_info["resolved_path"])
+        resolved_path: str = import_info["resolved_path"]
+        import_graph[file_path].append(resolved_path)
 
     # Combine results
     return {

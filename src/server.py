@@ -4,7 +4,7 @@ FastMCP server for generating code review context from PRDs and git changes
 
 import os
 import sys
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 print("🚨 DEBUG: server.py module is being loaded!")
 
@@ -23,6 +23,7 @@ except ImportError as e:
     sys.exit(1)
 
 # Create FastMCP server
+# FastMCP is an external library without proper type stubs
 mcp = FastMCP("MCP Server - Code Review Context Generator")
 
 # Create alias for the app to match test expectations
@@ -72,7 +73,7 @@ def generate_context_in_memory(
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d at %H:%M:%S")
 
         # Start building context content
-        context_parts = []
+        context_parts: List[str] = []
 
         # Header
         context_parts.append("# Code Review Context - Review Mode: GitHub PR Analysis")
@@ -306,7 +307,7 @@ async def generate_pr_review(
             if raw_context_only:
                 # Mode: Generate and save context file (for raw context requests)
                 with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
-                    output_file, gemini_file = generate_review_context(
+                    output_file, _gemini_file = generate_review_context(
                         project_path=project_path,
                         enable_gemini_review=False,  # Don't generate AI review for raw context
                         temperature=temperature,
@@ -318,7 +319,7 @@ async def generate_pr_review(
             elif create_context_file:
                 # Mode: Create context file (for backward compatibility)
                 with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
-                    output_file, gemini_file = generate_review_context(
+                    output_file, _gemini_file = generate_review_context(
                         project_path=project_path,
                         enable_gemini_review=False,  # Don't let it create AI feedback files
                         temperature=temperature,
@@ -561,7 +562,7 @@ def generate_code_review_context(
         disable_grounding = os.getenv("DISABLE_GROUNDING", "false").lower() == "true"
         disable_thinking = os.getenv("DISABLE_THINKING", "false").lower() == "true"
 
-        actual_capabilities = []
+        actual_capabilities: List[str] = []
         if supports_url_context and not disable_url_context:
             actual_capabilities.append("URL context")
         if supports_grounding and not disable_grounding:
@@ -614,7 +615,7 @@ def generate_code_review_context(
                     return f"ERROR: Could not read generated context file: {str(e)}"
             else:
                 # Return user-friendly message with file paths (legacy mode)
-                response_parts = []
+                response_parts: List[str] = []
                 response_parts.append(
                     f"🔍 Analyzed project: {os.path.basename(os.path.abspath(project_path))}"
                 )
@@ -645,7 +646,7 @@ def generate_code_review_context(
                         response_parts.append("⚠️ AI code review failed or was skipped")
 
                 # List generated files
-                files_generated = [os.path.basename(output_file)]
+                files_generated: List[str] = [os.path.basename(output_file)]
                 if gemini_file:
                     files_generated.append(os.path.basename(gemini_file))
                 response_parts.append("\n🎉 Code review process completed!")
@@ -914,7 +915,7 @@ Provide specific, actionable feedback with code examples where appropriate."""
                         temp_context_file = temp_file.name
 
                     # Generate context using existing function with temporary file
-                    context_file, gemini_file = generate_code_review_context_main(
+                    context_file, _gemini_file = generate_code_review_context_main(
                         project_path=project_path,
                         scope=scope,
                         phase_number=phase_number,

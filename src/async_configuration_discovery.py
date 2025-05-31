@@ -64,7 +64,7 @@ async def async_read_files(
     Returns:
         Dictionary mapping file paths to their content
     """
-    file_contents = {}
+    file_contents: Dict[str, str] = {}
 
     # Use ThreadPoolExecutor for I/O operations
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -100,8 +100,8 @@ async def async_discover_claude_md_files(project_path: str) -> List[Dict[str, An
     if not os.path.isdir(project_path):
         raise ValueError(f"Project path must be a directory: {project_path}")
 
-    claude_files = []
-    visited_paths = set()
+    claude_files: List[str] = []
+    visited_paths: set[str] = set()
 
     # Hierarchical traversal up the directory tree
     current_path = os.path.abspath(project_path)
@@ -133,7 +133,7 @@ async def async_discover_claude_md_files(project_path: str) -> List[Dict[str, An
         file_contents = await async_read_files(claude_files)
 
         # Build result list
-        result = []
+        result: List[Dict[str, Any]] = []
         for file_path in claude_files:
             if file_path in file_contents:
                 result.append(
@@ -150,7 +150,7 @@ async def async_discover_claude_md_files(project_path: str) -> List[Dict[str, An
 
 
 async def async_discover_claude_md_in_subdirectories(
-    project_path: str, visited_paths: set
+    project_path: str, visited_paths: set[str]
 ) -> List[str]:
     """
     Async discovery of CLAUDE.md files in subdirectories.
@@ -162,12 +162,12 @@ async def async_discover_claude_md_in_subdirectories(
     Returns:
         List of CLAUDE.md file paths found in subdirectories
     """
-    claude_files = []
+    claude_files: List[str] = []
 
-    def _walk_directories():
+    def _walk_directories() -> List[str]:
         """Synchronous directory walking for thread execution."""
-        found_files = []
-        for root, dirs, files in os.walk(project_path, followlinks=False):
+        found_files: List[str] = []
+        for root, _dirs, files in os.walk(project_path, followlinks=False):
             # Skip if already processed in hierarchical traversal
             if os.path.abspath(root) in visited_paths:
                 continue
@@ -198,7 +198,7 @@ async def async_discover_modern_cursor_rules(project_path: str) -> List[Dict[str
     """
     rules: List[Dict[str, Any]] = []
 
-    def _find_mdc_files():
+    def _find_mdc_files() -> List[str]:
         """Find all .mdc files using glob patterns."""
         cursor_rules_dir = os.path.join(project_path, ".cursor", "rules")
 
@@ -272,7 +272,7 @@ async def async_discover_all_configurations(
     start_time = time.time()
 
     # Create concurrent tasks
-    tasks = []
+    tasks: List[Any] = []
 
     if include_claude_memory:
         # Claude memory discovery tasks
@@ -359,7 +359,7 @@ async def async_discover_enterprise_claude_md() -> Optional[Dict[str, Any]]:
         enterprise_dirs = _get_enterprise_directories()
 
         # Check each directory for CLAUDE.md
-        candidate_files = []
+        candidate_files: List[str] = []
         for directory in enterprise_dirs:
             enterprise_claude_file = os.path.join(directory, "CLAUDE.md")
             if os.path.isfile(enterprise_claude_file):
@@ -404,7 +404,7 @@ async def async_discover_legacy_cursorrules(
 
 def _get_enterprise_directories() -> List[str]:
     """Get platform-specific enterprise directories."""
-    directories = []
+    directories: List[str] = []
     system_name = platform.system().lower()
 
     if system_name == "windows":
@@ -592,7 +592,7 @@ def _threaded_sync_discovery(
     }
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-        futures = []
+        futures: List[Any] = []
 
         if include_claude_memory:
             # Submit Claude memory discovery tasks

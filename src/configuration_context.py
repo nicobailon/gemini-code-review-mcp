@@ -12,7 +12,7 @@ import os
 import re
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Any
+from typing import Dict, List, Any, TypedDict
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +56,16 @@ class CursorRule:
 class ConfigurationContext:
     """Data model for complete configuration context."""
 
+    claude_memory_files: List[ClaudeMemoryFile]
+    cursor_rules: List[CursorRule]
+    merged_content: str
+    auto_apply_rules: List[CursorRule]
+    error_summary: List[Dict[str, Any]]
+
+
+class ConfigurationContextDict(TypedDict):
+    """TypedDict for configuration context dictionary representation."""
+    
     claude_memory_files: List[ClaudeMemoryFile]
     cursor_rules: List[CursorRule]
     merged_content: str
@@ -116,7 +126,7 @@ def merge_claude_memory_content(memory_files: List[ClaudeMemoryFile]) -> str:
     # Sort by precedence
     sorted_files = sort_claude_memory_by_precedence(memory_files)
 
-    merged_parts = []
+    merged_parts: List[str] = []
 
     for memory_file in sorted_files:
         # Add section header for clarity
@@ -150,7 +160,7 @@ def merge_cursor_rules_content(cursor_rules: List[CursorRule]) -> str:
     # Sort by precedence
     sorted_rules = sort_cursor_rules_by_precedence(cursor_rules)
 
-    merged_parts = []
+    merged_parts: List[str] = []
 
     for rule in sorted_rules:
         # Add section header for clarity
@@ -159,7 +169,7 @@ def merge_cursor_rules_content(cursor_rules: List[CursorRule]) -> str:
             f"<!-- CURSOR RULE: {rule_type_display} (Precedence: {rule.precedence}) -->"
         )
 
-        rule_metadata = []
+        rule_metadata: List[str] = []
         if rule.description:
             rule_metadata.append(f"Description: {rule.description}")
         if rule.globs:
@@ -194,8 +204,8 @@ def deduplicate_claude_memory_files(
     Returns:
         List of unique ClaudeMemoryFile objects (keeps first occurrence)
     """
-    seen_paths = set()
-    unique_files = []
+    seen_paths: set[str] = set()
+    unique_files: List[ClaudeMemoryFile] = []
 
     for memory_file in memory_files:
         # Canonicalize the path to handle symlinks and resolve absolute paths
@@ -221,8 +231,8 @@ def deduplicate_cursor_rules(cursor_rules: List[CursorRule]) -> List[CursorRule]
     Returns:
         List of unique CursorRule objects (keeps first occurrence)
     """
-    seen_paths = set()
-    unique_rules = []
+    seen_paths: set[str] = set()
+    unique_rules: List[CursorRule] = []
 
     for rule in cursor_rules:
         # Canonicalize the path to handle symlinks and resolve absolute paths
@@ -252,8 +262,8 @@ def merge_with_deduplication(content_parts: List[str]) -> str:
         return ""
 
     # Keep track of seen content to avoid duplicates
-    seen_content = set()
-    unique_parts = []
+    seen_content: set[str] = set()
+    unique_parts: List[str] = []
 
     for content in content_parts:
         # Normalize content for comparison (remove extra whitespace)
@@ -316,7 +326,7 @@ def get_applicable_cursor_rules_for_files(
 
 def create_configuration_context(
     claude_memory_files: List[ClaudeMemoryFile], cursor_rules: List[CursorRule]
-) -> Dict[str, Any]:
+) -> ConfigurationContextDict:
     """
     Create configuration context from Claude memory files and Cursor rules.
 
@@ -338,7 +348,7 @@ def create_configuration_context(
     cursor_content = merge_cursor_rules_content(unique_cursor_rules)
 
     # Combine all content
-    all_content_parts = []
+    all_content_parts: List[str] = []
     if claude_content:
         all_content_parts.append("# Claude Memory Configuration\n\n" + claude_content)
     if cursor_content:
@@ -349,13 +359,14 @@ def create_configuration_context(
     # Get all cursor rules (simplified approach)
     auto_apply_rules = get_all_cursor_rules(unique_cursor_rules)
 
-    return {
+    result: ConfigurationContextDict = {
         "claude_memory_files": unique_claude_files,
         "cursor_rules": unique_cursor_rules,
         "merged_content": merged_content,
         "auto_apply_rules": auto_apply_rules,
         "error_summary": [],
     }
+    return result
 
 
 def create_configuration_context_for_files(
@@ -378,19 +389,20 @@ def create_configuration_context_for_files(
     applicable_rules = cursor_rules
 
     # Create context with all rules
-    context = create_configuration_context(claude_memory_files, cursor_rules)
-    context["applicable_rules"] = applicable_rules
-    context["all_cursor_rules"] = cursor_rules
-    context["changed_files"] = changed_files
+    base_context = create_configuration_context(claude_memory_files, cursor_rules)
+    extended_context: Dict[str, Any] = dict(base_context)
+    extended_context["applicable_rules"] = applicable_rules
+    extended_context["all_cursor_rules"] = cursor_rules
+    extended_context["changed_files"] = changed_files
 
-    return context
+    return extended_context
 
 
 def create_configuration_context_with_error_handling(
     claude_memory_files: List[ClaudeMemoryFile],
     cursor_rules: List[CursorRule],
     import_errors: List[Dict[str, Any]],
-) -> Dict[str, Any]:
+) -> ConfigurationContextDict:
     """
     Create configuration context with comprehensive error handling.
 
@@ -411,7 +423,7 @@ def create_configuration_context_with_error_handling(
         logger.error(f"Failed to create configuration context: {e}")
 
         # Return minimal context with error information
-        return {
+        result: ConfigurationContextDict = {
             "claude_memory_files": claude_memory_files,
             "cursor_rules": cursor_rules,
             "merged_content": "# Configuration Context Error\n\nFailed to merge configuration content.",
@@ -419,6 +431,7 @@ def create_configuration_context_with_error_handling(
             "error_summary": import_errors
             + [{"error_type": "context_creation_error", "error_message": str(e)}],
         }
+        return result
 
 
 def validate_configuration_context(context: Dict[str, Any]) -> List[str]:
@@ -431,7 +444,7 @@ def validate_configuration_context(context: Dict[str, Any]) -> List[str]:
     Returns:
         List of validation error messages (empty if valid)
     """
-    errors = []
+    errors: List[str] = []
 
     # Check required fields
     required_fields = [
@@ -467,11 +480,28 @@ def validate_configuration_context(context: Dict[str, Any]) -> List[str]:
 
     # Validate that auto_apply_rules are a subset of cursor_rules
     if "auto_apply_rules" in context and "cursor_rules" in context:
-        auto_paths = {rule.file_path for rule in context["auto_apply_rules"]}
-        all_paths = {rule.file_path for rule in context["cursor_rules"]}
+        auto_apply_rules_data = context["auto_apply_rules"]
+        cursor_rules_data = context["cursor_rules"]
+        
+        if isinstance(auto_apply_rules_data, list) and isinstance(cursor_rules_data, list):
+            # Type guard to ensure we have CursorRule objects
+            auto_apply_rules: List[CursorRule] = []
+            cursor_rules: List[CursorRule] = []
+            
+            for rule in auto_apply_rules_data:
+                # CursorRule objects from dataclass have file_path attribute
+                if isinstance(rule, CursorRule):
+                    auto_apply_rules.append(rule)
+            
+            for rule in cursor_rules_data:
+                # CursorRule objects from dataclass have file_path attribute
+                if isinstance(rule, CursorRule):
+                    cursor_rules.append(rule)
+            auto_paths: set[str] = {rule.file_path for rule in auto_apply_rules}
+            all_paths: set[str] = {rule.file_path for rule in cursor_rules}
 
-        if not auto_paths.issubset(all_paths):
-            errors.append("auto_apply_rules contains rules not found in cursor_rules")
+            if not auto_paths.issubset(all_paths):
+                errors.append("auto_apply_rules contains rules not found in cursor_rules")
 
     return errors
 
@@ -503,7 +533,7 @@ def get_configuration_summary(context: Dict[str, Any]) -> Dict[str, Any]:
             summary["hierarchy_levels"].append(memory_file.hierarchy_level)
 
     # Analyze Cursor rule types and precedence
-    precedences = []
+    precedences: List[int] = []
     for rule in context.get("cursor_rules", []):
         if rule.rule_type not in summary["rule_types"]:
             summary["rule_types"].append(rule.rule_type)

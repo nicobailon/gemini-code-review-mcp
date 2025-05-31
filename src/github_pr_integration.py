@@ -7,7 +7,7 @@ and retrieving file changes for code review.
 
 import os
 import subprocess
-from typing import Dict, Optional, Any
+from typing import Dict, List, Optional, Any
 from urllib.parse import urlparse
 import requests
 
@@ -260,7 +260,7 @@ def get_pr_file_changes(
         files_data = response.json()
 
         # Process file changes
-        changed_files = []
+        changed_files: List[Dict[str, Any]] = []
         files_added = 0
         files_modified = 0
         files_deleted = 0

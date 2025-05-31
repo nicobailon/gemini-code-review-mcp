@@ -6,7 +6,7 @@ structure and configuration without creating temporary context files.
 """
 
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from pathlib import Path
 
 
@@ -110,7 +110,7 @@ def analyze_project_for_meta_prompt(
 def _generate_lightweight_structure_summary(project_path: str) -> str:
     """Generate a lightweight summary of project structure."""
     try:
-        structure_info = []
+        structure_info: List[str] = []
 
         # Check for common directories and files
         common_dirs = ["src", "lib", "tests", "test", "docs", "scripts", "examples"]
@@ -178,7 +178,7 @@ def _get_lightweight_git_context(project_path: str) -> str:
         if result.returncode != 0:
             return "Not a git repository or git not available"
 
-        git_info = []
+        git_info: List[str] = []
 
         # Get current branch
         try:

@@ -21,7 +21,7 @@ import argparse
 import glob
 import json
 from datetime import datetime
-from typing import Dict, List, Optional, Any, cast
+from typing import Dict, List, Optional, Any, cast, TypedDict, TypeGuard
 from dataclasses import dataclass
 import logging
 
@@ -49,8 +49,8 @@ except ImportError:
     pass  # dotenv not available, continue without it
 
 # Optional Gemini import
-genai = None
-types = None
+genai: Any = None
+types: Any = None
 
 try:
     import google.genai as genai  # type: ignore
@@ -63,6 +63,35 @@ GEMINI_AVAILABLE = genai is not None
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+# Type definitions for task list data structures
+class SubtaskData(TypedDict):
+    number: str
+    description: str
+    complete: bool
+
+
+class PhaseData(TypedDict):
+    number: str
+    description: str
+    subtasks: List[SubtaskData]
+    subtasks_complete: bool
+    subtasks_completed: List[str]
+
+
+class TaskData(TypedDict, total=False):
+    phases: List[PhaseData]
+    current_phase_number: str
+    current_phase_description: str
+    previous_phase_completed: str
+    next_phase: str
+    subtasks_completed: List[str]
+
+
+def is_phase_data(obj: Any) -> TypeGuard[PhaseData]:
+    """Type guard to check if an object is a valid PhaseData."""
+    return isinstance(obj, dict) and "number" in obj and isinstance(obj["number"], str)
 
 
 def load_model_config() -> Dict[str, Any]:
@@ -725,7 +754,7 @@ def require_api_key():
     return api_key
 
 
-def parse_task_list(content: str) -> Dict[str, Any]:
+def parse_task_list(content: str) -> TaskData:
     """
     Parse task list content and extract phase information.
 
@@ -736,8 +765,8 @@ def parse_task_list(content: str) -> Dict[str, Any]:
         Dictionary with phase information
     """
     lines = content.strip().split("\n")
-    phases: List[Dict[str, Any]] = []
-    current_phase: Optional[Dict[str, Any]] = None
+    phases: List[PhaseData] = []
+    current_phase: Optional[PhaseData] = None
 
     # Phase pattern: ^- \[([ x])\] (\d+\.\d+) (.+)$
     phase_pattern = r"^- \[([ x])\] (\d+\.\d+) (.+)$"
@@ -751,13 +780,14 @@ def parse_task_list(content: str) -> Dict[str, Any]:
             number = phase_match.group(2)
             description = phase_match.group(3).strip()
 
-            current_phase = {
+            current_phase_dict: PhaseData = {
                 "number": number,
                 "description": description,
-                "completed": completed,
                 "subtasks": [],
+                "subtasks_complete": False,
                 "subtasks_completed": [],
             }
+            current_phase = current_phase_dict
             phases.append(current_phase)
             continue
 
@@ -767,9 +797,8 @@ def parse_task_list(content: str) -> Dict[str, Any]:
             number = subtask_match.group(2)
             description = subtask_match.group(3).strip()
 
-            current_phase["subtasks"].append(
-                {"number": number, "description": description, "completed": completed}
-            )
+            subtask: SubtaskData = {"number": number, "description": description, "complete": completed}
+            current_phase["subtasks"].append(subtask)
 
             if completed:
                 current_phase["subtasks_completed"].append(f"{number} {description}")
@@ -778,19 +807,19 @@ def parse_task_list(content: str) -> Dict[str, Any]:
     for phase in phases:
         if phase["subtasks"]:
             phase["subtasks_complete"] = all(
-                st["completed"] for st in phase["subtasks"]
+                st["complete"] for st in phase["subtasks"]
             )
         else:
-            phase["subtasks_complete"] = phase["completed"]
+            phase["subtasks_complete"] = True
 
-    return {
-        "total_phases": len(phases),
+    result: TaskData = {
         "phases": phases,
         **detect_current_phase(phases),
     }
+    return result
 
 
-def detect_current_phase(phases: List[Dict[str, Any]]) -> Dict[str, Any]:
+def detect_current_phase(phases: List[PhaseData]) -> Dict[str, str]:
     """
     Detect the most recently completed phase for code review.
 
@@ -861,7 +890,7 @@ def detect_current_phase(phases: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
-def generate_prd_summary_from_task_list(task_data: Dict[str, Any]) -> str:
+def generate_prd_summary_from_task_list(task_data: TaskData) -> str:
     """
     Generate a PRD-style summary from task list content.
 
@@ -872,12 +901,16 @@ def generate_prd_summary_from_task_list(task_data: Dict[str, Any]) -> str:
         Generated project summary string
     """
     phases_data = task_data.get("phases", [])
-    phases = phases_data if isinstance(phases_data, list) else []
+    phases: List[PhaseData] = []
+    if isinstance(phases_data, list):
+        for item in phases_data:
+            if is_phase_data(item):
+                phases.append(item)
     if not phases:
         return "Development project focused on code quality and feature implementation."
 
     # Extract high-level goals from phase descriptions
-    phase_descriptions = [p.get("description", "") for p in phases]
+    phase_descriptions: List[str] = [p.get("description", "") for p in phases]
 
     # Create a coherent summary
     if len(phases) == 1:
@@ -885,7 +918,7 @@ def generate_prd_summary_from_task_list(task_data: Dict[str, Any]) -> str:
     elif len(phases) <= 3:
         summary = f"Development project covering: {', '.join(phase_descriptions[:-1]).lower()}, and {phase_descriptions[-1].lower()}."
     else:
-        key_phases = phase_descriptions[:3]
+        key_phases: List[str] = phase_descriptions[:3]
         summary = f"Multi-phase development project including {', '.join(key_phases).lower()}, and {len(phases) - 3} additional phases."
 
     return summary
@@ -2155,7 +2188,7 @@ def discover_project_configurations_with_flags(
     """
     try:
         # Start with empty configuration
-        result = {"claude_memory_files": [], "cursor_rules": [], "discovery_errors": []}
+        result: Dict[str, Any] = {"claude_memory_files": [], "cursor_rules": [], "discovery_errors": []}
 
         # Import configuration modules
         try:
@@ -2382,7 +2415,7 @@ def format_configuration_context_for_ai(
         cursor_content = merge_cursor_rules_content(cursor_rules)
 
         # Combine with clear sections
-        sections = []
+        sections: List[str] = []
 
         if claude_content:
             sections.append("# Claude Memory Configuration\n\n" + claude_content)
@@ -2449,7 +2482,7 @@ def generate_enhanced_review_context(
         changed_files = [f["path"] for f in git_changed_files]
 
     # Ensure we have valid data for rule processing
-    cursor_rules = configurations.get("cursor_rules", []) or []
+    cursor_rules: List[Any] = configurations.get("cursor_rules", []) or []
     changed_files = changed_files or []
 
     # Get applicable rules for changed files
@@ -2584,7 +2617,7 @@ def _generate_code_review_context_impl(
         config.project_path = os.getcwd()
 
     # Detect and validate review mode
-    review_modes = []
+    review_modes: List[str] = []
     if config.github_pr_url:
         review_modes.append("github_pr")
     if not review_modes:
@@ -2725,7 +2758,7 @@ Working examples:
 
         # Handle different scenarios
         prd_summary = None
-        task_data = None
+        task_data: Optional[Dict[str, Any]] = None
 
         if task_file:
             # We have a task list - read and parse it
@@ -2762,17 +2795,16 @@ Working examples:
         # Handle scope-based review logic
         if config.scope == "recent_phase":
             # Smart defaulting: if ALL phases are complete, automatically review full project
-            phases_data = task_data.get("phases", []) if task_data else []
-            phases = phases_data if isinstance(phases_data, list) else []
+            phases: List[PhaseData] = task_data.get("phases", []) if task_data else []
             all_phases_complete = all(p.get("subtasks_complete", False) for p in phases)
 
             if all_phases_complete and phases:
                 # All phases complete - automatically switch to full project review
-                completed_phases = [
+                completed_phases: List[PhaseData] = [
                     p for p in phases if p.get("subtasks_complete", False)
                 ]
-                all_completed_subtasks = []
-                phase_descriptions = []
+                all_completed_subtasks: List[Any] = []
+                phase_descriptions: List[str] = []
                 for p in completed_phases:
                     all_completed_subtasks.extend(p["subtasks_completed"])
                     phase_descriptions.append(f"{p['number']} {p['description']}")
@@ -2793,8 +2825,7 @@ Working examples:
                 # Override with legacy phase parameter if provided
                 if config.phase:
                     # Find the specified phase
-                    phases_data = task_data.get("phases", []) if task_data else []
-                    phases = phases_data if isinstance(phases_data, list) else []
+                    phases: List[PhaseData] = task_data.get("phases", []) if task_data else []
                     for i, p in enumerate(phases):
                         if p["number"] == config.phase:
                             # Find previous completed phase
@@ -2823,8 +2854,7 @@ Working examples:
 
         elif config.scope == "full_project":
             # Analyze all completed phases
-            phases_data = task_data.get("phases", []) if task_data else []
-            phases = phases_data if isinstance(phases_data, list) else []
+            phases: List[PhaseData] = task_data.get("phases", []) if task_data else []
             completed_phases = [p for p in phases if p.get("subtasks_complete", False)]
             if completed_phases:
                 # Use summary information for all completed phases
@@ -2850,8 +2880,7 @@ Working examples:
         elif config.scope == "specific_phase":
             # Find and validate the specified phase
             target_phase = None
-            phases_data = task_data.get("phases", []) if task_data else []
-            phases = phases_data if isinstance(phases_data, list) else []
+            phases: List[PhaseData] = task_data.get("phases", []) if task_data else []
             for i, p in enumerate(phases):
                 if p["number"] == config.phase_number:
                     target_phase = (i, p)
@@ -2906,8 +2935,7 @@ Working examples:
             # Find and validate the specified task
             target_task = None
             target_phase = None
-            phases_data = task_data.get("phases", []) if task_data else []
-            phases = phases_data if isinstance(phases_data, list) else []
+            phases: List[PhaseData] = task_data.get("phases", []) if task_data else []
             for i, p in enumerate(phases):
                 for subtask in p["subtasks"]:
                     if subtask["number"] == config.task_number:
@@ -2919,12 +2947,11 @@ Working examples:
 
             if target_task is None or target_phase is None:
                 # Get available tasks from all phases
-                available_tasks = []
+                available_tasks: List[str] = []
                 for phase in phases:
-                    if isinstance(phase, dict):
-                        available_tasks.extend(
-                            [t["number"] for t in phase.get("subtasks", [])]
-                        )
+                    subtasks = phase.get("subtasks", [])
+                    for subtask in subtasks:
+                        available_tasks.append(subtask["number"])
 
                 error_msg = f"""Task {config.task_number} not found in task list
 
@@ -2960,7 +2987,7 @@ Working examples:
             )
 
         # Discover configurations early for integration
-        config_types = []
+        config_types: List[str] = []
         if config.include_claude_memory:
             config_types.append("Claude memory")
         if config.include_cursor_rules:
@@ -2968,22 +2995,36 @@ Working examples:
 
         if config_types:
             print(f"🔍 Discovering {' and '.join(config_types)}...")
-            configurations = discover_project_configurations_with_flags(
+            configurations: Dict[str, Any] = discover_project_configurations_with_flags(
                 config.project_path,
                 config.include_claude_memory,
                 config.include_cursor_rules,
             )
         else:
             print("ℹ️  Configuration discovery disabled")
-            configurations = {
+            configurations: Dict[str, Any] = {
                 "claude_memory_files": [],
                 "cursor_rules": [],
                 "discovery_errors": [],
             }
 
-        claude_files_count = len(configurations["claude_memory_files"])
-        cursor_rules_count = len(configurations["cursor_rules"])
-        errors_count = len(configurations["discovery_errors"])
+        claude_memory_files_raw = configurations.get("claude_memory_files", [])
+        cursor_rules_raw = configurations.get("cursor_rules", [])
+        discovery_errors_raw = configurations.get("discovery_errors", [])
+        
+        # Import types at the top of the function
+        try:
+            from configuration_context import ClaudeMemoryFile, CursorRule
+        except ImportError:
+            from src.configuration_context import ClaudeMemoryFile, CursorRule
+        
+        claude_memory_files: List[ClaudeMemoryFile] = claude_memory_files_raw if isinstance(claude_memory_files_raw, list) else []
+        cursor_rules: List[CursorRule] = cursor_rules_raw if isinstance(cursor_rules_raw, list) else []
+        discovery_errors: List[Dict[str, Any]] = discovery_errors_raw if isinstance(discovery_errors_raw, list) else []
+        
+        claude_files_count = len(claude_memory_files)
+        cursor_rules_count = len(cursor_rules)
+        errors_count = len(discovery_errors)
 
         if claude_files_count > 0 or cursor_rules_count > 0:
             print(
@@ -2996,7 +3037,7 @@ Working examples:
             print(f"⚠️  {errors_count} configuration discovery errors (will continue)")
 
         # Get git changes based on review mode
-        changed_files = []
+        changed_files: List[Dict[str, Any]] = []
         pr_data: Optional[Dict[str, Any]] = None
 
         if current_mode == "github_pr":
@@ -3057,12 +3098,12 @@ Working examples:
         # Get applicable configuration rules for changed files
         changed_file_paths = [f["path"] for f in changed_files]
         applicable_rules = get_applicable_rules_for_files(
-            configurations["cursor_rules"], changed_file_paths
+            cursor_rules, changed_file_paths
         )
 
         # Format configuration content for AI consumption
         configuration_content = format_configuration_context_for_ai(
-            configurations["claude_memory_files"], configurations["cursor_rules"]
+            claude_memory_files, cursor_rules
         )
 
         # Prepare template data with enhanced configuration support

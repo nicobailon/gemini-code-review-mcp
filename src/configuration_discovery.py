@@ -54,11 +54,11 @@ def discover_claude_md_files(project_path: str) -> List[Dict[str, Any]]:
     if not os.path.isdir(project_path):
         raise ValueError(f"Path is not a directory: {project_path}")
 
-    discovered_files = []
+    discovered_files: List[Dict[str, Any]] = []
 
     # Start from project_path and traverse up to find CLAUDE.md files
     current_path = os.path.abspath(project_path)
-    visited_paths = set()
+    visited_paths: set[str] = set()
 
     while current_path not in visited_paths:
         visited_paths.add(current_path)
@@ -100,7 +100,7 @@ def discover_claude_md_files(project_path: str) -> List[Dict[str, Any]]:
 
 
 def _discover_nested_claude_files(
-    project_path: str, discovered_files: List[Dict[str, Any]], visited_paths: set
+    project_path: str, discovered_files: List[Dict[str, Any]], visited_paths: set[str]
 ) -> None:
     """
     Discover CLAUDE.md files in nested directories within the project.
@@ -111,7 +111,7 @@ def _discover_nested_claude_files(
         visited_paths: Set of already visited paths to avoid duplicates
     """
     try:
-        for root, dirs, files in os.walk(project_path, followlinks=False):
+        for root, _dirs, files in os.walk(project_path, followlinks=False):
             # Skip if we already processed this directory in hierarchical traversal
             if os.path.abspath(root) in visited_paths:
                 continue
@@ -204,7 +204,7 @@ def get_platform_specific_enterprise_directories() -> List[str]:
     Returns:
         List of platform-appropriate directory paths for enterprise configurations.
     """
-    directories = []
+    directories: List[str] = []
 
     system_name = platform.system().lower()
 
@@ -323,7 +323,7 @@ def discover_all_claude_md_files(
         List of dictionaries containing all discovered CLAUDE.md files,
         combining project, user, and enterprise-level configurations.
     """
-    all_files = []
+    all_files: List[Dict[str, Any]] = []
 
     # Discover project-level CLAUDE.md files
     try:
@@ -377,7 +377,7 @@ def discover_configuration_files(
         - cursor_rules: List of discovered Cursor rules (placeholder for future implementation)
         - legacy_cursorrules: Legacy .cursorrules content (placeholder for future implementation)
     """
-    result = {"claude_memory_files": [], "cursor_rules": [], "legacy_cursorrules": None}
+    result: Dict[str, Any] = {"claude_memory_files": [], "cursor_rules": [], "legacy_cursorrules": None}
 
     # Discover all Claude memory files (project + user-level + enterprise-level)
     try:
@@ -436,7 +436,7 @@ def parse_mdc_frontmatter(content: str) -> Tuple[Dict[str, Any], str]:
     remaining_content = "\n".join(content_lines)
 
     # Parse YAML frontmatter
-    metadata = {}
+    metadata: Dict[str, Any] = {}
     if HAS_YAML and yaml is not None and frontmatter_yaml.strip():
         try:
             metadata = yaml.safe_load(frontmatter_yaml) or {}
@@ -457,7 +457,7 @@ def _basic_frontmatter_parse(frontmatter: str) -> Dict[str, Any]:
 
     Handles simple key: value pairs and basic arrays.
     """
-    metadata = {}
+    metadata: Dict[str, Any] = {}
 
     for line in frontmatter.split("\n"):
         line = line.strip()
@@ -567,7 +567,7 @@ def discover_modern_cursor_rules(project_path: str) -> List[Dict[str, Any]]:
     Returns:
         List of dictionaries containing modern rule information
     """
-    rules = []
+    rules: List[Dict[str, Any]] = []
 
     try:
         cursor_rules_dir = os.path.join(project_path, ".cursor", "rules")
@@ -595,7 +595,7 @@ def discover_modern_cursor_rules(project_path: str) -> List[Dict[str, Any]]:
                     continue
 
                 # Build rule information
-                rule_info = {
+                rule_info: Dict[str, Any] = {
                     "file_path": mdc_file,
                     "type": determine_rule_type_from_metadata(metadata),
                     "description": metadata.get("description", ""),
@@ -612,7 +612,7 @@ def discover_modern_cursor_rules(project_path: str) -> List[Dict[str, Any]]:
                 continue
 
         # Sort by precedence (lower numbers first)
-        rules.sort(key=lambda r: r["precedence"])
+        rules.sort(key=lambda r: r["precedence"])  # type: ignore
 
     except Exception as e:
         logger.warning(f"Unexpected error discovering modern cursor rules: {e}")
@@ -632,7 +632,7 @@ def discover_cursor_rules(project_path: str) -> Dict[str, Any]:
         - legacy_cursorrules: Legacy .cursorrules content or None
         - modern_rules: List of modern MDC rules
     """
-    result = {"legacy_cursorrules": None, "modern_rules": []}
+    result: Dict[str, Any] = {"legacy_cursorrules": None, "modern_rules": []}
 
     # Discover legacy .cursorrules
     try:
@@ -661,7 +661,7 @@ def discover_all_cursor_rules(project_path: str) -> List[Dict[str, Any]]:
     Returns:
         List of all cursor rules (legacy and modern) in unified format
     """
-    all_rules = []
+    all_rules: List[Dict[str, Any]] = []
 
     # Get cursor rules
     cursor_data = discover_cursor_rules(project_path)

@@ -11,7 +11,7 @@ import asyncio
 import os
 import sys
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 
 def validate_prompt(prompt: Dict[str, Any]) -> Dict[str, Any]:
@@ -28,10 +28,10 @@ def validate_prompt(prompt: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # Deferred import to avoid loading server module during module import
-_generate_meta_prompt = None
+_generate_meta_prompt: Optional[Any] = None
 
 
-def _get_generate_meta_prompt():
+def _get_generate_meta_prompt() -> Any:
     """Get generate_meta_prompt function, importing it if needed."""
     global _generate_meta_prompt
     if _generate_meta_prompt is None:
@@ -51,11 +51,11 @@ def _get_generate_meta_prompt():
                     load_model_config,
                 )
 
-                async def generate_meta_prompt(*args, **kwargs):
+                async def generate_meta_prompt(*args: Any, **kwargs: Any) -> Dict[str, Any]:
                     """Generate meta-prompt directly without server dependency."""
                     # Get project context first
-                    project_path = kwargs.get("project_path")
-                    scope = kwargs.get("scope", "recent_phase")
+                    project_path: Optional[str] = kwargs.get("project_path")
+                    scope: str = kwargs.get("scope", "recent_phase")
 
                     if not project_path:
                         raise ValueError("project_path is required")
@@ -343,7 +343,7 @@ FILE FORMAT:
     return parser
 
 
-def parse_cli_arguments(args: Optional[list] = None) -> argparse.Namespace:
+def parse_cli_arguments(args: Optional[List[str]] = None) -> argparse.Namespace:
     """Parse CLI arguments.
 
     Args:
@@ -353,7 +353,7 @@ def parse_cli_arguments(args: Optional[list] = None) -> argparse.Namespace:
         Parsed arguments namespace
     """
     parser = create_argument_parser()
-    return parser.parse_args(args)
+    return parser.parse_args(args if args is not None else None)
 
 
 def detect_execution_mode():
@@ -417,7 +417,7 @@ if __name__ == "__main__":
 
 
 # Alias for test compatibility
-def generate_meta_prompt(*args, **kwargs):
+def generate_meta_prompt(*args: Any, **kwargs: Any) -> Any:
     """Alias to the server's generate_meta_prompt function."""
     return _get_generate_meta_prompt()(*args, **kwargs)
 

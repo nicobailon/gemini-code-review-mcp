@@ -174,7 +174,7 @@ def _parse_mdc_frontmatter(content: str) -> tuple[Dict[str, Any], str]:
         remaining_content = remaining_content[1:]
 
     # Parse YAML frontmatter
-    metadata = {}
+    metadata: Dict[str, Any] = {}
     if HAS_YAML and yaml is not None and frontmatter_yaml.strip():
         try:
             metadata = yaml.safe_load(frontmatter_yaml) or {}
@@ -196,7 +196,7 @@ def _basic_frontmatter_parse(frontmatter: str) -> Dict[str, Any]:
     Handles simple key: value pairs and basic arrays.
     Returns empty dict if parsing fails due to malformed content.
     """
-    metadata = {}
+    metadata: Dict[str, Any] = {}
 
     try:
         for line in frontmatter.split("\n"):
@@ -328,7 +328,7 @@ def match_files_against_globs(files: List[str], globs: List[str]) -> List[str]:
     if not globs:
         return []
 
-    matched_files = []
+    matched_files: List[str] = []
 
     for file_path in files:
         for glob_pattern in globs:
@@ -364,7 +364,7 @@ def detect_file_references(content: str) -> List[str]:
     # Excludes email addresses and social handles
     pattern = r"(?:^|\s)@([a-zA-Z0-9_/-]+\.[a-zA-Z0-9]+)(?:\s|$|[.,!?])"
 
-    references = []
+    references: List[str] = []
     for match in re.finditer(pattern, content, re.MULTILINE):
         reference = match.group(1)
 
@@ -392,7 +392,7 @@ def resolve_file_references(references: List[str], project_root: str) -> Dict[st
     Returns:
         Dictionary mapping references to resolved file paths
     """
-    resolved = {}
+    resolved: Dict[str, str] = {}
 
     for reference in references:
         # Search for the file in the project
@@ -422,7 +422,7 @@ def _find_file_in_project(filename: str, project_root: str) -> Optional[str]:
             return candidate_path
 
     # Search recursively for the file
-    for root, dirs, files in os.walk(project_root):
+    for root, _dirs, files in os.walk(project_root):
         if os.path.basename(filename) in files:
             # Check if the full path matches (for files with directory components)
             if "/" in filename:
@@ -528,8 +528,8 @@ def _parse_modern_rules_directory(
     Returns:
         Tuple of (parsed_rules, parse_errors)
     """
-    rules = []
-    parse_errors = []
+    rules: List[Dict[str, Any]] = []
+    parse_errors: List[Dict[str, Any]] = []
 
     # Find all .mdc files recursively
     mdc_pattern = os.path.join(rules_dir, "**", "*.mdc")
@@ -543,7 +543,7 @@ def _parse_modern_rules_directory(
 
             # Minimal rule structure - just the content
             filename = os.path.basename(mdc_file)
-            rule = {
+            rule: Dict[str, Any] = {
                 "file_path": mdc_file,
                 "content": content,
                 "type": "modern",
