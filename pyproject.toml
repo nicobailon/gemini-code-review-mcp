@@ -65,7 +65,7 @@ dev = [
     "pytest-asyncio>=0.21.0",
     "black",
     "isort",
-    "flake8",
+    "pyright",
 ]
 yaml = [
     "PyYAML>=6.0.0",
