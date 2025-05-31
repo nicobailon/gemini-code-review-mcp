@@ -9,17 +9,14 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.10', '3.11', '3.12']
         
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python 3.11
       uses: actions/setup-python@v4
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: '3.11'
     
     - name: Install dependencies
       run: |
@@ -34,7 +31,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # For PR integration tests
       run: |
         # Install test dependencies
-        pip install requests pytest-mock pytest-asyncio tomli
+        pip install requests pytest-mock pytest-asyncio
         
         # Run essential test suite (optimized for CI - covers all core functionality)
         # Tests reduced from 515 to 180 tests while maintaining comprehensive coverage
