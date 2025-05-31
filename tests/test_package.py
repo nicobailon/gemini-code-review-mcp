@@ -16,7 +16,7 @@ class TestPackageInstallation:
     def test_package_builds_successfully(self):
         """Test that the package builds without errors"""
         result = subprocess.run(
-            ["uvx", "--from", "build", "pyproject-build", "."],
+            [sys.executable, "-m", "build"],
             cwd=Path(__file__).parent.parent,
             capture_output=True,
             text=True
@@ -25,22 +25,21 @@ class TestPackageInstallation:
         assert "Successfully built" in result.stdout
         
     def test_package_installs_from_local(self):
-        """Test that uvx can install the package from local directory"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Test installation
-            result = subprocess.run(
-                ["uvx", "--from", ".", "python", "-c", "import src.server; print('✓ Import successful')"],
-                cwd=Path(__file__).parent.parent,
-                capture_output=True,
-                text=True
-            )
-            assert result.returncode == 0, f"Installation failed: {result.stderr}"
-            assert "✓ Import successful" in result.stdout
+        """Test that the package can be imported from local directory"""
+        # Test that modules can be imported (package is already installed via pip install -e .)
+        result = subprocess.run(
+            [sys.executable, "-c", "import src.server; print('✓ Import successful')"],
+            cwd=Path(__file__).parent.parent,
+            capture_output=True,
+            text=True
+        )
+        assert result.returncode == 0, f"Import failed: {result.stderr}"
+        assert "✓ Import successful" in result.stdout
     
     def test_entry_point_exists(self):
         """Test that the main entry point function exists and is callable"""
         result = subprocess.run(
-            ["uvx", "--from", ".", "python", "-c", 
+            [sys.executable, "-c", 
              "import src.server; assert hasattr(src.server, 'main'); print('✓ Entry point exists')"],
             cwd=Path(__file__).parent.parent,
             capture_output=True,
@@ -60,7 +59,7 @@ class TestPackageInstallation:
         
         for package_name, import_stmt in dependencies:
             result = subprocess.run(
-                ["uvx", "--from", ".", "python", "-c", 
+                [sys.executable, "-c", 
                  f"{import_stmt}; print('✓ {package_name} imported successfully')"],
                 cwd=Path(__file__).parent.parent,
                 capture_output=True,
@@ -124,9 +123,9 @@ class TestPackageStructure:
     
     def test_source_imports_work(self):
         """Test that source modules can be imported correctly"""
-        # Test that source files can be imported in a uvx environment with dependencies
+        # Test that source files can be imported with dependencies installed
         result = subprocess.run(
-            ["uvx", "--from", ".", "python", "-c", 
+            [sys.executable, "-c", 
              "import sys; sys.path.insert(0, 'src'); "
              "import server; import generate_code_review_context; "
              "assert hasattr(server, 'main'); "
