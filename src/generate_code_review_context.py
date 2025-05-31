@@ -25,17 +25,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 import logging
 
-# Import git branch comparison functionality
-try:
-    from .git_branch_comparison import detect_primary_branch, validate_branch_exists, get_branch_diff
-except ImportError:
-    try:
-        from git_branch_comparison import detect_primary_branch, validate_branch_exists, get_branch_diff
-    except ImportError:
-        print("⚠️  Git branch comparison not available")
-        detect_primary_branch = None
-        validate_branch_exists = None
-        get_branch_diff = None
+# Git branch comparison functionality removed - use GitHub PR integration instead
 
 # Import GitHub PR integration functionality
 try:
@@ -47,6 +37,9 @@ except ImportError:
         print("⚠️  GitHub PR integration not available")
         parse_github_pr_url = None
         get_complete_pr_analysis = None
+
+# Note: AI code review functionality import disabled to avoid circular import
+# The generate_ai_code_review function is available via MCP server tools
 # Load environment variables from .env file (optional)
 try:
     from dotenv import load_dotenv  # type: ignore
@@ -3164,12 +3157,11 @@ def execute_auto_prompt_workflow(project_path: str, scope: str = "recent_phase",
             # Run AI review with custom prompt
             # Convert to absolute path if needed
             absolute_context_file = os.path.abspath(context_file)
-            ai_review_result = generate_ai_code_review(
-                context_file_path=absolute_context_file,
-                temperature=temperature,
-                custom_prompt=generated_prompt,
-                text_output=False  # We want file output for auto-prompt workflow
-            )
+            # Note: AI code review generation has been disabled to avoid circular imports
+            # The auto-prompt workflow now only generates context + meta prompt
+            # AI review should be handled separately via the MCP server tools
+            print("ℹ️  Auto-prompt workflow complete - use generate_ai_code_review MCP tool for AI review")
+            ai_review_result = None
             
             return format_auto_prompt_output(prompt_result, auto_prompt_mode=True, 
                                            ai_review_file=ai_review_result)

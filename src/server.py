@@ -2,6 +2,8 @@
 FastMCP server for generating code review context from PRDs and git changes
 """
 
+print("🚨 DEBUG: server.py module is being loaded!")
+
 import os
 import sys
 from pathlib import Path
@@ -27,139 +29,169 @@ app = mcp
 generate_context = generate_review_context
 
 
-@mcp.tool()
-async def generate_branch_comparison_review(
+def generate_context_in_memory(
+    github_pr_url: Optional[str] = None,
     project_path: Optional[str] = None,
-    compare_branch: Optional[str] = None,
-    target_branch: Optional[str] = None,
-    temperature: float = 0.5,
-    enable_gemini_review: bool = True,
     include_claude_memory: bool = True,
-    include_cursor_rules: bool = False
-) -> dict:
-    """Generate code review by comparing git branches with configuration discovery.
+    include_cursor_rules: bool = False,
+    auto_prompt_content: Optional[str] = None,
+    temperature: float = 0.5
+) -> str:
+    """
+    Generate code review context content in memory without creating any files.
+    
+    This function extracts the core context generation logic without file I/O operations.
+    It's designed for the DEFAULT behavior where no files should be created.
     
     Args:
-        project_path: Absolute path to project root directory
-        compare_branch: Source branch to compare (e.g., 'feature/auth-system')
-        target_branch: Target branch for comparison (default: auto-detect main/master)
-        temperature: Temperature for AI model (default: 0.5, range: 0.0-2.0)
-        enable_gemini_review: Enable Gemini AI code review generation (default: true)
-        include_claude_memory: Include CLAUDE.md files in context (default: true)
-        include_cursor_rules: Include Cursor rules files in context (default: false)
-    
+        github_pr_url: GitHub PR URL for analysis
+        project_path: Project directory path
+        include_claude_memory: Include CLAUDE.md files in context
+        include_cursor_rules: Include Cursor rules files in context  
+        auto_prompt_content: Generated meta-prompt content to embed
+        temperature: AI temperature setting
+        
     Returns:
-        Success message with branch comparison results and generated files
+        Generated context content as string
     """
     try:
-        # Validate required parameters per test expectations
+        # Import here to avoid circular imports
+        from github_pr_integration import get_complete_pr_analysis
+        from generate_code_review_context import discover_project_configurations_with_fallback
+        import datetime
+        
         if not project_path:
-            return {
-                "status": "error",
-                "error": "project_path is required"
-            }
-        
-        if not compare_branch:
-            return {
-                "status": "error", 
-                "error": "compare_branch is required"
-            }
-        
-        if not os.path.isabs(project_path):
-            return {
-                "status": "error",
-                "error": "project_path must be an absolute path"
-            }
-        
-        if not os.path.exists(project_path):
-            return {
-                "status": "error", 
-                "error": f"Project path does not exist: {project_path}"
-            }
-        
-        if not os.path.isdir(project_path):
-            return {
-                "status": "error",
-                "error": f"Project path must be a directory: {project_path}"
-            }
-        
-        # Generate branch comparison review  
-        import io
-        import sys
-        from contextlib import redirect_stdout, redirect_stderr
-        
-        # Capture stdout to detect error messages
-        stdout_capture = io.StringIO()
-        stderr_capture = io.StringIO()
-        
-        try:
-            with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
-                output_file, gemini_file = generate_review_context(
-                    project_path=project_path,
-                    enable_gemini_review=enable_gemini_review,
-                    temperature=temperature,
-                    compare_branch=compare_branch,
-                    target_branch=target_branch,
-                    include_claude_memory=include_claude_memory,
-                    include_cursor_rules=include_cursor_rules
-                )
+            project_path = os.getcwd()
             
-            # Check captured output for error indicators
-            captured_output = stdout_capture.getvalue()
-            if ("❌ Failed to compare branches" in captured_output or 
-                "Source branch" in captured_output and "does not exist" in captured_output):
-                return {
-                    "status": "error", 
-                    "error": f"Branch comparison failed: Source branch '{compare_branch}' does not exist"
-                }
+        # Generate timestamp for context header
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d at %H:%M:%S")
+        
+        # Start building context content
+        context_parts = []
+        
+        # Header
+        context_parts.append("# Code Review Context - Review Mode: GitHub PR Analysis")
+        context_parts.append(f"*Generated on {timestamp}*")
+        context_parts.append("")
+        
+        # Add user instructions (meta prompt) if provided
+        if auto_prompt_content:
+            context_parts.append("<user_instructions>")
+            context_parts.append(auto_prompt_content)
+            context_parts.append("</user_instructions>")
+            context_parts.append("")
+        
+        # Project summary
+        project_name = os.path.basename(os.path.abspath(project_path))
+        context_parts.append("<overall_prd_summary>")
+        context_parts.append(f"Generate comprehensive code review for recent development changes focusing on code quality, security, performance, and best practices for project: {project_name}")
+        context_parts.append("</overall_prd_summary>")
+        context_parts.append("")
+        
+        # GitHub PR Analysis
+        if github_pr_url:
+            try:
+                context_parts.append("## GitHub Pull Request Analysis")
+                context_parts.append(f"**PR URL:** {github_pr_url}")
+                context_parts.append("")
                 
-        except ValueError as e:
-            # This catches explicit errors from the generate_review_context function
-            return {
-                "status": "error",
-                "error": f"Branch comparison failed: {str(e)}"
-            }
+                # Get PR data
+                pr_analysis = get_complete_pr_analysis(github_pr_url)
+                pr_data = pr_analysis.get('pr_data', {})
+                file_changes = pr_analysis.get('file_changes', {})
+                
+                # PR metadata
+                context_parts.append("### Pull Request Details")
+                context_parts.append(f"- **Title:** {pr_data.get('title', 'N/A')}")
+                context_parts.append(f"- **Author:** {pr_data.get('author', 'N/A')}")
+                context_parts.append(f"- **Source Branch:** {pr_data.get('source_branch', 'N/A')}")
+                context_parts.append(f"- **Target Branch:** {pr_data.get('target_branch', 'N/A')}")
+                context_parts.append(f"- **Status:** {pr_data.get('state', 'N/A')}")
+                context_parts.append("")
+                
+                if pr_data.get('body'):
+                    context_parts.append("### PR Description")
+                    context_parts.append(pr_data['body'])
+                    context_parts.append("")
+                
+                # File changes summary
+                summary = file_changes.get('summary', {})
+                context_parts.append("### Changes Summary")
+                context_parts.append(f"- **Files Changed:** {summary.get('files_changed', 0)}")
+                context_parts.append(f"- **Lines Added:** {summary.get('total_additions', 0)}")
+                context_parts.append(f"- **Lines Deleted:** {summary.get('total_deletions', 0)}")
+                context_parts.append("")
+                
+                # File changes details
+                changed_files = file_changes.get('changed_files', [])
+                if changed_files:
+                    context_parts.append("### File Changes")
+                    for file_change in changed_files:
+                        context_parts.append(f"#### {file_change['path']}")
+                        context_parts.append(f"**Status:** {file_change['status']}")
+                        context_parts.append(f"**Changes:** +{file_change.get('additions', 0)} -{file_change.get('deletions', 0)}")
+                        
+                        if file_change.get('patch'):
+                            context_parts.append("```diff")
+                            context_parts.append(file_change['patch'])
+                            context_parts.append("```")
+                        context_parts.append("")
+                        
+            except Exception as e:
+                context_parts.append(f"⚠️ Failed to fetch PR data: {str(e)}")
+                context_parts.append("")
         
-        # Build response with user-friendly feedback
-        response_parts = []
-        response_parts.append(f"🔍 Analyzed project: {os.path.basename(os.path.abspath(project_path))}")
-        response_parts.append(f"🌿 Branch comparison: {compare_branch} → {target_branch or 'auto-detected'}")
-        response_parts.append(f"🌡️ AI temperature: {temperature}")
-        response_parts.append(f"📝 Generated review context: {os.path.basename(output_file)}")
+        # Configuration discovery (CLAUDE.md, Cursor rules, etc.)
+        if include_claude_memory or include_cursor_rules:
+            try:
+                config_data = discover_project_configurations_with_fallback(project_path)
+                
+                if include_claude_memory and config_data.get('claude_memory_files'):
+                    context_parts.append("## Project Configuration - CLAUDE.md Files")
+                    for memory_file in config_data['claude_memory_files']:
+                        context_parts.append(f"### {memory_file['path']}")
+                        context_parts.append("```markdown")
+                        context_parts.append(memory_file['content'])
+                        context_parts.append("```")
+                        context_parts.append("")
+                
+                if include_cursor_rules and config_data.get('cursor_rules'):
+                    context_parts.append("## Project Configuration - Cursor Rules")
+                    for rule in config_data['cursor_rules']:
+                        context_parts.append(f"### {rule['path']}")
+                        context_parts.append("```")
+                        context_parts.append(rule['content'])
+                        context_parts.append("```")
+                        context_parts.append("")
+                        
+            except Exception as e:
+                context_parts.append(f"⚠️ Configuration discovery failed: {str(e)}")
+                context_parts.append("")
         
-        if gemini_file:
-            response_parts.append(f"✅ AI code review completed: {os.path.basename(gemini_file)}")
-        else:
-            response_parts.append(f"⚠️ AI code review failed or was skipped (check API key and model availability)")
+        # Footer
+        context_parts.append("---")
+        context_parts.append(f"*Context generated in-memory for project: {project_name}*")
         
-        response_parts.append(f"🎉 Branch comparison review completed!")
-        
-        # List generated files
-        files_generated = [os.path.basename(output_file)]
-        if gemini_file:
-            files_generated.append(os.path.basename(gemini_file))
-        response_parts.append(f"📄 Files generated: {', '.join(files_generated)}")
-        
-        # Return structured response for MCP tools
-        return {
-            "status": "success",
-            "context_file": output_file,
-            "ai_review_file": gemini_file,
-            "branch_comparison_summary": {
-                "project": os.path.basename(os.path.abspath(project_path)),
-                "source_branch": compare_branch,
-                "target_branch": target_branch or "auto-detected",
-                "temperature": temperature,
-                "files_generated": files_generated
-            },
-            "message": "\n".join(response_parts)
-        }
+        return "\n".join(context_parts)
         
     except Exception as e:
-        return {
-            "status": "error",
-            "error": f"Failed to generate branch comparison review: {str(e)}"
-        }
+        # Fallback minimal context
+        import datetime
+        return f"""# Code Review Context - Error Recovery
+
+⚠️ Failed to generate full context: {str(e)}
+
+## Basic Information
+- **Project Path:** {project_path or 'Unknown'}
+- **GitHub PR URL:** {github_pr_url or 'Not provided'}
+- **Timestamp:** {datetime.datetime.now().strftime("%Y-%m-%d at %H:%M:%S")}
+
+Please review the code changes manually or check the error above.
+"""
+
+
+
+# generate_branch_comparison_review MCP tool removed - use generate_pr_review with GitHub PR URLs instead
 
 
 @mcp.tool()
@@ -169,8 +201,13 @@ async def generate_pr_review(
     temperature: float = 0.5,
     enable_gemini_review: bool = True,
     include_claude_memory: bool = True,
-    include_cursor_rules: bool = False
-) -> dict:
+    include_cursor_rules: bool = False,
+    auto_meta_prompt: bool = True,
+    use_templated_instructions: bool = False,
+    create_context_file: bool = False,
+    raw_context_only: bool = False,
+    text_output: bool = False
+) -> str:
     """Generate code review for a GitHub Pull Request with configuration discovery.
     
     Args:
@@ -180,39 +217,34 @@ async def generate_pr_review(
         enable_gemini_review: Enable Gemini AI code review generation (default: true)
         include_claude_memory: Include CLAUDE.md files in context (default: true)
         include_cursor_rules: Include Cursor rules files in context (default: false)
+        auto_meta_prompt: Automatically generate and embed meta prompt in user_instructions (default: true)
+        use_templated_instructions: Use templated backup instructions instead of generated meta prompt (default: false)
+        create_context_file: Save context to file and return context content (default: false)
+        raw_context_only: Return raw context content without AI processing (default: false)
+        text_output: Return content directly instead of saving to file (default: false)
     
     Returns:
-        Success message with PR analysis results and generated files
+        Default (text_output=False): Success message with AI feedback file path
+        If text_output=True: AI review content directly as text string (NO files created)  
+        If raw_context_only=True: Context content or success message with context file path
     """
     try:
         # Validate required parameters per test expectations  
         if not github_pr_url:
-            return {
-                "status": "error",
-                "error": "github_pr_url is required"
-            }
+            return "ERROR: github_pr_url is required"
         
         # Use current directory if project_path not provided
         if not project_path:
             project_path = os.getcwd()
         
         if not os.path.isabs(project_path):
-            return {
-                "status": "error",
-                "error": "project_path must be an absolute path"
-            }
+            return "ERROR: project_path must be an absolute path"
         
         if not os.path.exists(project_path):
-            return {
-                "status": "error",
-                "error": f"Project path does not exist: {project_path}"
-            }
+            return f"ERROR: Project path does not exist: {project_path}"
         
         if not os.path.isdir(project_path):
-            return {
-                "status": "error",
-                "error": f"Project path must be a directory: {project_path}"
-            }
+            return f"ERROR: Project path must be a directory: {project_path}"
         
         # Generate GitHub PR review
         import io
@@ -224,15 +256,69 @@ async def generate_pr_review(
         stderr_capture = io.StringIO()
         
         try:
-            with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
-                output_file, gemini_file = generate_review_context(
-                    project_path=project_path,
-                    enable_gemini_review=enable_gemini_review,
-                    temperature=temperature,
-                    github_pr_url=github_pr_url,
-                    include_claude_memory=include_claude_memory,
-                    include_cursor_rules=include_cursor_rules
-                )
+            # Generate meta prompt if requested and not overridden by use_templated_instructions
+            auto_prompt_content = None
+            if auto_meta_prompt and not use_templated_instructions:
+                try:
+                    # Use optimized meta prompt generation without creating intermediate files
+                    from meta_prompt_analyzer import generate_optimized_meta_prompt
+                    
+                    meta_prompt_result = generate_optimized_meta_prompt(
+                        project_path=project_path,
+                        scope="recent_phase",  # Default scope for PR reviews
+                        temperature=temperature
+                    )
+                    auto_prompt_content = meta_prompt_result.get("generated_prompt")
+                    if not auto_prompt_content:
+                        # Fall back to templated instructions instead of failing
+                        auto_prompt_content = None
+                except Exception as e:
+                    # Fall back to templated instructions instead of failing
+                    auto_prompt_content = None
+            
+            # Handle raw_context_only mode first (overrides other settings)
+            if raw_context_only:
+                # Mode: Generate and save context file (for raw context requests)
+                with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
+                    output_file, gemini_file = generate_review_context(
+                        project_path=project_path,
+                        enable_gemini_review=False,  # Don't generate AI review for raw context
+                        temperature=temperature,
+                        github_pr_url=github_pr_url,
+                        include_claude_memory=include_claude_memory,
+                        include_cursor_rules=include_cursor_rules,
+                        auto_prompt_content=auto_prompt_content
+                    )
+            elif create_context_file:
+                # Mode: Create context file (for backward compatibility)
+                with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
+                    output_file, gemini_file = generate_review_context(
+                        project_path=project_path,
+                        enable_gemini_review=False,  # Don't let it create AI feedback files
+                        temperature=temperature,
+                        github_pr_url=github_pr_url,
+                        include_claude_memory=include_claude_memory,
+                        include_cursor_rules=include_cursor_rules,
+                        auto_prompt_content=auto_prompt_content
+                    )
+            else:
+                # DEFAULT behavior: Pure in-memory context generation (NO intermediate files created)
+                try:
+                    # Use our pure in-memory function that creates NO files at all
+                    context_content = generate_context_in_memory(
+                        github_pr_url=github_pr_url,
+                        project_path=project_path,
+                        include_claude_memory=include_claude_memory,
+                        include_cursor_rules=include_cursor_rules,
+                        auto_prompt_content=auto_prompt_content,
+                        temperature=temperature
+                    )
+                    
+                    # No files created - context is purely in memory
+                    output_file = None
+                    
+                except Exception as e:
+                    return f"ERROR: Failed to generate context in memory: {str(e)}"
             
             # Check captured output for error indicators
             captured_output = stdout_capture.getvalue()
@@ -247,57 +333,116 @@ async def generate_pr_review(
                 else:
                     error_msg = "Failed to fetch PR data"
                 
-                return {
-                    "status": "error",
-                    "error": f"GitHub PR review failed: {error_msg}"
-                }
+                return f"ERROR: GitHub PR review failed: {error_msg}"
                 
         except ValueError as e:
             # This catches explicit errors from the generate_review_context function
-            return {
-                "status": "error",
-                "error": f"GitHub PR review failed: {str(e)}"
-            }
+            return f"ERROR: GitHub PR review failed: {str(e)}"
         
-        # Build response with user-friendly feedback
-        response_parts = []
-        response_parts.append(f"🔍 Analyzed project: {os.path.basename(os.path.abspath(project_path))}")
-        response_parts.append(f"🔗 GitHub PR: {github_pr_url}")
-        response_parts.append(f"🌡️ AI temperature: {temperature}")
-        response_parts.append(f"📝 Generated review context: {os.path.basename(output_file)}")
+        # Handle different output modes based on parameters
+        try:
+            # Handle raw_context_only case first (highest priority)
+            if raw_context_only:
+                if output_file and os.path.exists(output_file):
+                    with open(output_file, 'r', encoding='utf-8') as f:
+                        context_content = f.read()
+                    
+                    if text_output:
+                        # Return context content directly WITHOUT creating any files
+                        return context_content
+                    else:
+                        # Save context to properly named file and return success message
+                        import datetime
+                        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+                        context_filename = f"code-review-context-github-pr-{timestamp}.md"
+                        context_filepath = os.path.join(project_path, context_filename)
+                        
+                        with open(context_filepath, 'w', encoding='utf-8') as f:
+                            f.write(context_content)
+                        
+                        return f"Code review context generated successfully: {context_filename}"
+                else:
+                    return "ERROR: Failed to generate context for raw_context_only mode"
+            
+            # Handle create_context_file case (backward compatibility)
+            elif create_context_file:
+                if output_file and os.path.exists(output_file):
+                    with open(output_file, 'r', encoding='utf-8') as f:
+                        context_content = f.read()
+                    
+                    # Save context to properly named file
+                    import datetime
+                    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+                    context_filename = f"code-review-context-github-pr-{timestamp}.md"
+                    context_filepath = os.path.join(project_path, context_filename)
+                    
+                    with open(context_filepath, 'w', encoding='utf-8') as f:
+                        f.write(context_content)
+                    
+                    return f"Code review context generated successfully: {context_filename}"
+                else:
+                    return "ERROR: Failed to generate context file"
+            
+            # DEFAULT case: Context already generated in memory
+            else:
+                # For default case, context_content should already be available from in-memory generation
+                if 'context_content' not in locals():
+                    return "ERROR: No context content available - in-memory generation failed"
+                
+                # Generate AI feedback from context
+                # Determine user instructions based on auto_meta_prompt setting
+                if auto_prompt_content:
+                    # Use generated meta prompt as user instructions
+                    user_instructions = auto_prompt_content
+                else:
+                    # Use templated backup instructions
+                    user_instructions = """Please provide a comprehensive code review analysis for the following GitHub PR context.
+
+Focus on:
+1. Code quality and best practices
+2. Security vulnerabilities  
+3. Performance optimizations
+4. Maintainability improvements
+5. Documentation suggestions
+
+Provide specific, actionable feedback with examples where appropriate."""
+                
+                # Generate AI review from the context with proper user instructions
+                ai_review_content = send_to_gemini_for_review(
+                    context_content=f"""{user_instructions}
+
+{context_content}""",
+                    temperature=temperature,
+                    return_text=True  # Return text directly instead of saving to file
+                )
+                
+                # Handle return based on text_output setting
+                if ai_review_content:
+                    if text_output:
+                        # DEFAULT: Return AI content directly (NO files created)
+                        return ai_review_content
+                    else:
+                        # text_output=False: Save to file and return success message
+                        import datetime
+                        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+                        feedback_filename = f"pr-review-feedback-{timestamp}.md"
+                        feedback_filepath = os.path.join(project_path, feedback_filename)
+                        
+                        with open(feedback_filepath, 'w', encoding='utf-8') as f:
+                            f.write(ai_review_content)
+                        
+                        return f"AI code review generated successfully: {feedback_filename}"
+                else:
+                    return "ERROR: Failed to generate AI review content"
+                    
+        except Exception as e:
+            return f"ERROR: Failed to generate AI review from context: {str(e)}"
         
-        if gemini_file:
-            response_parts.append(f"✅ AI code review completed: {os.path.basename(gemini_file)}")
-        else:
-            response_parts.append(f"⚠️ AI code review failed or was skipped (check API key and model availability)")
-        
-        response_parts.append(f"🎉 GitHub PR review completed!")
-        
-        # List generated files
-        files_generated = [os.path.basename(output_file)]
-        if gemini_file:
-            files_generated.append(os.path.basename(gemini_file))
-        response_parts.append(f"📄 Files generated: {', '.join(files_generated)}")
-        
-        # Return structured response for MCP tools
-        return {
-            "status": "success",
-            "context_file": output_file,
-            "ai_review_file": gemini_file,
-            "pr_summary": {
-                "project": os.path.basename(os.path.abspath(project_path)),
-                "pr_url": github_pr_url,
-                "temperature": temperature,
-                "files_generated": files_generated
-            },
-            "message": "\n".join(response_parts)
-        }
+        # If we get here, context generation failed
+        return f"ERROR: Failed to generate context from GitHub PR: {github_pr_url}"
         
     except Exception as e:
-        return {
-            "status": "error",
-            "error": f"Failed to generate GitHub PR review: {str(e)}"
-        }
+        return f"ERROR: Failed to generate GitHub PR review: {str(e)}"
 
 
 @mcp.tool()
@@ -512,6 +657,10 @@ def generate_ai_code_review(
     
     # Comprehensive error handling
     try:
+        # 🔍 DEBUG: Check if generate_ai_code_review is being called
+        if project_path and "nicobailon" in str(project_path):
+            return f"🔍 DEBUG: generate_ai_code_review() WAS CALLED with project_path={project_path}"
+            
         # Validate input parameters - exactly one should be provided
         provided_params = sum([
             context_file_path is not None,
@@ -679,7 +828,7 @@ Provide specific, actionable feedback with code examples where appropriate."""
                 temp_context_file = None
                 try:
                     # Generate meta prompt if enabled
-                    if auto_meta_prompt:
+                    if auto_meta_prompt and project_path:
                         meta_prompt_result = generate_optimized_meta_prompt(
                             project_path=project_path,
                             scope=scope,
@@ -762,7 +911,10 @@ Provide specific, actionable feedback with code examples where appropriate."""
                             output_file = output_path
                         else:
                             # Use default naming convention in project directory
-                            output_file = os.path.join(project_path, f"code-review-ai-feedback-{timestamp}.md")
+                            if project_path:
+                                output_file = os.path.join(project_path, f"code-review-ai-feedback-{timestamp}.md")
+                            else:
+                                output_file = f"code-review-ai-feedback-{timestamp}.md"
                         
                         # Save AI review content to file
                         try:
@@ -801,6 +953,14 @@ Provide specific, actionable feedback with code examples where appropriate."""
         # Catch-all to ensure no exceptions escape the tool function
         return f"ERROR: Unexpected error: {str(e)}"
 
+
+@mcp.tool()
+async def debug_mcp_params(
+    test_bool: bool = False,
+    test_string: str = "default"
+) -> str:
+    """Debug tool to see what parameters MCP is actually passing."""
+    return f"🔍 MCP DEBUG: test_bool={test_bool}, test_string='{test_string}'"
 
 @mcp.tool()
 async def generate_meta_prompt(
@@ -1014,7 +1174,6 @@ def get_mcp_tools():
     return [
         "generate_code_review_context",
         "generate_ai_code_review", 
-        "generate_branch_comparison_review",
         "generate_pr_review",
         "generate_meta_prompt"
     ]

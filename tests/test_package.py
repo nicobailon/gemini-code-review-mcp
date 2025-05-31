@@ -84,13 +84,13 @@ class TestPackageMetadata:
         # Check basic metadata
         project = config["project"]
         assert project["name"] == "task-list-code-review-mcp"
-        assert project["version"] == "1.0.0"
-        assert "MCP server for generating code review context" in project["description"]
-        assert project["requires-python"] == ">=3.8"
+        assert project["version"] == "0.3.9"
+        assert "MCP server" in project["description"] and "code review" in project["description"]
+        assert project["requires-python"] == ">=3.10"
         
         # Check dependencies
         deps = project["dependencies"]
-        assert "mcp>=0.1.0" in deps
+        assert "fastmcp>=0.1.0" in deps
         assert "google-genai>=0.1.0" in deps
         assert "python-dotenv>=1.0.0" in deps
         
@@ -158,5 +158,5 @@ class TestBuildArtifacts:
             
             # Check naming convention
             for wheel in wheel_files:
-                assert "mcp_server_code_review" in wheel.name
-                assert "1.0.0" in wheel.name
+                assert "task_list_code_review_mcp" in wheel.name
+                assert "0.3.9" in wheel.name

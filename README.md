@@ -15,53 +15,47 @@ An MCP server designed for **AI coding agents** (Cursor, Claude Code, etc.) with
 
 ## 🚀 Quick Start
 
-> **💡 Most Common Command**: `uvx task-list-code-review-mcp generate-code-review /path/to/project`
+> **💡 Most Common Use**: MCP Server integration with AI agents (Claude Code, Cursor)
 
-### Try It First (No Installation Required)
+### 🤖 MCP Server Integration (Primary Usage)
 
-**Recommended**: Test the tool with uvx before deciding to install globally:
+**Recommended**: Use as MCP server with AI coding agents:
 
 ```bash
 # Set your Gemini API key (get one at https://ai.google.dev/gemini-api/docs/api-key)
 export GEMINI_API_KEY=your_key_here
 
-# Or create a .env file (copy from .env.example)
-# cp .env.example .env  # then edit with your keys
+# Add MCP server to Claude Code
+claude mcp add task-list-reviewer -e GEMINI_API_KEY=your_key_here -- uvx task-list-code-review-mcp
 
-# Run directly without installing anything (uvx handles everything)
-uvx task-list-code-review-mcp generate-code-review /path/to/your/project
-
-# Shows real-time progress and model capabilities:
-# 🔍 Analyzing project: my-app
-# 📊 Review scope: recent_phase  
-# 🤖 Using Gemini model: gemini-2.0-flash
-# ✨ Enhanced features enabled: web grounding, thinking mode
-# 📄 Files generated: code-review-context-recent-phase-20241201-143052.md, ...
+# Or use with Cursor via .cursorrules or similar AI agent integration
 ```
 
-### 🚨 Development/Local Testing
+### 🖥️ Standalone CLI Usage
 
-**If you're working with the source code or getting cached version issues:**
+**For direct command-line usage:**
 
 ```bash
-# 🔧 Direct module execution (always works in dev mode)
+# 🔧 Development/Local Testing (always works)
 python -m src.generate_code_review_context /path/to/project --scope full_project
 python -m src.meta_prompt_generator --project-path /path/to/project
 
-# 🗺️ Clear uvx cache if getting old versions
-uv cache clean && uvx --force task-list-code-review-mcp generate-code-review /path/to/project
-```
-
-### Install Globally (If You Like It)
-
-```bash
-# Install from PyPI
+# 📦 After installing globally
 pip install task-list-code-review-mcp
-
-# Now available as commands
 generate-code-review /path/to/your/project
 generate-meta-prompt --context-file tasks/context.md
-# Also available: code-review (semantic alias)
+```
+
+### Install Options
+
+```bash
+# Option 1: Use with uvx (no installation, MCP server only)
+uvx task-list-code-review-mcp  # Starts MCP server
+
+# Option 2: Install globally for CLI tools
+pip install task-list-code-review-mcp
+generate-code-review --help
+generate-meta-prompt --help
 ```
 
 ## ✨ Key Features
@@ -97,53 +91,56 @@ generate-meta-prompt --context-file tasks/context.md
 ### 🚀 Essential Commands (80% Use Cases)
 
 > **⚡ Quick Reference**:
-> - `uvx task-list-code-review-mcp generate-code-review .` - Smart review current project  
-> - `uvx task-list-code-review-mcp generate-code-review . --auto-prompt` - With optimization
-> - `uvx generate-meta-prompt --project-path . --stream` - Just the meta-prompt
+> - **MCP Server**: Used via AI agents (Claude Code, Cursor) - no direct CLI
+> - **CLI Tools**: `generate-code-review .` - Smart review current project  
+> - **CLI Tools**: `generate-meta-prompt --project-path .` - Just the meta-prompt
 
 ```bash
-# Most common: Smart review of your project
-uvx task-list-code-review-mcp generate-code-review /path/to/project
+# 🤖 MCP Server Usage (Primary)
+# Use through AI agents like Claude Code:
+# Human: "Generate a code review for my project"
+# Claude: [Uses MCP tools automatically]
+
+# 🖥️ CLI Usage (Development/Testing)
+# Direct command-line usage:
+python -m src.generate_code_review_context /path/to/project
 # 🔍 Auto-detects completion status → 🤖 Model capabilities → 📄 Generated files
 
-# With auto-prompt optimization
-uvx task-list-code-review-mcp generate-code-review /path/to/project --auto-prompt
-# Generates custom prompt first, then uses it for targeted review
-
-# Review entire project
-uvx task-list-code-review-mcp generate-code-review /path/to/project --scope full_project
+# After pip install:
+generate-code-review /path/to/project --scope full_project
+generate-meta-prompt --project-path /path/to/project
 ```
 
-### 🔧 Advanced Usage
+### 🔧 Advanced CLI Usage
 
 ```bash
-# 🎯 AUTO-PROMPT GENERATION
+# 🎯 META-PROMPT GENERATION
 
 # Generate optimized meta-prompt for your completed work
-uvx generate-meta-prompt --project-path /path/to/project --stream
+python -m src.meta_prompt_generator --project-path /path/to/project --stream
 # Outputs to console for copy/paste
 
-uvx generate-meta-prompt --context-file tasks/context.md
-# Saves to meta-prompt-YYYYMMDD-HHMMSS.md
+generate-meta-prompt --context-file tasks/context.md
+# Saves to meta-prompt-YYYYMMDD-HHMMSS.md (after pip install)
 
 # 📊 SCOPE CONTROL
 
 # Review specific phase
-uvx task-list-code-review-mcp generate-code-review /path/to/project --scope specific_phase --phase-number 2.0
+generate-code-review /path/to/project --scope specific_phase --phase-number 2.0
 
 # Use specific task list (when multiple exist)
-uvx task-list-code-review-mcp generate-code-review /path/to/project --task-list tasks-auth-system.md
+generate-code-review /path/to/project --task-list tasks-auth-system.md
 
 # Context generation only (no AI review)
-uvx task-list-code-review-mcp generate-code-review /path/to/project --context-only
+generate-code-review /path/to/project --context-only
 
 # 🤖 MODEL SELECTION
 
 # Use different Gemini model
-GEMINI_MODEL=gemini-2.5-pro uvx task-list-code-review-mcp generate-code-review /path/to/project
+GEMINI_MODEL=gemini-2.5-pro generate-code-review /path/to/project
 
 # Works without task lists
-uvx task-list-code-review-mcp generate-code-review /path/to/project --default-prompt "Review security and performance"
+generate-code-review /path/to/project --default-prompt "Review security and performance"
 ```
 
 ### Task List Discovery
@@ -216,7 +213,7 @@ Human: Compare my feature branch against main and generate a review
 
 Claude: I'll compare your feature branch changes against the main branch.
 
-[Tool Use: generate_branch_comparison_review]
+[Tool Use: generate_pr_review]
 {
   "project_path": "/Users/myname/projects/my-app",
   "compare_branch": "feature/auth-system",
@@ -401,20 +398,10 @@ await use_mcp_tool({
 });
 ```
 
-### 🌿 `generate_branch_comparison_review`
-**Branch diff analysis**
+### 🌿 Branch Comparison (Deprecated)
+**Use GitHub PR integration instead**
 
-```javascript
-await use_mcp_tool({
-  server_name: "task-list-code-review-mcp",
-  tool_name: "generate_branch_comparison_review",
-  arguments: {
-    project_path: "/path/to/project",
-    compare_branch: "feature/auth-system",
-    target_branch: "main"
-  }
-});
-```
+Branch comparison functionality has been consolidated into GitHub PR integration. Create a GitHub PR and use `generate_pr_review` for comprehensive analysis.
 
 ### 🔗 `generate_pr_review`
 **GitHub PR analysis (requires `GITHUB_TOKEN`)**
@@ -484,7 +471,7 @@ Human: Generate a comprehensive review of my recent work
 }
 
 # Specialized workflows:
-# - Branch comparison: generate_branch_comparison_review
+# - GitHub PR analysis: generate_pr_review
 # - GitHub PR review: generate_pr_review  
 # - Context-only generation: raw_context_only: true
 ```
@@ -593,18 +580,6 @@ GEMINI_MODEL=gemini-2.5-flash uvx task-list-code-review-mcp /project
 **Configuration File**: `src/model_config.json` manages aliases and capabilities. Updates automatically when Google releases new models.
 
 ## 📋 Enhanced Review Context Formats
-
-### Branch Comparison Context
-
-When using `generate_branch_comparison_review`, the generated context includes:
-
-**Enhanced Metadata Sections:**
-- **Branch Comparison Metadata**: Source/target branches, file statistics, commit counts
-- **Detailed Commit Information**: Up to 15 commits with authors, timestamps, and messages
-- **Branch Statistics**: Comprehensive summary of changes between branches
-- **Specialized Instructions**: Context-aware guidance for reviewing branch differences
-
-**Filename Format:** `code-review-context-branch-comparison-YYYYMMDD-HHMMSS.md`
 
 ### GitHub PR Context
 
