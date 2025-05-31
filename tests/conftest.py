@@ -9,11 +9,18 @@ import os
 import sys
 import shutil
 import gc
-import psutil
 from pathlib import Path
 from unittest.mock import patch, Mock
 import threading
 import time
+
+# Optional psutil import for memory monitoring
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
+    psutil = None
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -52,21 +59,24 @@ def test_isolation():
     # Pre-test cleanup
     gc.collect()
     
-    # Store initial state
-    initial_memory = psutil.Process().memory_info().rss
+    # Store initial state (only if psutil is available)
+    initial_memory = None
+    if PSUTIL_AVAILABLE:
+        initial_memory = psutil.Process().memory_info().rss
     
     yield
     
     # Post-test cleanup
     gc.collect()
     
-    # Verify no significant memory leaks
-    final_memory = psutil.Process().memory_info().rss
-    memory_growth = (final_memory - initial_memory) / 1024 / 1024  # MB
-    
-    # Allow for some memory growth but flag excessive growth
-    if memory_growth > 50:  # More than 50MB growth per test
-        print(f"Warning: Test may have memory leak - grew {memory_growth:.1f}MB")
+    # Verify no significant memory leaks (only if psutil is available)
+    if PSUTIL_AVAILABLE and initial_memory is not None:
+        final_memory = psutil.Process().memory_info().rss
+        memory_growth = (final_memory - initial_memory) / 1024 / 1024  # MB
+        
+        # Allow for some memory growth but flag excessive growth
+        if memory_growth > 50:  # More than 50MB growth per test
+            print(f"Warning: Test may have memory leak - grew {memory_growth:.1f}MB")
 
 
 @pytest.fixture
@@ -118,22 +128,33 @@ def process_monitor():
     """Monitor process resources during test execution."""
     class ProcessMonitor:
         def __init__(self):
-            self.process = psutil.Process()
+            self.process = psutil.Process() if PSUTIL_AVAILABLE else None
             self.start_memory = None
             self.start_cpu_percent = None
             self.peak_memory = None
+            self.psutil_available = PSUTIL_AVAILABLE
             
         def start_monitoring(self):
+            if not self.psutil_available:
+                return
             self.start_memory = self.process.memory_info().rss / 1024 / 1024  # MB
             self.start_cpu_percent = self.process.cpu_percent()
             self.peak_memory = self.start_memory
             
         def update_peak(self):
+            if not self.psutil_available:
+                return
             current_memory = self.process.memory_info().rss / 1024 / 1024  # MB
             if current_memory > self.peak_memory:
                 self.peak_memory = current_memory
                 
         def get_stats(self):
+            if not self.psutil_available:
+                return {
+                    'memory_delta': 0,
+                    'peak_memory_delta': 0,
+                    'current_memory': 0
+                }
             current_memory = self.process.memory_info().rss / 1024 / 1024  # MB
             return {
                 'memory_delta': current_memory - self.start_memory if self.start_memory else 0,
