@@ -156,10 +156,8 @@ def load_meta_prompt_templates(
             raise ValueError("Config file must contain a JSON object")
 
         # Get meta_prompt_templates section, fallback to empty dict
-        templates: Dict[str, Any] = config.get("meta_prompt_templates", {})
-
-        if not isinstance(templates, dict):
-            raise ValueError("meta_prompt_templates must be a dictionary")
+        config_dict = cast(Dict[str, Any], config)
+        templates: Dict[str, Any] = config_dict.get("meta_prompt_templates", {})
 
         # Validate each template with detailed error reporting
         validation_errors: List[str] = []
@@ -633,7 +631,7 @@ def suggest_path_corrections(provided_path: str, expected_type: str = "project")
 
         # Check if it's a relative path issue
         basename = os.path.basename(provided_path)
-        for root, dirs, files in os.walk(current_dir):
+        for root, dirs, _ in os.walk(current_dir):
             if basename in dirs:
                 rel_path = os.path.relpath(os.path.join(root, basename), current_dir)
                 suggestions.append("  # Found similar directory:")
@@ -792,7 +790,7 @@ def parse_task_list(content: str) -> Dict[str, Any]:
     }
 
 
-def detect_current_phase(phases: List[Dict]) -> Dict[str, Any]:
+def detect_current_phase(phases: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Detect the most recently completed phase for code review.
 
@@ -1857,7 +1855,7 @@ class ConfigurationCache:
 
         cursor_rules_dir = os.path.join(project_path, ".cursor", "rules")
         if os.path.isdir(cursor_rules_dir):
-            for root, dirs, files in os.walk(cursor_rules_dir):
+            for root, _, files in os.walk(cursor_rules_dir):
                 for file in files:
                     if file.endswith(".mdc"):
                         file_path = os.path.join(root, file)
@@ -3068,7 +3066,7 @@ Working examples:
         )
 
         # Prepare template data with enhanced configuration support
-        template_data = {
+        template_data: Dict[str, Any] = {
             "prd_summary": prd_summary,
             "total_phases": task_data["total_phases"],
             "current_phase_number": task_data["current_phase_number"],
@@ -3352,7 +3350,7 @@ def create_argument_parser():
     return parser
 
 
-def validate_cli_arguments(args):
+def validate_cli_arguments(args: Any):
     """Validate CLI arguments and check for conflicts."""
 
     # Check for mutually exclusive auto-prompt flags
@@ -3395,7 +3393,7 @@ def execute_auto_prompt_workflow(
     temperature: float = 0.5,
     auto_prompt: bool = False,
     generate_prompt_only: bool = False,
-    **kwargs,
+    **kwargs: Any,
 ) -> str:
     """Execute auto-prompt generation workflow with optimized single-file approach."""
     try:
@@ -3428,7 +3426,7 @@ def execute_auto_prompt_workflow(
 
             # First generate context (needed for AI review)
             # Filter kwargs to only include parameters that the function accepts, excluding None values
-            context_kwargs = {
+            context_kwargs: Dict[str, Any] = {
                 k: v
                 for k, v in kwargs.items()
                 if k
