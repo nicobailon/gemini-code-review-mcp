@@ -34,7 +34,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # For PR integration tests
       run: |
         # Install test dependencies
-        pip install requests pytest-mock pytest-asyncio
+        pip install requests pytest-mock pytest-asyncio tomli
         
         # Run essential test suite (optimized for CI - covers all core functionality)
         # Tests reduced from 515 to 180 tests while maintaining comprehensive coverage

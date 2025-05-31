@@ -74,7 +74,14 @@ class TestPackageMetadata:
     
     def test_package_metadata(self):
         """Test that package metadata is correctly configured"""
-        import tomllib
+        # Handle tomllib import for different Python versions
+        try:
+            import tomllib  # Python 3.11+
+        except ImportError:
+            try:
+                import tomli as tomllib  # Python 3.10 and earlier
+            except ImportError:
+                pytest.skip("Neither tomllib nor tomli available for TOML parsing")
         
         pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
         with open(pyproject_path, "rb") as f:
