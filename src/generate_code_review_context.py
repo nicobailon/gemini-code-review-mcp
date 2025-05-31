@@ -798,7 +798,7 @@ def extract_prd_summary(content: str) -> str:
                 ) if types is not None else None
             )
             
-            return response.text.strip()
+            return response.text.strip() if response.text else ""
         except Exception as e:
             logger.warning(f"Failed to generate LLM summary: {e}")
     
@@ -1064,8 +1064,6 @@ def format_review_template(data: Dict[str, Any]) -> str:
     review_mode = data.get('review_mode', 'task_list_based')
     if review_mode == 'github_pr':
         scope_info = f"Review Mode: GitHub PR Analysis"
-    elif review_mode == 'branch_comparison':
-        scope_info = f"Review Mode: Git Branch Comparison"
     else:
         scope_info = f"Review Scope: {data['scope']}"
         if data.get('phase_number'):
@@ -1112,10 +1110,9 @@ def format_review_template(data: Dict[str, Any]) -> str:
 {chr(10).join(f"- {subtask}" for subtask in data['subtasks_completed'])}
 </subtasks_completed>"""
     
-    # Add branch comparison metadata if available
+    # Add GitHub PR metadata if available
     branch_data = data.get('branch_comparison_data')
-    if branch_data:
-        if branch_data['mode'] == 'github_pr':
+    if branch_data and branch_data['mode'] == 'github_pr':
             pr_data = branch_data['pr_data']
             summary = branch_data.get('summary', {})
             template += f"""
@@ -1145,63 +1142,6 @@ Description: {description}"""
             template += """
 </github_pr_metadata>"""
         
-        elif branch_data['mode'] == 'branch_comparison':
-            template += f"""
-<branch_comparison_metadata>
-Source Branch: {branch_data['source_branch']}
-Target Branch: {branch_data['target_branch']}
-Files Changed: {branch_data['summary']['files_changed']}
-Files Added: {branch_data['summary']['files_added']}
-Files Modified: {branch_data['summary']['files_modified']}
-Files Deleted: {branch_data['summary']['files_deleted']}"""
-            if branch_data.get('commits'):
-                template += f"""
-Commits Ahead: {len(branch_data['commits'])}
-Recent Commits:"""
-                for commit in branch_data['commits'][:10]:  # Show up to 10 commits
-                    if commit.get('author') and commit.get('date_relative'):
-                        template += f"""
-- {commit['hash']}: {commit['message']} (by {commit['author']}, {commit['date_relative']})"""
-                    else:
-                        template += f"""
-- {commit['hash']}: {commit['message']}"""
-            template += """
-</branch_comparison_metadata>"""
-            
-            # Add detailed commit information section
-            if branch_data.get('commits'):
-                template += """
-
-<commit_information>
-Commit History (showing changes from target to source branch):"""
-                for i, commit in enumerate(branch_data['commits'][:15], 1):  # Show up to 15 commits
-                    if commit.get('author') and commit.get('date_relative'):
-                        template += f"""
-
-{i}. Commit: {commit['hash']}
-   Message: {commit['message']}
-   Author: {commit['author']}
-   Date: {commit.get('date', 'N/A')} ({commit['date_relative']})"""
-                    else:
-                        template += f"""
-
-{i}. Commit: {commit['hash']}
-   Message: {commit['message']}"""
-                template += """
-</commit_information>"""
-            
-            # Add branch statistics section
-            template += f"""
-
-<branch_statistics>
-Comparison Summary:
-- Source Branch: {branch_data['source_branch']} ({len(branch_data.get('commits', []))} commits ahead)
-- Target Branch: {branch_data['target_branch']}
-- Total Files Changed: {branch_data['summary']['files_changed']}
-- Files Added: {branch_data['summary']['files_added']}
-- Files Modified: {branch_data['summary']['files_modified']}
-- Files Deleted: {branch_data['summary']['files_deleted']}
-</branch_statistics>"""
     
     template += f"""
 <project_path>
@@ -1282,25 +1222,6 @@ Based on the PR metadata, commit history, and file changes shown above, conduct 
 6. Integration and compatibility issues
 
 Identify specific lines, files, or patterns that are concerning and provide actionable feedback."""
-            elif review_mode == 'branch_comparison' and branch_data:
-                config_note = ""
-                if data.get('configuration_content'):
-                    config_note = "\n\nPay special attention to the configuration context (Claude memory and Cursor rules) provided above, which contains project-specific guidelines and coding standards that should be followed."
-                
-                commits_count = len(branch_data.get('commits', []))
-                template += f"""You are reviewing changes between git branches '{branch_data['source_branch']}' and '{branch_data['target_branch']}'.
-
-The comparison shows {commits_count} commits ahead of the target branch, affecting {branch_data['summary']['files_changed']} files with {branch_data['summary']['files_added']} additions, {branch_data['summary']['files_modified']} modifications, and {branch_data['summary']['files_deleted']} deletions.{config_note}
-
-Based on the branch comparison metadata, commit history, and file changes shown above, conduct a comprehensive code review focusing on:
-1. Changes introduced in this branch compared to the target
-2. Code quality and architectural decisions
-3. Security implications of the modifications
-4. Performance impact of the changes
-5. Testing strategy and coverage
-6. Documentation updates needed
-
-Review the commit progression to understand the development approach and identify specific lines, files, or patterns that need attention."""
             elif data['scope'] == 'full_project':
                 config_note = ""
                 if data.get('configuration_content'):
@@ -1611,18 +1532,19 @@ Focus on being specific and actionable. When referencing files, include line num
         features_text = ", ".join(enabled_features) if enabled_features else "basic capabilities"
         
         # Format response based on include_formatting parameter
+        response_text = response.text or "No response generated"
         if include_formatting:
             formatted_response = f"""# Comprehensive Code Review Feedback
 *Generated on {datetime.now().strftime("%Y-%m-%d at %H:%M:%S")} using {model_config}*
 
-{response.text}
+{response_text}
 
 ---
 *Review conducted by Gemini AI with {features_text}*
 """
         else:
             # Return raw response without headers/footers
-            formatted_response = response.text
+            formatted_response = response_text
         
         # Return text directly or save to file based on return_text parameter
         if return_text:
@@ -2336,8 +2258,6 @@ def generate_code_review_context_main(project_path: Optional[str] = None, phase:
     review_modes = []
     if github_pr_url:
         review_modes.append("github_pr")
-    if compare_branch or target_branch:
-        review_modes.append("branch_comparison")
     if not review_modes:
         review_modes.append("task_list_based")
     
@@ -2454,12 +2374,6 @@ Working examples:
         if current_mode == "github_pr":
             print(f"🔗 Review mode: GitHub PR analysis")
             print(f"🌐 PR URL: {github_pr_url}")
-        elif current_mode == "branch_comparison":
-            print(f"🔀 Review mode: Git branch comparison")
-            if compare_branch:
-                print(f"📦 Source branch: {compare_branch}")
-            if target_branch:
-                print(f"🎯 Target branch: {target_branch}")
         else:
             print(f"📊 Review scope: {scope}")
         
@@ -2715,7 +2629,7 @@ Working examples:
 
         # Get git changes based on review mode
         changed_files = []
-        branch_comparison_data = None
+        pr_data = None
         
         if current_mode == "github_pr":
             # GitHub PR analysis mode
@@ -2740,7 +2654,7 @@ Working examples:
                     })
                 
                 # Store PR metadata for template
-                branch_comparison_data = {
+                pr_data = {
                     'mode': 'github_pr',
                     'pr_data': pr_analysis['pr_data'],
                     'summary': pr_analysis['file_changes']['summary'],
@@ -2748,81 +2662,15 @@ Working examples:
                 }
                 
                 print(f"✅ Found {len(changed_files)} changed files in PR")
-                print(f"📊 Files: +{branch_comparison_data['summary']['files_added']} "
-                      f"~{branch_comparison_data['summary']['files_modified']} "
-                      f"-{branch_comparison_data['summary']['files_deleted']}")
+                print(f"📊 Files: +{pr_data['summary']['files_added']} "
+                      f"~{pr_data['summary']['files_modified']} "
+                      f"-{pr_data['summary']['files_deleted']}")
                 
             except Exception as e:
                 print(f"❌ Failed to fetch PR data: {e}")
                 # Fallback to task list mode
                 changed_files = get_changed_files(project_path)
                 
-        elif current_mode == "branch_comparison":
-            # Git branch comparison mode  
-            print(f"🔄 Comparing git branches...")
-            try:
-                # Check if git branch comparison functions are available
-                if any(func is None for func in [detect_primary_branch, validate_branch_exists, get_branch_diff]):
-                    raise ImportError("Git branch comparison functions not available")
-                
-                # Determine source and target branches
-                if not target_branch and detect_primary_branch is not None:
-                    target_branch = detect_primary_branch(project_path)
-                    print(f"🎯 Auto-detected target branch: {target_branch}")
-                
-                if not compare_branch:
-                    # Get current branch
-                    result = subprocess.run(['git', 'branch', '--show-current'], 
-                                          cwd=project_path, capture_output=True, text=True, check=True)
-                    compare_branch = result.stdout.strip()
-                    print(f"📦 Using current branch: {compare_branch}")
-                
-                # Type guards: Ensure branches are not None before validation
-                if compare_branch is None:
-                    raise ValueError("Compare branch could not be determined")
-                if target_branch is None:
-                    raise ValueError("Target branch could not be determined")
-                
-                # Validate branches exist
-                if validate_branch_exists is not None and not validate_branch_exists(project_path, compare_branch):
-                    raise ValueError(f"Source branch '{compare_branch}' does not exist")
-                if validate_branch_exists is not None and not validate_branch_exists(project_path, target_branch):
-                    raise ValueError(f"Target branch '{target_branch}' does not exist")
-                
-                # Get branch diff
-                if get_branch_diff is not None:
-                    diff_data = get_branch_diff(project_path, compare_branch, target_branch)
-                else:
-                    raise ImportError("get_branch_diff function not available")
-                
-                # Convert branch diff to our expected format
-                for file_change in diff_data['changed_files']:
-                    changed_files.append({
-                        'path': os.path.join(project_path, file_change['path']),
-                        'status': f"branch-{file_change['status']}",
-                        'content': file_change['content']
-                    })
-                
-                # Store branch comparison metadata
-                branch_comparison_data = {
-                    'mode': 'branch_comparison',
-                    'source_branch': compare_branch,
-                    'target_branch': target_branch,
-                    'commits': diff_data.get('commits', []),
-                    'summary': diff_data['summary']
-                }
-                
-                print(f"✅ Found {len(changed_files)} changed files between branches")
-                print(f"📊 Files: +{branch_comparison_data['summary']['files_added']} "
-                      f"~{branch_comparison_data['summary']['files_modified']} "
-                      f"-{branch_comparison_data['summary']['files_deleted']}")
-                if diff_data.get('commits'):
-                    print(f"📝 Commits: {len(diff_data['commits'])} commits ahead of {target_branch}")
-                
-            except Exception as e:
-                print(f"❌ Failed to compare branches: {e}")
-                # Fallback to task list mode
-                changed_files = get_changed_files(project_path)
         else:
             # Task list based mode (default)
             changed_files = get_changed_files(project_path)
@@ -2858,7 +2706,7 @@ Working examples:
             'scope': scope,
             'phase_number': phase_number if scope == "specific_phase" else None,
             'task_number': task_number if scope == "specific_task" else None,
-            'branch_comparison_data': branch_comparison_data,
+            'branch_comparison_data': pr_data,
             'review_mode': current_mode,
             # Enhanced configuration data
             'configuration_content': configuration_content,
@@ -2880,8 +2728,6 @@ Working examples:
             # Generate mode and scope-specific filename
             if current_mode == "github_pr":
                 mode_prefix = "github-pr"
-            elif current_mode == "branch_comparison":
-                mode_prefix = "branch-comparison"
             else:
                 # Task list based mode - use scope-specific naming
                 if scope == "recent_phase":
