@@ -107,64 +107,162 @@ def load_model_config() -> Dict[str, Any]:
 
 
 def load_meta_prompt_templates(config_path: Optional[str] = None) -> Dict[str, Dict[str, Any]]:
-    """Load meta-prompt templates from model_config.json."""
-    if config_path is None:
-        config = load_model_config()
-    else:
-        try:
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-        except (json.JSONDecodeError, IOError) as e:
-            raise ValueError(f"Failed to load config from {config_path}: {e}")
+    """
+    Load meta-prompt templates from model_config.json with robust error handling.
     
-    # Get meta_prompt_templates section, fallback to empty dict
-    templates = config.get('meta_prompt_templates', {})
-    
-    # Validate each template
-    for template_name, template_data in templates.items():
-        validation_result = validate_meta_prompt_template(template_data)
-        if not validation_result['valid']:
-            raise ValueError(f"Invalid template '{template_name}': {validation_result['errors']}")
-    
-    return templates
+    Args:
+        config_path: Optional path to config file (defaults to model_config.json)
+        
+    Returns:
+        Dictionary of validated meta-prompt templates
+        
+    Raises:
+        ValueError: If config file is invalid or templates fail validation
+        FileNotFoundError: If specified config file doesn't exist
+    """
+    try:
+        if config_path is None:
+            config = load_model_config()
+        else:
+            # Validate config file exists and is readable
+            if not os.path.exists(config_path):
+                raise FileNotFoundError(f"Config file not found: {config_path}")
+                
+            if not os.access(config_path, os.R_OK):
+                raise PermissionError(f"Config file not readable: {config_path}")
+                
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON in config file {config_path}: {e}")
+            except UnicodeDecodeError as e:
+                raise ValueError(f"Config file encoding error {config_path}: {e}")
+            except IOError as e:
+                raise ValueError(f"Failed to read config file {config_path}: {e}")
+        
+        # Validate config structure
+        if not isinstance(config, dict):
+            raise ValueError("Config file must contain a JSON object")
+        
+        # Get meta_prompt_templates section, fallback to empty dict
+        templates = config.get('meta_prompt_templates', {})
+        
+        if not isinstance(templates, dict):
+            raise ValueError("meta_prompt_templates must be a dictionary")
+        
+        # Validate each template with detailed error reporting
+        validation_errors = []
+        for template_name, template_data in templates.items():
+            try:
+                validation_result = validate_meta_prompt_template(template_data)
+                if not validation_result['valid']:
+                    validation_errors.append(f"Template '{template_name}': {', '.join(validation_result['errors'])}")
+            except Exception as e:
+                validation_errors.append(f"Template '{template_name}': Validation failed - {e}")
+        
+        if validation_errors:
+            raise ValueError(f"Template validation failed:\n- " + "\n- ".join(validation_errors))
+        
+        return templates
+        
+    except Exception as e:
+        # Log the error for debugging while preserving the original exception
+        logger.warning(f"Failed to load meta-prompt templates: {e}")
+        raise
 
 
 def validate_meta_prompt_template(template: Dict[str, Any]) -> Dict[str, Any]:
-    """Validate meta-prompt template structure and content."""
+    """
+    Validate meta-prompt template structure and content with comprehensive edge case handling.
+    
+    Args:
+        template: Template dictionary to validate
+        
+    Returns:
+        Dictionary with 'valid', 'errors', and 'placeholders' keys
+    """
     errors = []
     
-    # Check required fields (simplified)
+    # Handle None or non-dict input
+    if template is None:
+        errors.append("Template cannot be None")
+        return {'valid': False, 'errors': errors, 'placeholders': []}
+    
+    if not isinstance(template, dict):
+        errors.append(f"Template must be a dictionary, got {type(template).__name__}")
+        return {'valid': False, 'errors': errors, 'placeholders': []}
+    
+    # Check required fields with proper None handling
     required_fields = ['name', 'template']
     for field in required_fields:
         if field not in template:
             errors.append(f"Missing required field: {field}")
-        elif not template[field]:
+        elif template[field] is None:
+            errors.append(f"Field '{field}' cannot be None")
+        elif isinstance(template[field], str) and not template[field].strip():
+            errors.append(f"Field '{field}' cannot be empty or whitespace-only")
+        elif not template[field]:  # handles empty containers
             errors.append(f"Field '{field}' cannot be empty")
     
-    # Validate specific field types
-    if 'name' in template and not isinstance(template['name'], str):
-        errors.append("Field 'name' must be a string")
+    # Validate name field with edge cases
+    if 'name' in template and template['name'] is not None:
+        if not isinstance(template['name'], str):
+            errors.append("Field 'name' must be a string")
+        elif len(template['name'].strip()) == 0:
+            errors.append("Template name cannot be empty or whitespace-only")
+        elif len(template['name']) > 100:
+            errors.append("Template name is too long (maximum 100 characters)")
     
-    if 'template' in template:
+    # Validate template field with comprehensive checks
+    if 'template' in template and template['template'] is not None:
         if not isinstance(template['template'], str):
             errors.append("Field 'template' must be a string")
-        elif len(template['template']) < 50:
-            errors.append("Template content is too short (minimum 50 characters)")
+        else:
+            template_content = template['template'].strip()
+            if len(template_content) == 0:
+                errors.append("Template content cannot be empty or whitespace-only")
+            elif len(template_content) < 50:
+                errors.append("Template content is too short (minimum 50 characters)")
+            elif len(template_content) > 10000:
+                errors.append("Template content is too long (maximum 10,000 characters)")
     
+    # Validate focus_areas with edge case handling
     if 'focus_areas' in template:
-        if not isinstance(template['focus_areas'], list):
+        focus_areas = template['focus_areas']
+        if focus_areas is None:
+            errors.append("Field 'focus_areas' cannot be None")
+        elif not isinstance(focus_areas, list):
             errors.append("Field 'focus_areas' must be a list")
-        elif len(template['focus_areas']) == 0:
-            errors.append("Field 'focus_areas' cannot be empty")
+        else:
+            if len(focus_areas) == 0:
+                errors.append("Field 'focus_areas' cannot be empty")
+            else:
+                # Validate each focus area
+                for i, area in enumerate(focus_areas):
+                    if not isinstance(area, str):
+                        errors.append(f"Focus area {i} must be a string")
+                    elif not area.strip():
+                        errors.append(f"Focus area {i} cannot be empty or whitespace-only")
     
-    if 'output_format' in template and not isinstance(template['output_format'], str):
-        errors.append("Field 'output_format' must be a string")
+    # Validate output_format with edge cases
+    if 'output_format' in template:
+        output_format = template['output_format']
+        if output_format is not None and not isinstance(output_format, str):
+            errors.append("Field 'output_format' must be a string")
+        elif isinstance(output_format, str) and not output_format.strip():
+            errors.append("Field 'output_format' cannot be empty or whitespace-only")
     
-    # Check for placeholder variables
+    # Check for placeholder variables with error handling
     placeholders = []
     if 'template' in template and isinstance(template['template'], str):
-        import re
-        placeholders = re.findall(r'\{(\w+)\}', template['template'])
+        try:
+            import re
+            placeholders = re.findall(r'\{(\w+)\}', template['template'])
+            # Remove duplicates while preserving order
+            placeholders = list(dict.fromkeys(placeholders))
+        except Exception as e:
+            errors.append(f"Failed to parse template placeholders: {e}")
     
     result = {
         'valid': len(errors) == 0,
