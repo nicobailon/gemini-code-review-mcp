@@ -331,7 +331,7 @@ Review authentication system for security vulnerabilities, focusing on SQL injec
             ]
             
             for test_case in scope_test_cases:
-                with patch('src.generate_code_review_context.generate_auto_prompt') as mock_auto_prompt, \
+                with patch('src.generate_code_review_context.generate_meta_prompt') as mock_auto_prompt, \
                      patch('src.generate_code_review_context.generate_ai_code_review') as mock_ai_review:
                     
                     mock_auto_prompt.return_value = {
@@ -376,7 +376,7 @@ class TestMCPServerWorkflows:
     def test_mcp_tool_chain_execution(self, tmp_path):
         """Test complete MCP tool chain execution."""
         try:
-            from src.server import generate_auto_prompt, generate_code_review_context, generate_ai_code_review
+            from src.server import generate_meta_prompt, generate_code_review_context, generate_ai_code_review
             
             project_path = str(tmp_path / "mcp_test_project")
             os.makedirs(project_path, exist_ok=True)
@@ -406,7 +406,7 @@ def slow_function(data):
                 mock_gemini.return_value = mock_client
                 
                 # Step 1: Generate auto-prompt
-                auto_prompt_result = generate_auto_prompt(
+                auto_prompt_result = generate_meta_prompt(
                     project_path=project_path,
                     scope="full_project"
                 )
@@ -451,7 +451,7 @@ def slow_function(data):
     def test_mcp_server_error_recovery(self, tmp_path):
         """Test MCP server workflow error recovery."""
         try:
-            from src.server import generate_auto_prompt, generate_ai_code_review
+            from src.server import generate_meta_prompt, generate_ai_code_review
             
             project_path = str(tmp_path / "error_recovery_project")
             os.makedirs(project_path, exist_ok=True)
@@ -478,7 +478,7 @@ def slow_function(data):
                 
                 # Should recover from first failure
                 try:
-                    result = generate_auto_prompt(
+                    result = generate_meta_prompt(
                         project_path=project_path,
                         scope="full_project"
                     )
@@ -591,7 +591,7 @@ services:
         try:
             from src.generate_code_review_context import execute_auto_prompt_workflow
             
-            with patch('src.generate_code_review_context.generate_auto_prompt') as mock_auto_prompt, \
+            with patch('src.generate_code_review_context.generate_meta_prompt') as mock_auto_prompt, \
                  patch('src.generate_code_review_context.generate_ai_code_review') as mock_ai_review:
                 
                 mock_auto_prompt.return_value = {
@@ -741,7 +741,7 @@ if __name__ == '__main__':
 """)
         
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             with patch('src.server.get_gemini_model') as mock_gemini:
                 mock_client = MockGeminiClient([
@@ -749,7 +749,7 @@ if __name__ == '__main__':
                 ])
                 mock_gemini.return_value = mock_client
                 
-                result = generate_auto_prompt(
+                result = generate_meta_prompt(
                     project_path=str(ml_project),
                     scope="full_project"
                 )
@@ -764,7 +764,7 @@ if __name__ == '__main__':
                 print("✅ AI/ML project workflow test passed")
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_mobile_app_project_workflow(self, tmp_path):
         """Test workflow with mobile app project structure."""
@@ -920,13 +920,13 @@ export const authenticatedApiCall = async (endpoint, options = {}) => {
 """)
         
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             with patch('src.server.get_gemini_model') as mock_gemini:
                 mock_client = MockGeminiClient()
                 mock_gemini.return_value = mock_client
                 
-                result = generate_auto_prompt(
+                result = generate_meta_prompt(
                     project_path=str(mobile_project),
                     scope="recent_phase"
                 )
@@ -937,7 +937,7 @@ export const authenticatedApiCall = async (endpoint, options = {}) => {
                 print("✅ Mobile app project workflow test passed")
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
 
 
 class TestWorkflowPerformance:
@@ -964,7 +964,7 @@ class Class{i}:
             
             start_time = time.time()
             
-            with patch('src.generate_code_review_context.generate_auto_prompt') as mock_auto_prompt, \
+            with patch('src.generate_code_review_context.generate_meta_prompt') as mock_auto_prompt, \
                  patch('src.generate_code_review_context.generate_ai_code_review') as mock_ai_review:
                 
                 mock_auto_prompt.return_value = {
@@ -1006,7 +1006,7 @@ class Class{i}:
             
             results = []
             
-            with patch('src.generate_code_review_context.generate_auto_prompt') as mock_auto_prompt, \
+            with patch('src.generate_code_review_context.generate_meta_prompt') as mock_auto_prompt, \
                  patch('src.generate_code_review_context.generate_ai_code_review') as mock_ai_review:
                 
                 mock_auto_prompt.return_value = {

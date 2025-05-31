@@ -17,12 +17,12 @@ class TestMCPDirectTextResponse:
     """Test direct text response behavior for all MCP tools."""
     
     @pytest.mark.asyncio
-    async def test_generate_auto_prompt_returns_text_content(self):
-        """Test generate_auto_prompt returns the generated prompt text directly."""
-        from src.server import generate_auto_prompt
+    async def test_generate_meta_prompt_returns_text_content(self):
+        """Test generate_meta_prompt returns the generated prompt text directly."""
+        from src.server import generate_meta_prompt
         
         # Test with real Gemini API using .env key
-        result = await generate_auto_prompt(
+        result = await generate_meta_prompt(
             context_content="Test context content for meta-prompt generation"
         )
         
@@ -105,8 +105,8 @@ class TestMCPToolChaining:
     
     @pytest.mark.asyncio
     async def test_auto_prompt_to_context_to_ai_review_chain(self):
-        """Test complete chain: generate_auto_prompt -> generate_code_review_context -> generate_ai_code_review."""
-        from src.server import generate_auto_prompt, generate_code_review_context, generate_ai_code_review
+        """Test complete chain: generate_meta_prompt -> generate_code_review_context -> generate_ai_code_review."""
+        from src.server import generate_meta_prompt, generate_code_review_context, generate_ai_code_review
         
         with tempfile.TemporaryDirectory() as temp_dir:
             project_path = temp_dir
@@ -115,7 +115,7 @@ class TestMCPToolChaining:
             with patch('src.server.send_to_gemini_for_review') as mock_gemini:
                 mock_gemini.return_value = "Meta-prompt for authentication review"
                 
-                auto_prompt_result = await generate_auto_prompt(
+                auto_prompt_result = await generate_meta_prompt(
                     context_content="Authentication system implementation complete"
                 )
                 
@@ -176,14 +176,14 @@ class TestMCPResponseStructure:
     """Test consistent response structure across MCP tools."""
     
     @pytest.mark.asyncio
-    async def test_generate_auto_prompt_response_structure(self):
-        """Test generate_auto_prompt returns consistent structured response."""
-        from src.server import generate_auto_prompt
+    async def test_generate_meta_prompt_response_structure(self):
+        """Test generate_meta_prompt returns consistent structured response."""
+        from src.server import generate_meta_prompt
         
         with patch('src.server.send_to_gemini_for_review') as mock_gemini:
             mock_gemini.return_value = "Generated meta-prompt content"
             
-            result = await generate_auto_prompt(
+            result = await generate_meta_prompt(
                 context_content="Test context"
             )
             
@@ -287,13 +287,13 @@ class TestMCPErrorHandling:
     """Test error handling for direct text response mode."""
     
     @pytest.mark.asyncio
-    async def test_generate_auto_prompt_error_handling_text_mode(self):
+    async def test_generate_meta_prompt_error_handling_text_mode(self):
         """Test error handling returns structured response in text mode."""
-        from src.server import generate_auto_prompt
+        from src.server import generate_meta_prompt
         
         # Test with invalid input
         try:
-            result = await generate_auto_prompt()  # No parameters
+            result = await generate_meta_prompt()  # No parameters
             
             # Should raise ValueError for validation
             assert False, "Should have raised ValueError"

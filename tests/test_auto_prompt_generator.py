@@ -11,7 +11,7 @@ import json
 # Import functions that exist after refactoring
 from src.auto_prompt_generator import (
     validate_prompt,
-    generate_auto_prompt
+    generate_meta_prompt
 )
 
 
@@ -31,7 +31,7 @@ class TestPromptValidation:
 
 
 class TestGenerateAutoPromptIntegration:
-    """Test suite for generate_auto_prompt function integration."""
+    """Test suite for generate_meta_prompt function integration."""
     
     @pytest.fixture
     def mock_send_to_gemini(self):
@@ -52,20 +52,20 @@ Based on the completed development work and project guidelines, focus your code 
 
 Please provide specific, actionable feedback aligned with the project's established guidelines."""
     
-    def test_generate_auto_prompt_alias_import(self):
-        """Test that generate_auto_prompt can be imported as alias."""
+    def test_generate_meta_prompt_alias_import(self):
+        """Test that generate_meta_prompt can be imported as alias."""
         # This tests the import alias functionality from auto_prompt_generator.py
         try:
-            from src.auto_prompt_generator import generate_auto_prompt
-            assert generate_auto_prompt is not None
+            from src.auto_prompt_generator import generate_meta_prompt
+            assert generate_meta_prompt is not None
         except ImportError:
             # Expected when server module isn't available
             pytest.skip("Server module not available for import alias")
     
     @pytest.mark.asyncio
-    @patch('src.auto_prompt_generator.generate_auto_prompt')
-    async def test_generate_auto_prompt_mock_call(self, mock_generate):
-        """Test generate_auto_prompt function call interface."""
+    @patch('src.auto_prompt_generator.generate_meta_prompt')
+    async def test_generate_meta_prompt_mock_call(self, mock_generate):
+        """Test generate_meta_prompt function call interface."""
         # Mock return value for async function
         mock_generate.return_value = {
             'generated_prompt': 'Test meta-prompt',
@@ -76,8 +76,8 @@ Please provide specific, actionable feedback aligned with the project's establis
         }
         
         # Import and call
-        from src.auto_prompt_generator import generate_auto_prompt
-        result = await generate_auto_prompt(
+        from src.auto_prompt_generator import generate_meta_prompt
+        result = await generate_meta_prompt(
             context_content='Test context'
         )
         

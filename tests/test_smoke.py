@@ -14,7 +14,6 @@ def test_package_imports():
     """Test that all main modules can be imported"""
     import src.server
     import src.generate_code_review_context
-    import src.ai_code_review
     import src.model_config
     assert True  # If we get here, imports worked
 
@@ -39,7 +38,7 @@ def test_entry_points_defined():
     expected_commands = [
         'task-list-code-review-mcp',
         'generate-code-review', 
-        'review-with-ai'
+        'generate-meta-prompt'
     ]
     
     for cmd in expected_commands:
@@ -58,11 +57,9 @@ def test_cli_help_functions():
     import argparse
     
     # Test that we can create argument parsers without errors
-    from ai_code_review import main as ai_main
     from generate_code_review_context import cli_main
     
     # These should not crash when imported
-    assert callable(ai_main)
     assert callable(cli_main)
 
 def test_mcp_server_startup():

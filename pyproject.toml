@@ -8,7 +8,10 @@ exclude = [
   "examples",
   "rules",
   ".env*",
-  "review-context-*.md"
+  "review-context-*.md",
+  "code-review-context-*.md",
+  "code-review-comprehensive-feedback-*.md",
+  "meta-prompt-*.md"
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -18,12 +21,15 @@ exclude = [
   "examples", 
   "rules",
   ".env*",
-  "review-context-*.md"
+  "review-context-*.md",
+  "code-review-context-*.md",
+  "code-review-comprehensive-feedback-*.md",
+  "meta-prompt-*.md"
 ]
 
 [project]
 name = "task-list-code-review-mcp"
-version = "0.3.0"
+version = "0.3.9"
 description = "MCP server and CLI tools for AI-powered code reviews with meta-prompt generation"
 authors = [
     {name = "Nico Bailon", email = "nico604@pm.me"},
@@ -63,15 +69,18 @@ dev = [
     "isort",
     "flake8",
 ]
+yaml = [
+    "PyYAML>=6.0.0",
+]
 
 [project.scripts]
+# MCP Server
 task-list-code-review-mcp = "src.server:main"
+# CLI Tools
 generate-code-review = "src.generate_code_review_context:main"
-review-with-ai = "src.ai_code_review:main"
-generate-auto-prompt = "src.auto_prompt_generator:main"
-# Development shortcuts
-review = "src.generate_code_review_context:main"
-prompt = "src.auto_prompt_generator:main"
+generate-meta-prompt = "src.meta_prompt_generator:main"
+# Semantic shortcuts (when installed)
+code-review = "src.generate_code_review_context:main"
 
 [tool.black]
 line-length = 88

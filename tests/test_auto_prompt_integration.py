@@ -22,11 +22,11 @@ class TestAutoPromptIntegration:
     @pytest.mark.asyncio
     async def test_auto_prompt_flag_generates_and_uses_meta_prompt(self):
         """Test that --auto-prompt flag generates meta-prompt and uses it for context."""
-        with patch('src.generate_code_review_context.generate_auto_prompt') as mock_generate_auto_prompt:
+        with patch('src.generate_code_review_context.generate_meta_prompt') as mock_generate_meta_prompt:
             with patch('src.generate_code_review_context.generate_ai_code_review') as mock_ai_review:
                 with patch('src.generate_code_review_context.main') as mock_main:
                     # Mock auto-prompt generation result
-                    mock_generate_auto_prompt.return_value = {
+                    mock_generate_meta_prompt.return_value = {
                         "generated_prompt": "Focus on type safety and TDD compliance in authentication system",
                         "template_used": "default",
                         "configuration_included": True,
@@ -52,7 +52,7 @@ class TestAutoPromptIntegration:
                     )
                     
                     # Verify auto-prompt generation was called
-                    mock_generate_auto_prompt.assert_called_once_with(
+                    mock_generate_meta_prompt.assert_called_once_with(
                         project_path="/test/project",
                         scope="full_project"
                     )
@@ -72,9 +72,9 @@ class TestAutoPromptIntegration:
     @pytest.mark.asyncio
     async def test_generate_prompt_only_flag_creates_meta_prompt_without_review(self):
         """Test that --generate-prompt-only creates meta-prompt but skips AI review."""
-        with patch('src.generate_code_review_context.generate_auto_prompt') as mock_generate_auto_prompt:
+        with patch('src.generate_code_review_context.generate_meta_prompt') as mock_generate_meta_prompt:
             # Mock auto-prompt generation result
-            mock_generate_auto_prompt.return_value = {
+            mock_generate_meta_prompt.return_value = {
                 "generated_prompt": "Security-focused review of payment processing module",
                 "template_used": "security_focused",
                 "configuration_included": False,
@@ -93,7 +93,7 @@ class TestAutoPromptIntegration:
             )
             
             # Verify auto-prompt generation was called
-            mock_generate_auto_prompt.assert_called_once_with(
+            mock_generate_meta_prompt.assert_called_once_with(
                 project_path="/test/project",
                 scope="specific_phase"
             )
@@ -141,9 +141,9 @@ class TestAutoPromptIntegration:
     @pytest.mark.asyncio
     async def test_auto_prompt_workflow_error_handling(self):
         """Test error handling in auto-prompt workflow."""
-        with patch('src.generate_code_review_context.generate_auto_prompt') as mock_generate_auto_prompt:
+        with patch('src.generate_code_review_context.generate_meta_prompt') as mock_generate_meta_prompt:
             # Mock auto-prompt generation failure
-            mock_generate_auto_prompt.side_effect = Exception("Gemini API error")
+            mock_generate_meta_prompt.side_effect = Exception("Gemini API error")
             
             from src.generate_code_review_context import execute_auto_prompt_workflow
             
@@ -158,11 +158,11 @@ class TestAutoPromptIntegration:
     @pytest.mark.asyncio
     async def test_auto_prompt_uses_correct_scope_and_parameters(self):
         """Test that auto-prompt generation receives correct scope and parameters."""
-        with patch('src.generate_code_review_context.generate_auto_prompt') as mock_generate_auto_prompt:
+        with patch('src.generate_code_review_context.generate_meta_prompt') as mock_generate_meta_prompt:
             with patch('src.generate_code_review_context.main') as mock_main:
                 with patch('src.generate_code_review_context.generate_ai_code_review') as mock_ai_review:
                     # Mock responses
-                    mock_generate_auto_prompt.return_value = {
+                    mock_generate_meta_prompt.return_value = {
                         "generated_prompt": "Test prompt",
                         "template_used": "default",
                         "configuration_included": True,
@@ -184,7 +184,7 @@ class TestAutoPromptIntegration:
                     )
                     
                     # Verify correct parameters passed
-                    mock_generate_auto_prompt.assert_called_once_with(
+                    mock_generate_meta_prompt.assert_called_once_with(
                         project_path="/custom/project",
                         scope="specific_phase"
                     )
@@ -213,7 +213,7 @@ class TestAutoPromptStandaloneVsIntegrated:
     @pytest.mark.asyncio
     async def test_auto_prompt_integration_preserves_meta_prompt_content(self):
         """Test that meta-prompt content is preserved when used in AI review."""
-        with patch('src.generate_code_review_context.generate_auto_prompt') as mock_generate_auto_prompt:
+        with patch('src.generate_code_review_context.generate_meta_prompt') as mock_generate_meta_prompt:
             with patch('src.generate_code_review_context.main') as mock_main:
                 with patch('src.generate_code_review_context.generate_ai_code_review') as mock_ai_review:
                     # Create detailed meta-prompt like the one we generated
@@ -227,7 +227,7 @@ class TestAutoPromptStandaloneVsIntegrated:
    - Confirm new features implemented using TDD
    - Verify tests written before implementation"""
                     
-                    mock_generate_auto_prompt.return_value = {
+                    mock_generate_meta_prompt.return_value = {
                         "generated_prompt": detailed_meta_prompt,
                         "template_used": "default",
                         "configuration_included": True,

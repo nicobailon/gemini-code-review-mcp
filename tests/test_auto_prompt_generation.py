@@ -12,14 +12,14 @@ import tempfile
 
 
 class TestGenerateAutoPromptMCPTool:
-    """Test the generate_auto_prompt MCP tool functionality."""
+    """Test the generate_meta_prompt MCP tool functionality."""
     
     @pytest.fixture
-    def generate_auto_prompt_func(self):
-        """Fixture to safely import generate_auto_prompt function."""
+    def generate_meta_prompt_func(self):
+        """Fixture to safely import generate_meta_prompt function."""
         try:
-            from src.server import generate_auto_prompt
-            return generate_auto_prompt
+            from src.server import generate_meta_prompt
+            return generate_meta_prompt
         except (ImportError, SystemExit):
             pytest.skip("Skipping test due to missing dependencies")
     
@@ -77,13 +77,13 @@ Implementing OAuth authentication system for secure user login.
         context_file.write_text(sample_context_content)
         return str(context_file)
     
-    def test_generate_auto_prompt_tool_exists(self):
-        """Test that the generate_auto_prompt MCP tool is properly registered."""
+    def test_generate_meta_prompt_tool_exists(self):
+        """Test that the generate_meta_prompt MCP tool is properly registered."""
         # Test that the function exists and can be imported
         try:
             from src.server import get_mcp_tools
             tools = get_mcp_tools()
-            assert "generate_auto_prompt" in tools
+            assert "generate_meta_prompt" in tools
         except (ImportError, SystemExit) as e:
             # If we can't import due to missing dependencies, check if function exists another way
             import sys
@@ -94,14 +94,14 @@ Implementing OAuth authentication system for secure user login.
             server_path = os.path.join(os.path.dirname(__file__), '..', 'src', 'server.py')
             with open(server_path, 'r') as f:
                 content = f.read()
-                assert "def generate_auto_prompt(" in content, "generate_auto_prompt function not found in server.py"
+                assert "def generate_meta_prompt(" in content, "generate_meta_prompt function not found in server.py"
                 assert "@mcp.tool()" in content, "MCP tool decorator not found"
     
-    def test_generate_auto_prompt_tool_schema(self):
+    def test_generate_meta_prompt_tool_schema(self):
         """Test that the MCP tool has correct schema definition."""
         try:
             from src.server import get_mcp_tool_schema
-            schema = get_mcp_tool_schema("generate_auto_prompt")
+            schema = get_mcp_tool_schema("generate_meta_prompt")
         except (ImportError, SystemExit):
             # Skip this test if dependencies aren't available
             pytest.skip("Skipping schema test due to missing dependencies")
@@ -122,13 +122,13 @@ Implementing OAuth authentication system for secure user login.
         assert schema["parameters"]["properties"]["scope"]["default"] == "recent_phase"
     
     @pytest.mark.asyncio
-    async def test_generate_auto_prompt_with_context_file_path(self, generate_auto_prompt_func, sample_context_file, mock_gemini_response):
-        """Test generate_auto_prompt with context_file_path parameter."""
+    async def test_generate_meta_prompt_with_context_file_path(self, generate_meta_prompt_func, sample_context_file, mock_gemini_response):
+        """Test generate_meta_prompt with context_file_path parameter."""
         
         with patch('src.server.gemini_client.generate_content', new_callable=AsyncMock) as mock_gemini:
             mock_gemini.return_value = mock_gemini_response
             
-            result = await generate_auto_prompt_func(context_file_path=sample_context_file)
+            result = await generate_meta_prompt_func(context_file_path=sample_context_file)
             
             # Verify return structure
             assert isinstance(result, dict)
@@ -150,13 +150,13 @@ Implementing OAuth authentication system for secure user login.
             assert "src/auth/oauth.js" in call_args  # Context content should be included
     
     @pytest.mark.asyncio
-    async def test_generate_auto_prompt_with_context_content(self, generate_auto_prompt_func, sample_context_content, mock_gemini_response):
-        """Test generate_auto_prompt with context_content parameter."""
+    async def test_generate_meta_prompt_with_context_content(self, generate_meta_prompt_func, sample_context_content, mock_gemini_response):
+        """Test generate_meta_prompt with context_content parameter."""
         
         with patch('src.server.gemini_client.generate_content', new_callable=AsyncMock) as mock_gemini:
             mock_gemini.return_value = mock_gemini_response
             
-            result = await generate_auto_prompt_func(context_content=sample_context_content)
+            result = await generate_meta_prompt_func(context_content=sample_context_content)
             
             # Verify return structure and values
             assert result["analysis_completed"] is True
@@ -164,8 +164,8 @@ Implementing OAuth authentication system for secure user login.
             assert "OAuth" in result["generated_prompt"]  # Should reflect content analysis
     
     @pytest.mark.asyncio
-    async def test_generate_auto_prompt_with_project_path(self, generate_auto_prompt_func, tmp_path, mock_gemini_response):
-        """Test generate_auto_prompt with project_path parameter (generates context first)."""
+    async def test_generate_meta_prompt_with_project_path(self, generate_meta_prompt_func, tmp_path, mock_gemini_response):
+        """Test generate_meta_prompt with project_path parameter (generates context first)."""
         
         project_path = str(tmp_path)
         
@@ -180,7 +180,7 @@ Implementing OAuth authentication system for secure user login.
                 with patch('builtins.open', create=True) as mock_open:
                     mock_open.return_value.__enter__.return_value.read.return_value = "test context"
                     
-                    result = await generate_auto_prompt_func(project_path=project_path, scope="recent_phase")
+                    result = await generate_meta_prompt_func(project_path=project_path, scope="recent_phase")
                     
                     # Verify context generation was called
                     mock_context.assert_called_once_with(project_path, "recent_phase", raw_context_only=True)
@@ -190,50 +190,50 @@ Implementing OAuth authentication system for secure user login.
                     assert isinstance(result["generated_prompt"], str)
     
     @pytest.mark.asyncio
-    async def test_generate_auto_prompt_input_validation(self, generate_auto_prompt_func):
-        """Test input validation for generate_auto_prompt."""
+    async def test_generate_meta_prompt_input_validation(self, generate_meta_prompt_func):
+        """Test input validation for generate_meta_prompt."""
         
         # Test with no parameters - should raise ValueError
         with pytest.raises(ValueError, match="At least one input parameter must be provided"):
-            await generate_auto_prompt_func()
+            await generate_meta_prompt_func()
         
         # Test with multiple conflicting parameters
         with pytest.raises(ValueError, match="Only one input parameter should be provided"):
-            await generate_auto_prompt_func(
+            await generate_meta_prompt_func(
                 context_file_path="/path/to/file",
                 context_content="content",
                 project_path="/path/to/project"
             )
     
     @pytest.mark.asyncio
-    async def test_generate_auto_prompt_file_not_found(self, generate_auto_prompt_func):
+    async def test_generate_meta_prompt_file_not_found(self, generate_meta_prompt_func):
         """Test handling of non-existent context file."""
         
         with pytest.raises(FileNotFoundError):
-            await generate_auto_prompt_func(context_file_path="/nonexistent/file.md")
+            await generate_meta_prompt_func(context_file_path="/nonexistent/file.md")
     
     @pytest.mark.asyncio
-    async def test_generate_auto_prompt_gemini_api_error(self, generate_auto_prompt_func, sample_context_content):
+    async def test_generate_meta_prompt_gemini_api_error(self, generate_meta_prompt_func, sample_context_content):
         """Test handling of Gemini API errors."""
         
         with patch('src.server.gemini_client.generate_content', new_callable=AsyncMock) as mock_gemini:
             mock_gemini.side_effect = Exception("Gemini API Error")
             
             with pytest.raises(Exception, match="Failed to generate auto-prompt"):
-                await generate_auto_prompt_func(context_content=sample_context_content)
+                await generate_meta_prompt_func(context_content=sample_context_content)
     
     @pytest.mark.asyncio
-    async def test_generate_auto_prompt_empty_context(self, generate_auto_prompt_func):
+    async def test_generate_meta_prompt_empty_context(self, generate_meta_prompt_func):
         """Test handling of empty context content."""
         
         with pytest.raises(ValueError, match="Context content cannot be empty"):
-            await generate_auto_prompt_func(context_content="")
+            await generate_meta_prompt_func(context_content="")
         
         with pytest.raises(ValueError, match="Context content cannot be empty"):
-            await generate_auto_prompt_func(context_content="   ")  # Only whitespace
+            await generate_meta_prompt_func(context_content="   ")  # Only whitespace
     
     @pytest.mark.asyncio
-    async def test_generate_auto_prompt_large_context_handling(self, generate_auto_prompt_func, mock_gemini_response):
+    async def test_generate_meta_prompt_large_context_handling(self, generate_meta_prompt_func, mock_gemini_response):
         """Test handling of large context content (should truncate if needed)."""
         
         # Create very large context (simulate >100KB)
@@ -242,7 +242,7 @@ Implementing OAuth authentication system for secure user login.
         with patch('src.server.gemini_client.generate_content', new_callable=AsyncMock) as mock_gemini:
             mock_gemini.return_value = mock_gemini_response
             
-            result = await generate_auto_prompt_func(context_content=large_context)
+            result = await generate_meta_prompt_func(context_content=large_context)
             
             # Should handle large content gracefully
             assert result["analysis_completed"] is True
@@ -252,11 +252,11 @@ Implementing OAuth authentication system for secure user login.
             call_args = mock_gemini.call_args[0][0]
             assert len(call_args) <= 100000  # Gemini call should use truncated content
     
-    def test_generate_auto_prompt_return_type_annotations(self, generate_auto_prompt_func):
+    def test_generate_meta_prompt_return_type_annotations(self, generate_meta_prompt_func):
         """Test that function has proper type annotations."""
         import inspect
         
-        signature = inspect.signature(generate_auto_prompt_func)
+        signature = inspect.signature(generate_meta_prompt_func)
         
         # Verify parameter type hints
         params = signature.parameters
@@ -269,13 +269,13 @@ Implementing OAuth authentication system for secure user login.
         assert signature.return_annotation == "Dict[str, Any]"
     
     @pytest.mark.asyncio
-    async def test_generate_auto_prompt_gemini_analysis_prompt_structure(self, generate_auto_prompt_func, sample_context_content):
+    async def test_generate_meta_prompt_gemini_analysis_prompt_structure(self, generate_meta_prompt_func, sample_context_content):
         """Test that the prompt sent to Gemini has the correct structure and instructions."""
         
         with patch('src.server.gemini_client.generate_content', new_callable=AsyncMock) as mock_gemini:
             mock_gemini.return_value = {"text": "test prompt"}
             
-            await generate_auto_prompt_func(context_content=sample_context_content)
+            await generate_meta_prompt_func(context_content=sample_context_content)
             
             # Verify the analysis prompt structure
             call_args = mock_gemini.call_args[0][0]
@@ -296,20 +296,20 @@ class TestAutoPromptGenerationTypeLevel:
     """Type-level tests for auto-prompt generation using TypeScript-style assertions."""
     
     @pytest.fixture
-    def generate_auto_prompt_func(self):
-        """Fixture to safely import generate_auto_prompt function."""
+    def generate_meta_prompt_func(self):
+        """Fixture to safely import generate_meta_prompt function."""
         try:
-            from src.server import generate_auto_prompt
-            return generate_auto_prompt
+            from src.server import generate_meta_prompt
+            return generate_meta_prompt
         except (ImportError, SystemExit):
             pytest.skip("Skipping test due to missing dependencies")
     
-    def test_generate_auto_prompt_return_type_structure(self, generate_auto_prompt_func):
+    def test_generate_meta_prompt_return_type_structure(self, generate_meta_prompt_func):
         """Test the return type structure at type level."""
         from typing import get_type_hints
         
         # Type-level assertions equivalent to TypeScript
-        hints = get_type_hints(generate_auto_prompt_func)
+        hints = get_type_hints(generate_meta_prompt_func)
         
         # Verify return type is Dict[str, Any]
         assert str(hints['return']).startswith('typing.Dict')
@@ -320,11 +320,11 @@ class TestAutoPromptGenerationTypeLevel:
         # type Test2 = AssertEqual<typeof result.analysis_completed, boolean>; // Should be true
         # type Test3 = AssertEqual<typeof result.context_analyzed, number>; // Should be true
     
-    def test_input_parameter_types(self, generate_auto_prompt_func):
+    def test_input_parameter_types(self, generate_meta_prompt_func):
         """Test input parameter type constraints."""
         from typing import get_type_hints
         
-        hints = get_type_hints(generate_auto_prompt_func)
+        hints = get_type_hints(generate_meta_prompt_func)
         
         # All input parameters should be Optional[str] except scope
         assert 'context_file_path' in hints
@@ -337,11 +337,11 @@ class TestConfigurationContextIntegration:
     """Test suite for CLAUDE.md and cursor rules integration in meta-prompt generation."""
     
     @pytest.fixture
-    def generate_auto_prompt_func(self):
-        """Fixture to safely import generate_auto_prompt function."""
+    def generate_meta_prompt_func(self):
+        """Fixture to safely import generate_meta_prompt function."""
         try:
-            from src.server import generate_auto_prompt
-            return generate_auto_prompt
+            from src.server import generate_meta_prompt
+            return generate_meta_prompt
         except (ImportError, SystemExit):
             pytest.skip("Skipping test due to missing dependencies")
     
@@ -377,7 +377,7 @@ class TestConfigurationContextIntegration:
         }
     
     @pytest.mark.asyncio
-    async def test_meta_prompt_template_usage(self, generate_auto_prompt_func):
+    async def test_meta_prompt_template_usage(self, generate_meta_prompt_func):
         """Test that the default meta-prompt template is used."""
         context_content = "Simple test context for template testing"
         
@@ -385,7 +385,7 @@ class TestConfigurationContextIntegration:
             mock_gemini.return_value = "Generated meta-prompt content"
             
             # Test default template (only template available)
-            result = await generate_auto_prompt_func(
+            result = await generate_meta_prompt_func(
                 context_content=context_content
             )
             assert result['template_used'] == 'default'
@@ -393,7 +393,7 @@ class TestConfigurationContextIntegration:
             assert 'generated_prompt' in result
     
     @pytest.mark.asyncio
-    async def test_configuration_context_inclusion(self, generate_auto_prompt_func, mock_configuration_discovery):
+    async def test_configuration_context_inclusion(self, generate_meta_prompt_func, mock_configuration_discovery):
         """Test that CLAUDE.md and cursor rules are included in meta-prompt generation."""
         
         with patch('src.generate_code_review_context.discover_project_configurations') as mock_discover:
@@ -402,7 +402,7 @@ class TestConfigurationContextIntegration:
             with patch('src.generate_code_review_context.send_to_gemini_for_review') as mock_gemini:
                 mock_gemini.return_value = "Generated meta-prompt with configuration context"
                 
-                result = await generate_auto_prompt_func(
+                result = await generate_meta_prompt_func(
                     project_path='/test/project',
                     scope='recent_phase'
                 )
@@ -418,7 +418,7 @@ class TestConfigurationContextIntegration:
                        'TypeScript Guidelines' in str(call_args)
     
     @pytest.mark.asyncio
-    async def test_configuration_context_placeholder_replacement(self, generate_auto_prompt_func):
+    async def test_configuration_context_placeholder_replacement(self, generate_meta_prompt_func):
         """Test that {configuration_context} placeholders are properly replaced."""
         
         # Mock template loading to verify placeholder replacement
@@ -435,7 +435,7 @@ class TestConfigurationContextIntegration:
             with patch('src.generate_code_review_context.send_to_gemini_for_review') as mock_gemini:
                 mock_gemini.return_value = "Generated meta-prompt"
                 
-                result = await generate_auto_prompt_func(
+                result = await generate_meta_prompt_func(
                     context_content='Test context content'
                 )
                 
@@ -452,7 +452,7 @@ class TestConfigurationContextIntegration:
                 assert 'Test context content' in call_args
     
     @pytest.mark.asyncio
-    async def test_configuration_discovery_error_handling(self, generate_auto_prompt_func):
+    async def test_configuration_discovery_error_handling(self, generate_meta_prompt_func):
         """Test graceful handling of configuration discovery errors."""
         
         with patch('src.generate_code_review_context.discover_project_configurations') as mock_discover:
@@ -462,7 +462,7 @@ class TestConfigurationContextIntegration:
                 mock_gemini.return_value = "Generated meta-prompt without configuration"
                 
                 # Should not raise exception, but continue without configuration
-                result = await generate_auto_prompt_func(
+                result = await generate_meta_prompt_func(
                     context_content='Test context without configuration'
                 )
                 
@@ -471,14 +471,14 @@ class TestConfigurationContextIntegration:
                 assert result['configuration_included'] is False
     
     @pytest.mark.asyncio
-    async def test_enhanced_send_to_gemini_return_text_parameter(self, generate_auto_prompt_func):
+    async def test_enhanced_send_to_gemini_return_text_parameter(self, generate_meta_prompt_func):
         """Test that the enhanced send_to_gemini_for_review with return_text parameter works."""
         
         # This tests our enhancement to send_to_gemini_for_review function
         with patch('src.generate_code_review_context.send_to_gemini_for_review') as mock_gemini:
             mock_gemini.return_value = "Direct text response from Gemini"
             
-            result = await generate_auto_prompt_func(
+            result = await generate_meta_prompt_func(
                 context_content='Test context for return_text parameter'
             )
             

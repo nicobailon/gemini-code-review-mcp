@@ -64,7 +64,7 @@ class TestRealGeminiAPIIntegration:
     def test_real_gemini_auto_prompt_generation(self, gemini_api_key, tmp_path):
         """Test real Gemini API for auto-prompt generation."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             # Create realistic test project
             project_path = str(tmp_path / "real_api_test")
@@ -87,7 +87,7 @@ def get_user_data(user_id):
             
             try:
                 # Test with real API
-                result = generate_auto_prompt(
+                result = generate_meta_prompt(
                     project_path=project_path,
                     scope="full_project"
                 )
@@ -117,14 +117,14 @@ def get_user_data(user_id):
                     os.environ.pop('GEMINI_API_KEY', None)
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     @pytest.mark.integration
     @pytest.mark.slow
     def test_real_gemini_rate_limiting(self, gemini_api_key, rate_limit_tracker, tmp_path):
         """Test rate limiting behavior with real Gemini API."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             # Create small test project for rapid testing
             project_path = str(tmp_path / "rate_limit_test")
@@ -143,7 +143,7 @@ def get_user_data(user_id):
                     rate_limit_tracker.record_call()
                     
                     try:
-                        result = generate_auto_prompt(
+                        result = generate_meta_prompt(
                             project_path=project_path,
                             scope="full_project"
                         )
@@ -181,13 +181,13 @@ def get_user_data(user_id):
                     os.environ.pop('GEMINI_API_KEY', None)
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     @pytest.mark.integration
     def test_real_gemini_error_handling(self, tmp_path):
         """Test error handling with real Gemini API scenarios."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             project_path = str(tmp_path / "error_test")
             os.makedirs(project_path, exist_ok=True)
@@ -199,7 +199,7 @@ def get_user_data(user_id):
             
             try:
                 with pytest.raises(Exception) as exc_info:
-                    generate_auto_prompt(
+                    generate_meta_prompt(
                         project_path=project_path,
                         scope="full_project"
                     )
@@ -222,14 +222,14 @@ def get_user_data(user_id):
                     os.environ.pop('GEMINI_API_KEY', None)
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     @pytest.mark.integration
     @pytest.mark.slow
     def test_real_gemini_with_large_context(self, gemini_api_key, tmp_path):
         """Test real Gemini API with large context input."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             # Create larger project to test context limits
             project_path = str(tmp_path / "large_context_test")
@@ -293,7 +293,7 @@ def global_function_{i}(data: List[Any]) -> Dict[str, Any]:
             
             try:
                 # Test with large context
-                result = generate_auto_prompt(
+                result = generate_meta_prompt(
                     project_path=project_path,
                     scope="full_project"
                 )
@@ -324,7 +324,7 @@ def global_function_{i}(data: List[Any]) -> Dict[str, Any]:
                     os.environ.pop('GEMINI_API_KEY', None)
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
 
 
 class TestRealAPIWorkflowIntegration:
@@ -429,7 +429,7 @@ class AuthService:
     def test_real_api_scope_variations(self, gemini_api_key, tmp_path):
         """Test different scope parameters with real API."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             # Create project with multiple phases
             project_path = str(tmp_path / "scope_variation_test")
@@ -471,7 +471,7 @@ class AuthService:
                     if "phase_number" in scope_test:
                         kwargs["phase_number"] = scope_test["phase_number"]
                     
-                    result = generate_auto_prompt(**kwargs)
+                    result = generate_meta_prompt(**kwargs)
                     
                     # Verify scope-appropriate response
                     assert result is not None
@@ -491,7 +491,7 @@ class AuthService:
                     os.environ.pop('GEMINI_API_KEY', None)
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
 
 
 class TestRealAPIPerformanceAndLimits:
@@ -502,7 +502,7 @@ class TestRealAPIPerformanceAndLimits:
     def test_real_api_response_time(self, gemini_api_key, tmp_path):
         """Test real API response times are reasonable."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             project_path = str(tmp_path / "response_time_test")
             os.makedirs(project_path, exist_ok=True)
@@ -516,7 +516,7 @@ class TestRealAPIPerformanceAndLimits:
                 # Measure response time
                 start_time = time.time()
                 
-                result = generate_auto_prompt(
+                result = generate_meta_prompt(
                     project_path=project_path,
                     scope="full_project"
                 )
@@ -537,13 +537,13 @@ class TestRealAPIPerformanceAndLimits:
                     os.environ.pop('GEMINI_API_KEY', None)
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     @pytest.mark.integration
     def test_real_api_token_usage_tracking(self, gemini_api_key, tmp_path):
         """Test that token usage is tracked with real API."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             project_path = str(tmp_path / "token_usage_test")
             os.makedirs(project_path, exist_ok=True)
@@ -560,7 +560,7 @@ def medium_function():
             os.environ['GEMINI_API_KEY'] = gemini_api_key
             
             try:
-                result = generate_auto_prompt(
+                result = generate_meta_prompt(
                     project_path=project_path,
                     scope="full_project"
                 )
@@ -585,7 +585,7 @@ def medium_function():
                     os.environ.pop('GEMINI_API_KEY', None)
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
 
 
 # Configuration for real API tests

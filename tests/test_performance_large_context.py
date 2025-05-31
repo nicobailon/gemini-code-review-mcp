@@ -257,7 +257,7 @@ def performance_critical_function():
     def test_large_project_auto_prompt_performance(self, tmp_path, performance_monitor):
         """Test auto-prompt generation performance with large projects."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             # Create large project (500 files, ~25MB total)
             large_project_path = self.create_large_project(tmp_path, num_files=500, file_size_kb=50)
@@ -268,7 +268,7 @@ def performance_critical_function():
                 
                 performance_monitor.start()
                 
-                result = generate_auto_prompt(
+                result = generate_meta_prompt(
                     project_path=large_project_path,
                     scope="full_project"
                 )
@@ -291,7 +291,7 @@ def performance_critical_function():
                       f"Memory: {performance_monitor.peak_memory_delta:.1f}MB")
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_context_generation_performance_large_codebase(self, tmp_path, performance_monitor):
         """Test context generation performance with large codebases."""
@@ -336,7 +336,7 @@ class TestMemoryEfficiency:
     def test_memory_usage_with_multiple_requests(self, tmp_path, performance_monitor):
         """Test memory usage with multiple concurrent auto-prompt requests."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             # Create moderate-sized project
             project_path = self.create_medium_project(tmp_path)
@@ -351,7 +351,7 @@ class TestMemoryEfficiency:
                 results = []
                 for i in range(10):
                     performance_monitor.update_peak_memory()
-                    result = generate_auto_prompt(
+                    result = generate_meta_prompt(
                         project_path=project_path,
                         scope="full_project"
                     )
@@ -376,7 +376,7 @@ class TestMemoryEfficiency:
                       f"Peak delta: {performance_monitor.peak_memory_delta:.1f}MB")
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def create_medium_project(self, tmp_path):
         """Create a medium-sized test project."""
@@ -410,7 +410,7 @@ class Class{i}:
     def test_memory_cleanup_after_errors(self, tmp_path, performance_monitor):
         """Test that memory is properly cleaned up after errors."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             project_path = self.create_medium_project(tmp_path)
             
@@ -424,7 +424,7 @@ class Class{i}:
                 # Cause multiple errors
                 for i in range(5):
                     try:
-                        generate_auto_prompt(
+                        generate_meta_prompt(
                             project_path=project_path,
                             scope="full_project"
                         )
@@ -444,7 +444,7 @@ class Class{i}:
                       f"Peak delta: {performance_monitor.peak_memory_delta:.1f}MB")
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
 
 
 class TestScalabilityLimits:
@@ -453,7 +453,7 @@ class TestScalabilityLimits:
     def test_extremely_large_single_file(self, tmp_path, performance_monitor):
         """Test handling of extremely large single files."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             extreme_project = tmp_path / "extreme_file_project"
             extreme_project.mkdir()
@@ -470,7 +470,7 @@ class TestScalabilityLimits:
                 
                 performance_monitor.start()
                 
-                result = generate_auto_prompt(
+                result = generate_meta_prompt(
                     project_path=str(extreme_project),
                     scope="full_project"
                 )
@@ -491,12 +491,12 @@ class TestScalabilityLimits:
                       f"Memory: {performance_monitor.peak_memory_delta:.1f}MB")
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_deep_directory_structure_performance(self, tmp_path, performance_monitor):
         """Test performance with very deep directory structures."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             # Create deep directory structure (30 levels deep)
             deep_project = tmp_path / "deep_structure_project"
@@ -524,7 +524,7 @@ class Level{level}Class:
                 
                 performance_monitor.start()
                 
-                result = generate_auto_prompt(
+                result = generate_meta_prompt(
                     project_path=str(deep_project),
                     scope="full_project"
                 )
@@ -541,7 +541,7 @@ class Level{level}Class:
                 print(f"✅ Deep structure performance: {performance_monitor.execution_time:.2f}s")
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
 
 
 class TestConcurrentPerformance:
@@ -550,7 +550,7 @@ class TestConcurrentPerformance:
     def test_concurrent_auto_prompt_requests(self, tmp_path, performance_monitor):
         """Test handling of concurrent auto-prompt requests."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             project_path = str(tmp_path / "concurrent_test_project")
             os.makedirs(project_path, exist_ok=True)
@@ -569,7 +569,7 @@ class TestConcurrentPerformance:
                 def worker(worker_id):
                     """Worker function for concurrent testing."""
                     try:
-                        result = generate_auto_prompt(
+                        result = generate_meta_prompt(
                             project_path=project_path,
                             scope="full_project"
                         )
@@ -603,7 +603,7 @@ class TestConcurrentPerformance:
                       f"{len(errors)} errors, {performance_monitor.execution_time:.2f}s")
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_workflow_performance_under_load(self, tmp_path, performance_monitor):
         """Test complete workflow performance under simulated load."""
@@ -629,7 +629,7 @@ class Module{i}:
             def workflow_worker(worker_id):
                 """Worker for workflow testing."""
                 try:
-                    with patch('src.generate_code_review_context.generate_auto_prompt') as mock_auto, \
+                    with patch('src.generate_code_review_context.generate_meta_prompt') as mock_auto, \
                          patch('src.generate_code_review_context.generate_ai_code_review') as mock_ai:
                         
                         mock_auto.return_value = {
@@ -684,7 +684,7 @@ class TestPerformanceRegression:
     def test_baseline_performance_benchmark(self, tmp_path, performance_monitor):
         """Establish baseline performance benchmarks."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             # Create standardized test project
             benchmark_project = tmp_path / "benchmark_project"
@@ -735,7 +735,7 @@ class BenchmarkClass{i}:
                 
                 performance_monitor.start()
                 
-                result = generate_auto_prompt(
+                result = generate_meta_prompt(
                     project_path=str(benchmark_project),
                     scope="full_project"
                 )
@@ -772,12 +772,12 @@ class BenchmarkClass{i}:
                 return benchmark_results
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_performance_with_different_scopes(self, tmp_path, performance_monitor):
         """Test performance across different scope parameters."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             project_path = str(tmp_path / "scope_perf_project")
             os.makedirs(project_path, exist_ok=True)
@@ -803,7 +803,7 @@ class ScopeTest{i}:
                 for scope in scopes:
                     performance_monitor.start()
                     
-                    result = generate_auto_prompt(
+                    result = generate_meta_prompt(
                         project_path=project_path,
                         scope=scope
                     )
@@ -835,4 +835,4 @@ class ScopeTest{i}:
                            for scope, perf in scope_performance.items()]))
             
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")

@@ -32,7 +32,7 @@ class TestGeminiAPIErrorHandling:
     def test_gemini_api_rate_limit_error(self):
         """Test handling of Gemini API rate limit errors."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             with patch('src.server.get_gemini_model') as mock_gemini:
                 mock_client = Mock()
@@ -40,7 +40,7 @@ class TestGeminiAPIErrorHandling:
                 mock_gemini.return_value = mock_client
                 
                 with pytest.raises(Exception) as exc_info:
-                    generate_auto_prompt(
+                    generate_meta_prompt(
                         project_path="/tmp/test",
                         scope="full_project"
                     )
@@ -49,12 +49,12 @@ class TestGeminiAPIErrorHandling:
                 assert "rate limit" in error_message or "quota" in error_message
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_gemini_api_timeout_error(self):
         """Test handling of Gemini API timeout errors."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             with patch('src.server.get_gemini_model') as mock_gemini:
                 mock_client = Mock()
@@ -62,7 +62,7 @@ class TestGeminiAPIErrorHandling:
                 mock_gemini.return_value = mock_client
                 
                 with pytest.raises(Exception) as exc_info:
-                    generate_auto_prompt(
+                    generate_meta_prompt(
                         project_path="/tmp/test",
                         scope="full_project"
                     )
@@ -71,12 +71,12 @@ class TestGeminiAPIErrorHandling:
                 assert "timeout" in error_message or "timed out" in error_message
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_gemini_api_authentication_error(self):
         """Test handling of Gemini API authentication errors."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             with patch('src.server.get_gemini_model') as mock_gemini:
                 mock_client = Mock()
@@ -84,7 +84,7 @@ class TestGeminiAPIErrorHandling:
                 mock_gemini.return_value = mock_client
                 
                 with pytest.raises(Exception) as exc_info:
-                    generate_auto_prompt(
+                    generate_meta_prompt(
                         project_path="/tmp/test",
                         scope="full_project"
                     )
@@ -93,12 +93,12 @@ class TestGeminiAPIErrorHandling:
                 assert "api key" in error_message or "authentication" in error_message or "invalid" in error_message
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_gemini_api_empty_response(self):
         """Test handling of empty or invalid Gemini API responses."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             with patch('src.server.get_gemini_model') as mock_gemini:
                 mock_client = Mock()
@@ -107,7 +107,7 @@ class TestGeminiAPIErrorHandling:
                 mock_client.generate_content.return_value = mock_response
                 mock_gemini.return_value = mock_client
                 
-                result = generate_auto_prompt(
+                result = generate_meta_prompt(
                     project_path="/tmp/test",
                     scope="full_project"
                 )
@@ -118,12 +118,12 @@ class TestGeminiAPIErrorHandling:
                 # May contain default prompt or error indication
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_gemini_api_malformed_response(self):
         """Test handling of malformed Gemini API responses."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             with patch('src.server.get_gemini_model') as mock_gemini:
                 mock_client = Mock()
@@ -132,7 +132,7 @@ class TestGeminiAPIErrorHandling:
                 mock_client.generate_content.return_value = mock_response
                 mock_gemini.return_value = mock_client
                 
-                result = generate_auto_prompt(
+                result = generate_meta_prompt(
                     project_path="/tmp/test",
                     scope="full_project"
                 )
@@ -142,7 +142,7 @@ class TestGeminiAPIErrorHandling:
                 assert "generated_prompt" in result
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
 
 
 class TestFileSystemErrorHandling:
@@ -151,12 +151,12 @@ class TestFileSystemErrorHandling:
     def test_nonexistent_project_path(self):
         """Test handling of nonexistent project paths."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             nonexistent_path = "/path/that/does/not/exist/anywhere"
             
             with pytest.raises(Exception) as exc_info:
-                generate_auto_prompt(
+                generate_meta_prompt(
                     project_path=nonexistent_path,
                     scope="full_project"
                 )
@@ -165,12 +165,12 @@ class TestFileSystemErrorHandling:
             assert "not found" in error_message or "does not exist" in error_message or "invalid path" in error_message
             
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_permission_denied_project_path(self, tmp_path):
         """Test handling of permission denied errors."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             # Create a directory with restricted permissions
             restricted_dir = tmp_path / "restricted"
@@ -182,7 +182,7 @@ class TestFileSystemErrorHandling:
                 
                 try:
                     with pytest.raises(Exception) as exc_info:
-                        generate_auto_prompt(
+                        generate_meta_prompt(
                             project_path=str(restricted_dir),
                             scope="full_project"
                         )
@@ -197,18 +197,18 @@ class TestFileSystemErrorHandling:
                 pytest.skip("Permission test not applicable on Windows")
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_empty_project_directory(self, tmp_path):
         """Test handling of completely empty project directories."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             empty_dir = tmp_path / "empty_project"
             empty_dir.mkdir()
             
             # Should handle empty directory gracefully
-            result = generate_auto_prompt(
+            result = generate_meta_prompt(
                 project_path=str(empty_dir),
                 scope="full_project"
             )
@@ -218,12 +218,12 @@ class TestFileSystemErrorHandling:
             # Prompt should indicate minimal or no code found
             
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_project_with_binary_files_only(self, tmp_path):
         """Test handling of projects containing only binary files."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             binary_project = tmp_path / "binary_project"
             binary_project.mkdir()
@@ -232,7 +232,7 @@ class TestFileSystemErrorHandling:
             (binary_project / "image.png").write_bytes(b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00')
             (binary_project / "executable.exe").write_bytes(b'MZ\x90\x00\x03\x00\x00\x00')
             
-            result = generate_auto_prompt(
+            result = generate_meta_prompt(
                 project_path=str(binary_project),
                 scope="full_project"
             )
@@ -242,12 +242,12 @@ class TestFileSystemErrorHandling:
             # Should handle binary-only projects appropriately
             
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_corrupted_task_list_file(self, tmp_path):
         """Test handling of corrupted or malformed task list files."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             project_dir = tmp_path / "corrupted_tasks_project"
             project_dir.mkdir()
@@ -258,7 +258,7 @@ class TestFileSystemErrorHandling:
             (tasks_dir / "tasks-corrupted.md").write_text("INVALID MARKDOWN ][}{ CONTENT ###")
             
             # Should handle corrupted task files gracefully
-            result = generate_auto_prompt(
+            result = generate_meta_prompt(
                 project_path=str(project_dir),
                 scope="full_project"
             )
@@ -267,7 +267,7 @@ class TestFileSystemErrorHandling:
             assert "generated_prompt" in result
             
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
 
 
 class TestParameterValidationErrors:
@@ -276,13 +276,13 @@ class TestParameterValidationErrors:
     def test_invalid_scope_parameter(self):
         """Test handling of invalid scope parameters."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             invalid_scopes = ["invalid_scope", "", None, 123, ["list"]]
             
             for invalid_scope in invalid_scopes:
                 with pytest.raises(Exception) as exc_info:
-                    generate_auto_prompt(
+                    generate_meta_prompt(
                         project_path="/tmp/test",
                         scope=invalid_scope
                     )
@@ -291,7 +291,7 @@ class TestParameterValidationErrors:
                 assert "scope" in error_message or "invalid" in error_message or "parameter" in error_message
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_invalid_temperature_parameter(self):
         """Test handling of invalid temperature parameters."""
@@ -317,29 +317,29 @@ class TestParameterValidationErrors:
     def test_missing_required_parameters(self):
         """Test handling of missing required parameters."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             # Test missing project_path
             with pytest.raises(Exception) as exc_info:
-                generate_auto_prompt(scope="full_project")  # Missing project_path
+                generate_meta_prompt(scope="full_project")  # Missing project_path
             
             error_message = str(exc_info.value).lower()
             assert "project_path" in error_message or "required" in error_message or "missing" in error_message
             
         except (ImportError, TypeError):
             # TypeError is expected for missing required parameters
-            pytest.skip("generate_auto_prompt function not found or parameter validation pending")
+            pytest.skip("generate_meta_prompt function not found or parameter validation pending")
     
     def test_extremely_long_parameters(self):
         """Test handling of extremely long parameter values."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             # Extremely long project path
             long_path = "/tmp/" + "x" * 1000
             
             with pytest.raises(Exception) as exc_info:
-                generate_auto_prompt(
+                generate_meta_prompt(
                     project_path=long_path,
                     scope="full_project"
                 )
@@ -349,7 +349,7 @@ class TestParameterValidationErrors:
             assert "path" in error_message or "too long" in error_message or "not found" in error_message
             
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
 
 
 class TestCLIErrorHandling:
@@ -450,7 +450,7 @@ class TestConcurrencyAndRaceConditions:
     def test_multiple_concurrent_requests(self):
         """Test handling of multiple concurrent auto-prompt requests."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             # Simulate concurrent requests (basic test)
             request_count = 3
@@ -461,7 +461,7 @@ class TestConcurrencyAndRaceConditions:
                 mock_gemini.return_value = mock_client
                 
                 for i in range(request_count):
-                    result = generate_auto_prompt(
+                    result = generate_meta_prompt(
                         project_path=f"/tmp/test_project_{i}",
                         scope="full_project"
                     )
@@ -474,7 +474,7 @@ class TestConcurrencyAndRaceConditions:
                     assert "generated_prompt" in result
             
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_file_system_race_conditions(self, tmp_path):
         """Test handling of file system race conditions."""
@@ -513,7 +513,7 @@ class TestMemoryAndResourceHandling:
     def test_large_file_handling(self, tmp_path):
         """Test handling of very large files."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             large_project = tmp_path / "large_file_project"
             large_project.mkdir()
@@ -522,7 +522,7 @@ class TestMemoryAndResourceHandling:
             large_content = "# Large file\n" + "print('line')\n" * 50000
             (large_project / "large_file.py").write_text(large_content)
             
-            result = generate_auto_prompt(
+            result = generate_meta_prompt(
                 project_path=str(large_project),
                 scope="full_project"
             )
@@ -532,12 +532,12 @@ class TestMemoryAndResourceHandling:
             assert "generated_prompt" in result
             
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_memory_cleanup_after_errors(self):
         """Test that memory is properly cleaned up after errors."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             # Force an error and verify cleanup
             with patch('src.server.get_gemini_model') as mock_gemini:
@@ -546,7 +546,7 @@ class TestMemoryAndResourceHandling:
                 mock_gemini.return_value = mock_client
                 
                 with pytest.raises(Exception):
-                    generate_auto_prompt(
+                    generate_meta_prompt(
                         project_path="/tmp/test",
                         scope="full_project"
                     )
@@ -555,7 +555,7 @@ class TestMemoryAndResourceHandling:
                 mock_client.generate_content.assert_called()
             
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_resource_exhaustion_handling(self):
         """Test handling of resource exhaustion scenarios."""
@@ -581,7 +581,7 @@ class TestEdgeCaseInputs:
     def test_unicode_and_special_characters(self, tmp_path):
         """Test handling of Unicode and special characters in file paths and content."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             unicode_project = tmp_path / "unicode_project_测试"
             unicode_project.mkdir()
@@ -595,7 +595,7 @@ def greet_世界():
 """
             (unicode_project / "unicode_file_测试.py").write_text(unicode_content, encoding='utf-8')
             
-            result = generate_auto_prompt(
+            result = generate_meta_prompt(
                 project_path=str(unicode_project),
                 scope="full_project"
             )
@@ -605,14 +605,14 @@ def greet_世界():
             assert "generated_prompt" in result
             
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
         except UnicodeError:
             pytest.skip("Unicode handling not yet implemented")
     
     def test_extremely_deep_directory_structure(self, tmp_path):
         """Test handling of extremely deep directory structures."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             # Create deep directory structure
             deep_path = tmp_path
@@ -622,7 +622,7 @@ def greet_世界():
             
             (deep_path / "deep_file.py").write_text("def deep_function(): pass")
             
-            result = generate_auto_prompt(
+            result = generate_meta_prompt(
                 project_path=str(tmp_path),
                 scope="full_project"
             )
@@ -632,12 +632,12 @@ def greet_世界():
             assert "generated_prompt" in result
             
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_files_with_no_extensions(self, tmp_path):
         """Test handling of files with no extensions."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             no_ext_project = tmp_path / "no_extension_project"
             no_ext_project.mkdir()
@@ -647,7 +647,7 @@ def greet_世界():
             (no_ext_project / "README").write_text("This is a readme file")
             (no_ext_project / "script").write_text("#!/bin/bash\necho 'Script'")
             
-            result = generate_auto_prompt(
+            result = generate_meta_prompt(
                 project_path=str(no_ext_project),
                 scope="full_project"
             )
@@ -657,7 +657,7 @@ def greet_世界():
             assert "generated_prompt" in result
             
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_circular_symbolic_links(self, tmp_path):
         """Test handling of circular symbolic links."""
@@ -665,7 +665,7 @@ def greet_世界():
             pytest.skip("Symbolic link test not applicable on Windows")
         
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             symlink_project = tmp_path / "symlink_project"
             symlink_project.mkdir()
@@ -678,7 +678,7 @@ def greet_世界():
             link2.symlink_to(link1)
             
             # Should handle circular links gracefully (not hang)
-            result = generate_auto_prompt(
+            result = generate_meta_prompt(
                 project_path=str(symlink_project),
                 scope="full_project"
             )
@@ -687,7 +687,7 @@ def greet_世界():
             assert "generated_prompt" in result
             
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
         except OSError:
             pytest.skip("Symbolic link creation failed")
 
@@ -701,7 +701,7 @@ class TestErrorRecoveryAndResilience:
             from src.generate_code_review_context import execute_auto_prompt_workflow
             
             # Test recovery when context generation fails but auto-prompt succeeds
-            with patch('src.generate_code_review_context.generate_auto_prompt') as mock_auto_prompt, \
+            with patch('src.generate_code_review_context.generate_meta_prompt') as mock_auto_prompt, \
                  patch('src.generate_code_review_context.generate_code_review_context') as mock_context, \
                  patch('src.generate_code_review_context.generate_ai_code_review') as mock_ai_review:
                 
@@ -736,7 +736,7 @@ class TestErrorRecoveryAndResilience:
     def test_retry_mechanism_on_transient_failures(self):
         """Test retry mechanisms for transient failures."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             with patch('src.server.get_gemini_model') as mock_gemini:
                 mock_client = Mock()
@@ -757,7 +757,7 @@ class TestErrorRecoveryAndResilience:
                 mock_gemini.return_value = mock_client
                 
                 # Should retry and succeed on second attempt
-                result = generate_auto_prompt(
+                result = generate_meta_prompt(
                     project_path="/tmp/test",
                     scope="full_project"
                 )
@@ -768,12 +768,12 @@ class TestErrorRecoveryAndResilience:
                 assert "generated_prompt" in result
             
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_graceful_degradation_modes(self):
         """Test graceful degradation when services are unavailable."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             # Test degradation when Gemini is completely unavailable
             with patch('src.server.get_gemini_model') as mock_gemini:
@@ -781,7 +781,7 @@ class TestErrorRecoveryAndResilience:
                 
                 # Should provide fallback behavior or clear error message
                 try:
-                    result = generate_auto_prompt(
+                    result = generate_meta_prompt(
                         project_path="/tmp/test",
                         scope="full_project"
                     )
@@ -795,4 +795,4 @@ class TestErrorRecoveryAndResilience:
                     assert "service" in error_message or "unavailable" in error_message or "gemini" in error_message
             
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")

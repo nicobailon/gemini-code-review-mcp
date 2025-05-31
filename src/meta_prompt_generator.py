@@ -29,32 +29,69 @@ def validate_prompt(prompt: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # Deferred import to avoid loading server module during module import
-_generate_auto_prompt = None
+_generate_meta_prompt = None
 
-def _get_generate_auto_prompt():
-    """Get generate_auto_prompt function, importing it if needed."""
-    global _generate_auto_prompt
-    if _generate_auto_prompt is None:
+def _get_generate_meta_prompt():
+    """Get generate_meta_prompt function, importing it if needed."""
+    global _generate_meta_prompt
+    if _generate_meta_prompt is None:
         try:
-            from .server import generate_auto_prompt
-            _generate_auto_prompt = generate_auto_prompt
+            from .server import generate_meta_prompt
+            _generate_meta_prompt = generate_meta_prompt
         except ImportError:
             try:
-                from server import generate_auto_prompt
-                _generate_auto_prompt = generate_auto_prompt
+                from server import generate_meta_prompt
+                _generate_meta_prompt = generate_meta_prompt
             except (ImportError, SystemExit):
-                # Fallback for when server module isn't available (e.g., in testing)
-                async def generate_auto_prompt(*args, **kwargs):
-                    # Mock implementation for testing
+                # Import failed - implement the functionality directly
+                from .generate_code_review_context import generate_code_review_context_main
+                from .model_config import load_model_config
+                import json
+                
+                async def generate_meta_prompt(*args, **kwargs):
+                    """Generate meta-prompt directly without server dependency."""
+                    # Get project context first
+                    project_path = kwargs.get('project_path')
+                    scope = kwargs.get('scope', 'recent_phase')
+                    
+                    if not project_path:
+                        raise ValueError("project_path is required")
+                    
+                    # Generate context using existing function
+                    context_file, _ = generate_code_review_context_main(
+                        project_path=project_path,
+                        scope=scope,
+                        enable_gemini_review=False,  # Context only
+                        raw_context_only=True
+                    )
+                    
+                    # Read the generated context
+                    with open(context_file, 'r', encoding='utf-8') as f:
+                        context_content = f.read()
+                    
+                    # Load model config for template
+                    model_config = load_model_config()
+                    default_template = model_config.get('meta_prompt_template', {}).get('default', 
+                        "You are an expert code reviewer. Review the following code changes with extreme thoroughness: {context}")
+                    
+                    # Use custom template if provided, otherwise use default
+                    template = kwargs.get('custom_template', default_template)
+                    
+                    # Generate the meta-prompt by filling the template
+                    generated_prompt = template.format(
+                        context=context_content,
+                        configuration_context=context_content  # For backward compatibility
+                    )
+                    
                     return {
-                        "generated_prompt": "Test generated prompt",
-                        "template_used": "default",
-                        "configuration_included": False,
+                        "generated_prompt": generated_prompt,
+                        "template_used": "default" if not kwargs.get('custom_template') else "custom",
+                        "configuration_included": True,
                         "analysis_completed": True,
-                        "context_analyzed": 1000
+                        "context_analyzed": len(context_content)
                     }
-                _generate_auto_prompt = generate_auto_prompt
-    return _generate_auto_prompt
+                _generate_meta_prompt = generate_meta_prompt
+    return _generate_meta_prompt
 
 
 def generate_output_filename(prefix: str = "meta-prompt") -> str:
@@ -74,32 +111,20 @@ def format_meta_prompt_output(prompt_data: Dict[str, Any]) -> str:
     """Format meta-prompt data for file output.
     
     Args:
-        prompt_data: Generated prompt data from generate_auto_prompt
+        prompt_data: Generated prompt data from generate_meta_prompt
         
     Returns:
-        Formatted markdown content for file output
+        Clean meta-prompt content only
     """
-    content = "# Meta-Prompt for AI Code Review\n\n"
-    
-    content += "## Generated Meta-Prompt\n\n"
-    content += f"{prompt_data['generated_prompt']}\n\n"
-    
-    content += "## Template Information\n\n"
-    content += f"Template Used: {prompt_data['template_used']}\n"
-    content += f"Configuration Included: {'Yes' if prompt_data['configuration_included'] else 'No'}\n\n"
-    
-    content += "## Analysis Summary\n\n"
-    content += f"Context Analyzed: {prompt_data['context_analyzed']} characters\n"
-    content += f"Analysis Status: {'Completed' if prompt_data['analysis_completed'] else 'Failed'}\n"
-    
-    return content
+    # Return just the meta-prompt content without any wrapper formatting
+    return prompt_data['generated_prompt']
 
 
 def format_meta_prompt_stream(prompt_data: Dict[str, Any]) -> str:
     """Format meta-prompt data for stream output.
     
     Args:
-        prompt_data: Generated prompt data from generate_auto_prompt
+        prompt_data: Generated prompt data from generate_meta_prompt
         
     Returns:
         Just the generated prompt content for streaming
@@ -130,7 +155,7 @@ def validate_cli_arguments(args_dict: Dict[str, Any]) -> None:
         raise ValueError("Only one input parameter should be provided")
 
 
-async def cli_generate_auto_prompt(
+async def cli_generate_meta_prompt(
     context_file_path: Optional[str] = None,
     context_content: Optional[str] = None,
     project_path: Optional[str] = None,
@@ -139,7 +164,7 @@ async def cli_generate_auto_prompt(
     output_dir: Optional[str] = None,
     stream_output: bool = False
 ) -> Dict[str, Any]:
-    """CLI wrapper for generate_auto_prompt with file/stream output options.
+    """CLI wrapper for generate_meta_prompt with file/stream output options.
     
     Args:
         context_file_path: Path to existing context file
@@ -171,9 +196,9 @@ async def cli_generate_auto_prompt(
             if not os.path.exists(output_dir):
                 return {"status": "error", "error": f"Output directory does not exist or permission denied: {output_dir}"}
         
-        # Call the underlying generate_auto_prompt function
-        generate_auto_prompt = _get_generate_auto_prompt()
-        prompt_result = await generate_auto_prompt(
+        # Call the underlying generate_meta_prompt function
+        generate_meta_prompt = _get_generate_meta_prompt()
+        prompt_result = await generate_meta_prompt(
             context_file_path=context_file_path,
             context_content=context_content,
             project_path=project_path,
@@ -224,26 +249,26 @@ def create_argument_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 DEVELOPMENT NOTE:
-  If installed package isn't working, use: python -m src.auto_prompt_generator
+  If installed package isn't working, use: python -m src.meta_prompt_generator
   
 EXAMPLES:
   # Generate meta-prompt from context file (saves to current directory by default)
-  generate-auto-prompt --context-file tasks/context.md
+  generate-meta-prompt --context-file tasks/context.md
   
   # Generate meta-prompt from project (saves to current directory)
-  generate-auto-prompt --project-path /path/to/project
+  generate-meta-prompt --project-path /path/to/project
   
   # Save to custom directory
-  generate-auto-prompt --project-path . --output-dir ./prompts
+  generate-meta-prompt --project-path . --output-dir ./prompts
   
   # Stream meta-prompt directly to stdout
-  generate-auto-prompt --context-content "Direct context" --stream
+  generate-meta-prompt --context-content "Direct context" --stream
   
   # Use custom template
-  generate-auto-prompt --project-path . --custom-template "Focus on: {context}"
+  generate-meta-prompt --project-path . --custom-template "Focus on: {context}"
   
   # Generate from specific scope
-  generate-auto-prompt --project-path . --scope full_project
+  generate-meta-prompt --project-path . --scope full_project
 
 OUTPUT MODES:
   Default: Saves formatted meta-prompt to timestamped .md file in current directory
@@ -352,7 +377,7 @@ def main() -> None:
         }
         
         # Run async function
-        result = asyncio.run(cli_generate_auto_prompt(**kwargs))
+        result = asyncio.run(cli_generate_meta_prompt(**kwargs))
         
         if result["status"] == "success":
             if "output_file" in result:
@@ -379,9 +404,9 @@ if __name__ == "__main__":
 
 
 # Alias for test compatibility
-def generate_auto_prompt(*args, **kwargs):
-    """Alias to the server's generate_auto_prompt function."""
-    return _get_generate_auto_prompt()(*args, **kwargs)
+def generate_meta_prompt(*args, **kwargs):
+    """Alias to the server's generate_meta_prompt function."""
+    return _get_generate_meta_prompt()(*args, **kwargs)
 
 # Ensure the function is available at module level
-__all__ = ['generate_auto_prompt', 'validate_prompt', 'cli_generate_auto_prompt', 'main']
+__all__ = ['generate_meta_prompt', 'validate_prompt', 'cli_generate_meta_prompt', 'main']

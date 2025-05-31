@@ -24,12 +24,12 @@ def setup_import_path():
 class TestMCPToolTypeSignatures:
     """Test type signatures of MCP tools."""
     
-    def test_generate_auto_prompt_type_signature(self):
-        """Test that generate_auto_prompt has correct type signature."""
+    def test_generate_meta_prompt_type_signature(self):
+        """Test that generate_meta_prompt has correct type signature."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
-            sig = inspect.signature(generate_auto_prompt)
+            sig = inspect.signature(generate_meta_prompt)
             params = sig.parameters
             
             # Verify parameter types
@@ -51,7 +51,7 @@ class TestMCPToolTypeSignatures:
                 assert 'Dict' in return_annotation or 'dict' in return_annotation.lower()
             
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_generate_code_review_context_type_signature(self):
         """Test that generate_code_review_context has correct type signature."""
@@ -192,14 +192,14 @@ class TestDataStructureTypes:
     def test_auto_prompt_result_structure(self):
         """Test that auto-prompt results have correct structure and types."""
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             with patch('src.server.get_gemini_model') as mock_gemini:
                 from test_gemini_api_mocks import MockGeminiClient
                 mock_client = MockGeminiClient()
                 mock_gemini.return_value = mock_client
                 
-                result = generate_auto_prompt(
+                result = generate_meta_prompt(
                     project_path="/tmp/test",
                     scope="full_project"
                 )
@@ -223,7 +223,7 @@ class TestDataStructureTypes:
                 assert len(result['generated_prompt']) > 0, "Generated prompt should not be empty"
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_cli_args_type_consistency(self):
         """Test that CLI argument parsing produces correctly typed values."""
@@ -595,10 +595,10 @@ class TestMyPyCompatibility:
     def test_type_annotation_consistency(self):
         """Test that type annotations are consistent across related functions."""
         try:
-            from src.server import generate_auto_prompt, generate_ai_code_review
+            from src.server import generate_meta_prompt, generate_ai_code_review
             
             # Check parameter consistency between related functions
-            auto_prompt_sig = inspect.signature(generate_auto_prompt)
+            auto_prompt_sig = inspect.signature(generate_meta_prompt)
             ai_review_sig = inspect.signature(generate_ai_code_review)
             
             # Common parameters should have consistent types

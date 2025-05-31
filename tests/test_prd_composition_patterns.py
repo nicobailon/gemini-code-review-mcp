@@ -42,7 +42,7 @@ def authenticate_user(username, password):
         
         try:
             # Test the exact composition pattern from PRD
-            from src.server import generate_auto_prompt, generate_ai_code_review
+            from src.server import generate_meta_prompt, generate_ai_code_review
             
             with patch('src.server.get_gemini_model') as mock_gemini_auto, \
                  patch('src.ai_code_review.get_gemini_model') as mock_gemini_ai:
@@ -56,7 +56,7 @@ def authenticate_user(username, password):
                 mock_gemini_ai.return_value = mock_ai_client
                 
                 # Step 1: Generate auto-prompt (PRD Pattern 1.1)
-                auto_result = generate_auto_prompt(
+                auto_result = generate_meta_prompt(
                     project_path=project_path,
                     scope="full_project"
                 )
@@ -113,7 +113,7 @@ def login(username, password):
 """)
         
         try:
-            from src.server import generate_code_review_context, generate_auto_prompt
+            from src.server import generate_code_review_context, generate_meta_prompt
             
             with patch('src.server.get_gemini_model') as mock_gemini:
                 mock_client = MockGeminiClient()
@@ -133,7 +133,7 @@ def login(username, password):
                     assert context_path is not None
                 
                 # Step 2: Generate auto-prompt with phase-specific context (PRD Pattern 2.2)
-                auto_result = generate_auto_prompt(
+                auto_result = generate_meta_prompt(
                     project_path=project_path,
                     scope="specific_phase",
                     phase_number="1.0"  # Focus on Basic Auth Implementation
@@ -203,7 +203,7 @@ def get_user_data(user_id):
             from src.generate_code_review_context import execute_auto_prompt_workflow
             
             # Test the complete workflow composition from PRD
-            with patch('src.generate_code_review_context.generate_auto_prompt') as mock_auto_prompt, \
+            with patch('src.generate_code_review_context.generate_meta_prompt') as mock_auto_prompt, \
                  patch('src.generate_code_review_context.generate_code_review_context') as mock_context, \
                  patch('src.generate_code_review_context.generate_ai_code_review') as mock_ai_review:
                 
@@ -309,7 +309,7 @@ def cached_user_lookup(user_id):
 """)
         
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             # Test different scope compositions from PRD
             scope_test_cases = [
@@ -349,7 +349,7 @@ def cached_user_lookup(user_id):
                         kwargs["task_id"] = test_case["task_id"]
                     
                     # Execute scope-specific auto-prompt
-                    result = generate_auto_prompt(**kwargs)
+                    result = generate_meta_prompt(**kwargs)
                     
                     assert result is not None
                     assert "generated_prompt" in result
@@ -361,7 +361,7 @@ def cached_user_lookup(user_id):
                     print(f"✅ PRD Pattern 4.{test_case['scope']}: {test_case['description']} working")
             
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
 
 
 class TestPRDIntegrationScenarios:
@@ -409,7 +409,7 @@ def admin_action():
         try:
             from src.generate_code_review_context import execute_auto_prompt_workflow
             
-            with patch('src.generate_code_review_context.generate_auto_prompt') as mock_auto_prompt, \
+            with patch('src.generate_code_review_context.generate_meta_prompt') as mock_auto_prompt, \
                  patch('src.generate_code_review_context.generate_ai_code_review') as mock_ai_review:
                 
                 # Setup security-focused response (PRD Use Case 1)
@@ -518,7 +518,7 @@ class DataProcessor:
 """)
         
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             with patch('src.server.get_gemini_model') as mock_gemini:
                 mock_client = MockGeminiClient([
@@ -527,7 +527,7 @@ class DataProcessor:
                 mock_gemini.return_value = mock_client
                 
                 # Test performance-focused auto-prompt (PRD Use Case 2)
-                result = generate_auto_prompt(
+                result = generate_meta_prompt(
                     project_path=project_path,
                     scope="specific_phase",
                     phase_number="2.0"  # Focus on API Performance
@@ -544,7 +544,7 @@ class DataProcessor:
                 print("✅ PRD Use Case 2: Performance optimization review working")
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
     
     def test_prd_use_case_3_feature_completion_review(self, tmp_path):
         """Test PRD Use Case 3: Feature completion review with task tracking."""
@@ -613,14 +613,14 @@ class UserManager:
 """)
         
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             with patch('src.server.get_gemini_model') as mock_gemini:
                 mock_client = MockGeminiClient()
                 mock_gemini.return_value = mock_client
                 
                 # Test feature completion focused review (PRD Use Case 3)
-                result = generate_auto_prompt(
+                result = generate_meta_prompt(
                     project_path=project_path,
                     scope="recent_phase"  # Focus on completing current work
                 )
@@ -634,7 +634,7 @@ class UserManager:
                 print("✅ PRD Use Case 3: Feature completion review working")
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")
 
 
 class TestPRDWorkflowValidation:
@@ -686,7 +686,7 @@ class TestPRDWorkflowValidation:
                 }
             ]
             
-            with patch('src.generate_code_review_context.generate_auto_prompt') as mock_auto_prompt, \
+            with patch('src.generate_code_review_context.generate_meta_prompt') as mock_auto_prompt, \
                  patch('src.generate_code_review_context.generate_ai_code_review') as mock_ai_review:
                 
                 mock_auto_prompt.return_value = {
@@ -840,7 +840,7 @@ class Class{i}:
         try:
             from src.generate_code_review_context import execute_auto_prompt_workflow
             
-            with patch('src.generate_code_review_context.generate_auto_prompt') as mock_auto_prompt, \
+            with patch('src.generate_code_review_context.generate_meta_prompt') as mock_auto_prompt, \
                  patch('src.generate_code_review_context.generate_ai_code_review') as mock_ai_review:
                 
                 mock_auto_prompt.return_value = {
@@ -881,7 +881,7 @@ class Class{i}:
         (Path(project_path) / "test_file.py").write_text("def test(): pass")
         
         try:
-            from src.server import generate_auto_prompt
+            from src.server import generate_meta_prompt
             
             # Measure initial memory
             gc.collect()
@@ -893,7 +893,7 @@ class Class{i}:
                 mock_gemini.return_value = mock_client
                 
                 # Execute operation
-                result = generate_auto_prompt(
+                result = generate_meta_prompt(
                     project_path=project_path,
                     scope="full_project"
                 )
@@ -909,4 +909,4 @@ class Class{i}:
                 print(f"✅ PRD Resource Requirement: {memory_delta:.1f}MB memory delta")
                 
         except ImportError:
-            pytest.skip("generate_auto_prompt function not found - implementation pending")
+            pytest.skip("generate_meta_prompt function not found - implementation pending")

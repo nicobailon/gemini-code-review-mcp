@@ -109,7 +109,7 @@ def process_data(data):
     @pytest.fixture
     def mock_mcp_server_tools(self):
         """Mock all MCP server tools for integration testing."""
-        with patch('src.server.generate_auto_prompt') as mock_auto_prompt, \
+        with patch('src.server.generate_meta_prompt') as mock_auto_prompt, \
              patch('src.server.generate_code_review_context') as mock_context, \
              patch('src.server.generate_ai_code_review') as mock_ai_review:
             
@@ -293,13 +293,13 @@ def process_data(data):
             # Test that all required tools are registered
             tool_names = [tool.name for tool in app.list_tools()]
             
-            assert "generate_auto_prompt" in tool_names
+            assert "generate_meta_prompt" in tool_names
             assert "generate_code_review_context" in tool_names
             assert "generate_ai_code_review" in tool_names
             
             # Test tool dependencies and composition
             # Auto-prompt should work independently
-            auto_prompt_tool = next(tool for tool in app.list_tools() if tool.name == "generate_auto_prompt")
+            auto_prompt_tool = next(tool for tool in app.list_tools() if tool.name == "generate_meta_prompt")
             assert auto_prompt_tool is not None
             
             # Context generation should support raw_context_only parameter
@@ -321,7 +321,7 @@ def process_data(data):
             project_path = sample_project_setup
             
             # Test auto-prompt generation failure
-            with patch('src.generate_code_review_context.generate_auto_prompt') as mock_auto_prompt:
+            with patch('src.generate_code_review_context.generate_meta_prompt') as mock_auto_prompt:
                 mock_auto_prompt.side_effect = Exception("Gemini API failed")
                 
                 with pytest.raises(Exception) as exc_info:
@@ -335,7 +335,7 @@ def process_data(data):
                 assert "Gemini API failed" in str(exc_info.value)
             
             # Test context generation failure with graceful handling
-            with patch('src.generate_code_review_context.generate_auto_prompt') as mock_auto_prompt, \
+            with patch('src.generate_code_review_context.generate_meta_prompt') as mock_auto_prompt, \
                  patch('src.generate_code_review_context.generate_code_review_context') as mock_context:
                 
                 mock_auto_prompt.return_value = {"generated_prompt": "Test prompt", "analysis_completed": True}
@@ -436,7 +436,7 @@ class TestMCPToolDataFlow:
     def test_auto_prompt_to_ai_review_data_flow(self):
         """Test that auto-prompt output correctly flows to AI review input."""
         try:
-            from src.server import generate_auto_prompt, generate_ai_code_review
+            from src.server import generate_meta_prompt, generate_ai_code_review
             
             # Mock auto-prompt generation
             with patch('src.server.get_gemini_model') as mock_gemini:
@@ -444,7 +444,7 @@ class TestMCPToolDataFlow:
                 mock_gemini.return_value = mock_client
                 
                 # Generate auto-prompt
-                auto_prompt_result = generate_auto_prompt(
+                auto_prompt_result = generate_meta_prompt(
                     project_path="/tmp/test",
                     scope="full_project"
                 )
@@ -549,7 +549,7 @@ class TestWorkflowRobustness:
             from src.generate_code_review_context import execute_auto_prompt_workflow
             
             # Test with empty project directory
-            with patch('src.generate_code_review_context.generate_auto_prompt') as mock_auto_prompt:
+            with patch('src.generate_code_review_context.generate_meta_prompt') as mock_auto_prompt:
                 mock_auto_prompt.return_value = {
                     "generated_prompt": "No significant code found for review.",
                     "analysis_completed": True,
@@ -584,7 +584,7 @@ class TestWorkflowRobustness:
         try:
             from src.generate_code_review_context import execute_auto_prompt_workflow
             
-            with patch('src.generate_code_review_context.generate_auto_prompt') as mock_auto_prompt:
+            with patch('src.generate_code_review_context.generate_meta_prompt') as mock_auto_prompt:
                 # Simulate large project response
                 mock_auto_prompt.return_value = {
                     "generated_prompt": GeminiAPIMockFactory.create_large_project_prompt_response().text,

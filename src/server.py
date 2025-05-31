@@ -12,13 +12,12 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 try:
     from fastmcp import FastMCP  # type: ignore
-    from generate_code_review_context import generate_code_review_context_main as generate_review_context, load_model_config
-    from ai_code_review import generate_ai_review
+    from generate_code_review_context import generate_code_review_context_main as generate_review_context, load_model_config, send_to_gemini_for_review
 except ImportError as e:
     print(f"Required dependencies not available: {e}", file=sys.stderr)
     sys.exit(1)
 
-# Create FastMCP server with ERROR log level to avoid info noise
+# Create FastMCP server
 mcp = FastMCP("MCP Server - Code Review Context Generator")
 
 # Create alias for the app to match test expectations
@@ -309,12 +308,13 @@ def generate_code_review_context(
     task_number: Optional[str] = None,
     current_phase: Optional[str] = None,
     output_path: Optional[str] = None,
-    enable_gemini_review: bool = True,
+    enable_gemini_review: bool = False,
     temperature: float = 0.5,
     include_claude_memory: bool = True,
     include_cursor_rules: bool = False,
     raw_context_only: bool = False,
-    text_output: bool = True
+    text_output: bool = True,
+    auto_meta_prompt: bool = True
 ) -> str:
     """Generate code review context with flexible scope options and configuration discovery.
     
@@ -331,6 +331,7 @@ def generate_code_review_context(
         include_cursor_rules: Include Cursor rules files in context (default: false)
         raw_context_only: Exclude default AI review instructions (default: false)
         text_output: Return text content directly instead of file info (default: true for AI agent chaining)
+        auto_meta_prompt: Automatically generate and embed meta prompt in user_instructions (default: true)
     
     Returns:
         If text_output=True: Generated context content as text string
@@ -377,6 +378,23 @@ def generate_code_review_context(
         if supports_grounding and not disable_grounding: actual_capabilities.append("web grounding")
         if supports_thinking and not disable_thinking: actual_capabilities.append("thinking mode")
         
+        # Generate meta prompt if requested
+        auto_prompt_content = None
+        if auto_meta_prompt:
+            try:
+                # Use optimized meta prompt generation without creating intermediate files
+                from meta_prompt_analyzer import generate_optimized_meta_prompt
+                
+                meta_prompt_result = generate_optimized_meta_prompt(
+                    project_path=project_path,
+                    scope=scope
+                )
+                auto_prompt_content = meta_prompt_result.get("generated_prompt")
+                if not auto_prompt_content:
+                    return "ERROR: Meta prompt generation failed - no content generated"
+            except Exception as e:
+                return f"ERROR: Meta prompt generation failed: {str(e)}"
+        
         # Generate review context using enhanced logic
         try:
             # Call the main function which now returns a tuple (context_file, gemini_file)
@@ -391,7 +409,8 @@ def generate_code_review_context(
                 temperature=temperature,
                 include_claude_memory=include_claude_memory,
                 include_cursor_rules=include_cursor_rules,
-                raw_context_only=raw_context_only
+                raw_context_only=raw_context_only,
+                auto_prompt_content=auto_prompt_content
             )
             
             # Return response based on text_output setting
@@ -452,40 +471,58 @@ def generate_code_review_context(
 def generate_ai_code_review(
     context_file_path: Optional[str] = None,
     context_content: Optional[str] = None,
+    project_path: Optional[str] = None,
+    scope: str = "recent_phase",
+    phase_number: Optional[str] = None,
+    task_number: Optional[str] = None,
     output_path: Optional[str] = None,
     model: Optional[str] = None,
     temperature: float = 0.5,
     custom_prompt: Optional[str] = None,
-    text_output: bool = True
+    text_output: bool = True,
+    auto_meta_prompt: bool = True,
+    include_claude_memory: bool = True,
+    include_cursor_rules: bool = False
 ) -> str:
-    """Generate AI-powered code review from context file or content.
+    """Generate AI-powered code review from context file, content, or project analysis.
     
     Args:
         context_file_path: Path to existing code review context file (.md)
         context_content: Direct context content (for AI agent chaining)
+        project_path: Project path for direct analysis (generates context internally)
+        scope: Review scope when using project_path - 'recent_phase', 'full_project', 'specific_phase', 'specific_task'
+        phase_number: Phase number for specific_phase scope
+        task_number: Task number for specific_task scope
         output_path: Custom output file path for AI review. If not provided, uses default timestamped path
         model: Optional Gemini model name (e.g., 'gemini-2.0-flash-exp', 'gemini-1.5-pro')
         temperature: Temperature for AI model (default: 0.5, range: 0.0-2.0)
         custom_prompt: Optional custom AI prompt to override default instructions
         text_output: Return text content directly instead of file info (default: true for AI agent chaining)
+        auto_meta_prompt: Automatically generate and embed meta prompt (default: true)
+        include_claude_memory: Include CLAUDE.md files in context (default: true)
+        include_cursor_rules: Include Cursor rules files in context (default: false)
     
     Returns:
         If text_output=True: Generated AI review content as text string
         If text_output=False: Success message with file paths (legacy mode)
     """
     
+    # Import the required function
+    from generate_code_review_context import send_to_gemini_for_review
+    
     # Comprehensive error handling
     try:
         # Validate input parameters - exactly one should be provided
         provided_params = sum([
             context_file_path is not None,
-            context_content is not None
+            context_content is not None,
+            project_path is not None
         ])
         
         if provided_params == 0:
-            raise ValueError("Either context_file_path or context_content is required")
+            raise ValueError("One of context_file_path, context_content, or project_path is required")
         elif provided_params > 1:
-            raise ValueError("Only one of context_file_path or context_content should be provided")
+            raise ValueError("Only one of context_file_path, context_content, or project_path should be provided")
         
         # Validate context_file_path if provided
         if context_file_path is not None:
@@ -503,6 +540,17 @@ def generate_ai_code_review(
             if not context_content.strip():
                 return "ERROR: context_content cannot be empty"
         
+        # Validate project_path if provided
+        if project_path is not None:
+            if not os.path.isabs(project_path):
+                return "ERROR: project_path must be an absolute path"
+            
+            if not os.path.exists(project_path):
+                return f"ERROR: Project path does not exist: {project_path}"
+            
+            if not os.path.isdir(project_path):
+                return f"ERROR: Project path must be a directory: {project_path}"
+        
         # Handle temperature: MCP parameter takes precedence, then env var, then default 0.5
         if temperature == 0.5:  # Default value, check if env var should override
             temperature = float(os.getenv('GEMINI_TEMPERATURE', '0.5'))
@@ -510,30 +558,67 @@ def generate_ai_code_review(
         # Generate AI review
         try:
             if context_file_path is not None:
-                # Use existing file-based approach
-                output_file = generate_ai_review(
-                    context_file_path=context_file_path,
-                    output_path=output_path,
-                    model=model,
+                # Read context file content
+                try:
+                    with open(context_file_path, 'r', encoding='utf-8') as f:
+                        file_context_content = f.read().strip()
+                except Exception as e:
+                    return f"ERROR: Could not read context file: {str(e)}"
+                
+                # Generate AI review using Gemini directly
+                if custom_prompt:
+                    review_content = f"{custom_prompt}\n\n{file_context_content}"
+                else:
+                    # Use default AI review instructions
+                    review_content = f"""Please provide a comprehensive code review analysis for the following code context:
+
+{file_context_content}
+
+Focus on:
+1. Code quality and best practices
+2. Security vulnerabilities
+3. Performance optimizations
+4. Maintainability improvements
+5. Documentation suggestions
+
+Provide specific, actionable feedback with code examples where appropriate."""
+
+                # Generate AI review using Gemini
+                ai_review_content = send_to_gemini_for_review(
+                    context_content=review_content,
                     temperature=temperature,
-                    custom_prompt=custom_prompt
+                    model=model,
+                    return_text=True  # Return text directly instead of saving to file
                 )
                 
-                if output_file:
-                    # Read the generated content
-                    try:
-                        with open(output_file, 'r', encoding='utf-8') as f:
-                            ai_review_content = f.read()
-                    except Exception as e:
-                        return f"ERROR: Could not read generated AI review file: {str(e)}"
-                else:
-                    return "ERROR: AI review generation failed - no output file created"
-                    
-            else:
-                # Use context_content directly with Gemini
-                from generate_code_review_context import send_to_gemini_for_review
+                if not ai_review_content:
+                    return "ERROR: Gemini API failed to generate AI review"
                 
-                # If we have custom_prompt, use it; otherwise use default review instructions
+                # Create AI review file if text_output=False, otherwise keep as None
+                if not text_output:
+                    # Generate timestamped filename for AI review
+                    import datetime
+                    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+                    if output_path:
+                        # Use custom output path if provided
+                        output_file = output_path
+                    else:
+                        # Use default naming convention in context file directory
+                        context_dir = os.path.dirname(context_file_path)
+                        output_file = os.path.join(context_dir, f"code-review-ai-feedback-{timestamp}.md")
+                    
+                    # Save AI review content to file
+                    try:
+                        with open(output_file, 'w', encoding='utf-8') as f:
+                            f.write(ai_review_content)
+                    except Exception as e:
+                        return f"ERROR: Could not write AI review file: {str(e)}"
+                else:
+                    # Set output_file to None since we didn't create a file
+                    output_file = None
+                
+            elif context_content is not None:
+                # Handle direct context content mode
                 if custom_prompt:
                     review_content = f"{custom_prompt}\n\n{context_content}"
                 else:
@@ -562,8 +647,141 @@ Provide specific, actionable feedback with code examples where appropriate."""
                 if not ai_review_content:
                     return "ERROR: Gemini API failed to generate AI review"
                 
-                # Set output_file to None since we didn't create a file
-                output_file = None
+                # Create AI review file if text_output=False, otherwise keep as None
+                if not text_output:
+                    # Generate timestamped filename for AI review
+                    import datetime
+                    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+                    if output_path:
+                        # Use custom output path if provided
+                        output_file = output_path
+                    else:
+                        # Use default naming convention in current directory
+                        output_file = f"code-review-ai-feedback-{timestamp}.md"
+                    
+                    # Save AI review content to file
+                    try:
+                        with open(output_file, 'w', encoding='utf-8') as f:
+                            f.write(ai_review_content)
+                    except Exception as e:
+                        return f"ERROR: Could not write AI review file: {str(e)}"
+                else:
+                    # Set output_file to None since we didn't create a file
+                    output_file = None
+                
+            else:
+                # Generate context internally from project_path and clean up intermediate files
+                from generate_code_review_context import generate_code_review_context_main
+                from meta_prompt_analyzer import generate_optimized_meta_prompt
+                import tempfile
+                
+                # Generate context internally with temporary file cleanup
+                temp_context_file = None
+                try:
+                    # Generate meta prompt if enabled
+                    if auto_meta_prompt:
+                        meta_prompt_result = generate_optimized_meta_prompt(
+                            project_path=project_path,
+                            scope=scope,
+                            temperature=temperature
+                        )
+                        auto_prompt_content = meta_prompt_result.get("generated_prompt")
+                    else:
+                        auto_prompt_content = None
+                    
+                    # Create temporary file for context generation
+                    with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as temp_file:
+                        temp_context_file = temp_file.name
+                    
+                    # Generate context using existing function with temporary file
+                    context_file, gemini_file = generate_code_review_context_main(
+                        project_path=project_path,
+                        scope=scope,
+                        phase_number=phase_number,
+                        task_number=task_number,
+                        output=temp_context_file,
+                        enable_gemini_review=False,  # We'll generate AI review ourselves
+                        include_claude_memory=include_claude_memory,
+                        include_cursor_rules=include_cursor_rules,
+                        raw_context_only=False,
+                        auto_prompt_content=auto_prompt_content,
+                        temperature=temperature
+                    )
+                    
+                    # Read the generated context content
+                    with open(context_file, 'r', encoding='utf-8') as f:
+                        internal_context = f.read()
+                    
+                    # Clean up the temporary context file
+                    try:
+                        os.unlink(context_file)
+                        if temp_context_file and os.path.exists(temp_context_file):
+                            os.unlink(temp_context_file)
+                    except Exception:
+                        pass  # Ignore cleanup errors
+                    
+                    if not internal_context:
+                        return "ERROR: Failed to generate context from project"
+                    
+                    # Generate AI review using the internal context
+                    if custom_prompt:
+                        review_content = f"{custom_prompt}\n\n{internal_context}"
+                    else:
+                        # Use default AI review instructions
+                        review_content = f"""Please provide a comprehensive code review analysis for the following code context:
+
+{internal_context}
+
+Focus on:
+1. Code quality and best practices
+2. Security vulnerabilities
+3. Performance optimizations
+4. Maintainability improvements
+5. Documentation suggestions
+
+Provide specific, actionable feedback with code examples where appropriate."""
+
+                    # Generate AI review using Gemini
+                    ai_review_content = send_to_gemini_for_review(
+                        context_content=review_content,
+                        temperature=temperature,
+                        model=model,
+                        return_text=True  # Return text directly instead of saving to file
+                    )
+                    
+                    if not ai_review_content:
+                        return "ERROR: Gemini API failed to generate AI review"
+                    
+                    # Create AI review file if text_output=False, otherwise keep as None
+                    if not text_output:
+                        # Generate timestamped filename for AI review
+                        import datetime
+                        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+                        if output_path:
+                            # Use custom output path if provided
+                            output_file = output_path
+                        else:
+                            # Use default naming convention in project directory
+                            output_file = os.path.join(project_path, f"code-review-ai-feedback-{timestamp}.md")
+                        
+                        # Save AI review content to file
+                        try:
+                            with open(output_file, 'w', encoding='utf-8') as f:
+                                f.write(ai_review_content)
+                        except Exception as e:
+                            return f"ERROR: Could not write AI review file: {str(e)}"
+                    else:
+                        # Set output_file to None since we didn't create a persistent file
+                        output_file = None
+                    
+                except Exception as e:
+                    # Clean up any temporary files on error
+                    if temp_context_file and os.path.exists(temp_context_file):
+                        try:
+                            os.unlink(temp_context_file)
+                        except Exception:
+                            pass
+                    return f"ERROR: Failed to generate context from project: {str(e)}"
             
             # Return response based on text_output setting
             if text_output:
@@ -585,7 +803,7 @@ Provide specific, actionable feedback with code examples where appropriate."""
 
 
 @mcp.tool()
-async def generate_auto_prompt(
+async def generate_meta_prompt(
     context_file_path: Optional[str] = None,
     context_content: Optional[str] = None,
     project_path: Optional[str] = None,
@@ -789,6 +1007,8 @@ async def generate_auto_prompt(
         raise
 
 
+
+
 def get_mcp_tools():
     """Get list of available MCP tools for testing."""
     return [
@@ -796,13 +1016,13 @@ def get_mcp_tools():
         "generate_ai_code_review", 
         "generate_branch_comparison_review",
         "generate_pr_review",
-        "generate_auto_prompt"
+        "generate_meta_prompt"
     ]
 
 
 def get_mcp_tool_schema(tool_name: str):
     """Get MCP tool schema for testing."""
-    if tool_name == "generate_auto_prompt":
+    if tool_name == "generate_meta_prompt":
         return {
             "parameters": {
                 "properties": {
@@ -821,8 +1041,8 @@ def get_mcp_tool_schema(tool_name: str):
 def main():
     """Entry point for uvx execution"""
     # FastMCP handles all the server setup, protocol, and routing
-    # Use stdio transport explicitly (more reliable than SSE/streamable-http)
-    mcp.run(transport="stdio")
+    # Default transport is stdio (best for local tools and command-line scripts)
+    mcp.run()
 
 
 if __name__ == "__main__":

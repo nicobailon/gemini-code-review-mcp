@@ -21,9 +21,9 @@ class TestAutoPromptCLIInterface:
     @pytest.mark.asyncio
     async def test_cli_auto_prompt_file_output_default(self):
         """Test CLI generates auto-prompt to file by default in current directory."""
-        with patch('src.auto_prompt_generator._get_generate_auto_prompt') as mock_get_func:
+        with patch('src.auto_prompt_generator._get_generate_meta_prompt') as mock_get_func:
             # Mock the function that gets returned
-            async def mock_generate_auto_prompt(*args, **kwargs):
+            async def mock_generate_meta_prompt(*args, **kwargs):
                 return {
                     "generated_prompt": "Generated meta-prompt for code review",
                     "template_used": "default",
@@ -32,10 +32,10 @@ class TestAutoPromptCLIInterface:
                     "context_analyzed": 1500
                 }
             
-            mock_get_func.return_value = mock_generate_auto_prompt
+            mock_get_func.return_value = mock_generate_meta_prompt
             
             # Import and test CLI function
-            from src.auto_prompt_generator import cli_generate_auto_prompt
+            from src.auto_prompt_generator import cli_generate_meta_prompt
             
             with tempfile.TemporaryDirectory() as temp_dir:
                 context_file = Path(temp_dir) / "context.md"
@@ -47,7 +47,7 @@ class TestAutoPromptCLIInterface:
                     os.chdir(temp_dir)
                     
                     # Test file output (default behavior - should save in current directory)
-                    result = await cli_generate_auto_prompt(
+                    result = await cli_generate_meta_prompt(
                         context_file_path=str(context_file)
                         # No output_dir specified - should default to current directory
                     )
@@ -74,9 +74,9 @@ class TestAutoPromptCLIInterface:
     @pytest.mark.asyncio
     async def test_cli_auto_prompt_stream_output_flag(self):
         """Test CLI streams output directly with --stream flag."""
-        with patch('src.auto_prompt_generator._get_generate_auto_prompt') as mock_get_func:
+        with patch('src.auto_prompt_generator._get_generate_meta_prompt') as mock_get_func:
             # Mock the function that gets returned
-            async def mock_generate_auto_prompt(*args, **kwargs):
+            async def mock_generate_meta_prompt(*args, **kwargs):
                 return {
                     "generated_prompt": "Streamed meta-prompt content",
                     "template_used": "environment",
@@ -85,12 +85,12 @@ class TestAutoPromptCLIInterface:
                     "context_analyzed": 800
                 }
             
-            mock_get_func.return_value = mock_generate_auto_prompt
+            mock_get_func.return_value = mock_generate_meta_prompt
             
-            from src.auto_prompt_generator import cli_generate_auto_prompt
+            from src.auto_prompt_generator import cli_generate_meta_prompt
             
             # Test streaming output (--stream flag)
-            result = await cli_generate_auto_prompt(
+            result = await cli_generate_meta_prompt(
                 context_content="Direct context content",
                 stream_output=True
             )
@@ -104,9 +104,9 @@ class TestAutoPromptCLIInterface:
     @pytest.mark.asyncio
     async def test_cli_auto_prompt_custom_output_dir(self):
         """Test CLI respects --output-dir flag to override default directory."""
-        with patch('src.auto_prompt_generator._get_generate_auto_prompt') as mock_get_func:
+        with patch('src.auto_prompt_generator._get_generate_meta_prompt') as mock_get_func:
             # Mock the function that gets returned
-            async def mock_generate_auto_prompt(*args, **kwargs):
+            async def mock_generate_meta_prompt(*args, **kwargs):
                 return {
                     "generated_prompt": "Generated meta-prompt for custom directory",
                     "template_used": "default",
@@ -115,9 +115,9 @@ class TestAutoPromptCLIInterface:
                     "context_analyzed": 1200
                 }
             
-            mock_get_func.return_value = mock_generate_auto_prompt
+            mock_get_func.return_value = mock_generate_meta_prompt
             
-            from src.auto_prompt_generator import cli_generate_auto_prompt
+            from src.auto_prompt_generator import cli_generate_meta_prompt
             
             with tempfile.TemporaryDirectory() as temp_dir:
                 context_file = Path(temp_dir) / "context.md"
@@ -128,7 +128,7 @@ class TestAutoPromptCLIInterface:
                 output_dir.mkdir()
                 
                 # Test custom output directory
-                result = await cli_generate_auto_prompt(
+                result = await cli_generate_meta_prompt(
                     context_file_path=str(context_file),
                     output_dir=str(output_dir)
                 )
@@ -180,9 +180,9 @@ class TestAutoPromptCLIInterface:
     @pytest.mark.asyncio
     async def test_cli_file_format_alignment(self):
         """Test CLI file output format aligns with existing implementation."""
-        with patch('src.auto_prompt_generator._get_generate_auto_prompt') as mock_get_func:
+        with patch('src.auto_prompt_generator._get_generate_meta_prompt') as mock_get_func:
             # Mock the function that gets returned
-            async def mock_generate_auto_prompt(*args, **kwargs):
+            async def mock_generate_meta_prompt(*args, **kwargs):
                 return {
                     "generated_prompt": "Test meta-prompt with configuration context",
                     "template_used": "custom",
@@ -191,12 +191,12 @@ class TestAutoPromptCLIInterface:
                     "context_analyzed": 2048
                 }
             
-            mock_get_func.return_value = mock_generate_auto_prompt
+            mock_get_func.return_value = mock_generate_meta_prompt
             
-            from src.auto_prompt_generator import cli_generate_auto_prompt
+            from src.auto_prompt_generator import cli_generate_meta_prompt
             
             with tempfile.TemporaryDirectory() as temp_dir:
-                result = await cli_generate_auto_prompt(
+                result = await cli_generate_meta_prompt(
                     project_path=temp_dir,
                     output_dir=temp_dir
                 )
@@ -241,10 +241,10 @@ class TestAutoPromptCLIInterface:
     @pytest.mark.asyncio
     async def test_cli_error_handling_file_mode(self):
         """Test CLI error handling in file output mode."""
-        from src.auto_prompt_generator import cli_generate_auto_prompt
+        from src.auto_prompt_generator import cli_generate_meta_prompt
         
         # Test invalid context file
-        result = await cli_generate_auto_prompt(
+        result = await cli_generate_meta_prompt(
             context_file_path="/nonexistent/file.md"
         )
         
@@ -252,7 +252,7 @@ class TestAutoPromptCLIInterface:
         assert "not found" in result["error"].lower()
         
         # Test invalid output directory
-        result = await cli_generate_auto_prompt(
+        result = await cli_generate_meta_prompt(
             context_content="Test content",
             output_dir="/invalid/readonly/directory"
         )
@@ -263,10 +263,10 @@ class TestAutoPromptCLIInterface:
     @pytest.mark.asyncio
     async def test_cli_error_handling_stream_mode(self):
         """Test CLI error handling in stream output mode."""
-        from src.auto_prompt_generator import cli_generate_auto_prompt
+        from src.auto_prompt_generator import cli_generate_meta_prompt
         
         # Test missing required parameters
-        result = await cli_generate_auto_prompt(stream_output=True)
+        result = await cli_generate_meta_prompt(stream_output=True)
         
         assert result["status"] == "error"
         assert "input parameter" in result["error"].lower()
@@ -278,7 +278,7 @@ class TestAutoPromptCLIIntegration:
     @pytest.mark.asyncio
     async def test_cli_integrates_with_mcp_tool(self):
         """Test CLI uses same underlying function as MCP tool."""
-        with patch('src.server.generate_auto_prompt') as mock_mcp_tool:
+        with patch('src.server.generate_meta_prompt') as mock_mcp_tool:
             mock_mcp_tool.return_value = {
                 "generated_prompt": "MCP tool generated prompt",
                 "template_used": "default",
@@ -287,10 +287,10 @@ class TestAutoPromptCLIIntegration:
                 "context_analyzed": 1024
             }
             
-            from src.auto_prompt_generator import cli_generate_auto_prompt
+            from src.auto_prompt_generator import cli_generate_meta_prompt
             
             # CLI should use same function as MCP tool
-            result = await cli_generate_auto_prompt(
+            result = await cli_generate_meta_prompt(
                 context_content="Test integration",
                 stream_output=True
             )
@@ -319,7 +319,7 @@ class TestAutoPromptCLIIntegration:
     @pytest.mark.asyncio
     async def test_cli_template_priority_alignment(self):
         """Test CLI template priority aligns with MCP tool."""
-        with patch('src.auto_prompt_generator.generate_auto_prompt') as mock_generate:
+        with patch('src.auto_prompt_generator.generate_meta_prompt') as mock_generate:
             mock_generate.return_value = {
                 "generated_prompt": "Custom template result",
                 "template_used": "custom",
@@ -328,10 +328,10 @@ class TestAutoPromptCLIIntegration:
                 "context_analyzed": 512
             }
             
-            from src.auto_prompt_generator import cli_generate_auto_prompt
+            from src.auto_prompt_generator import cli_generate_meta_prompt
             
             # Test custom template takes priority
-            result = await cli_generate_auto_prompt(
+            result = await cli_generate_meta_prompt(
                 context_content="Test content",
                 custom_template="Custom CLI template: {context}",
                 stream_output=True
@@ -395,7 +395,7 @@ class TestAutoPromptCLIOutput:
     def test_cli_main_function_file_mode(self):
         """Test CLI main function in file output mode."""
         with patch('src.auto_prompt_generator.parse_cli_arguments') as mock_args:
-            with patch('src.auto_prompt_generator.cli_generate_auto_prompt') as mock_cli:
+            with patch('src.auto_prompt_generator.cli_generate_meta_prompt') as mock_cli:
                 mock_args.return_value = Mock(
                     context_file='context.md',
                     output_dir='/tmp',
@@ -421,7 +421,7 @@ class TestAutoPromptCLIOutput:
     def test_cli_main_function_stream_mode(self):
         """Test CLI main function in stream output mode."""
         with patch('src.auto_prompt_generator.parse_cli_arguments') as mock_args:
-            with patch('src.auto_prompt_generator.cli_generate_auto_prompt') as mock_cli:
+            with patch('src.auto_prompt_generator.cli_generate_meta_prompt') as mock_cli:
                 mock_args.return_value = Mock(
                     context_content='Direct content',
                     stream=True,

@@ -21,7 +21,7 @@ class TestMetaPromptContextIntegration:
     @pytest.mark.asyncio
     async def test_auto_prompt_embeds_meta_prompt_in_context_file(self):
         """Test that --auto-prompt embeds generated meta-prompt in context file <user_instructions>."""
-        with patch('src.generate_code_review_context.generate_auto_prompt') as mock_generate_auto_prompt:
+        with patch('src.generate_code_review_context.generate_meta_prompt') as mock_generate_meta_prompt:
             with patch('src.generate_code_review_context.generate_ai_code_review') as mock_ai_review:
                 with tempfile.TemporaryDirectory() as temp_dir:
                     # Mock meta-prompt generation
@@ -33,7 +33,7 @@ class TestMetaPromptContextIntegration:
 2. **Test-Driven Development (TDD Protocol):**
    - Confirm new features implemented using TDD"""
                     
-                    mock_generate_auto_prompt.return_value = {
+                    mock_generate_meta_prompt.return_value = {
                         "generated_prompt": test_meta_prompt,
                         "template_used": "default",
                         "configuration_included": True,
@@ -63,7 +63,7 @@ class TestMetaPromptContextIntegration:
                         )
                     
                     # Verify meta-prompt was generated
-                    mock_generate_auto_prompt.assert_called_once()
+                    mock_generate_meta_prompt.assert_called_once()
                     
                     # Check that a context file was written with meta-prompt in user_instructions
                     context_files = [f for f in written_files.keys() if 'context' in f]

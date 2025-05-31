@@ -2,11 +2,11 @@
 
 An MCP server designed for **AI coding agents** (Cursor, Claude Code, etc.) with **standalone CLI support** to automatically generate comprehensive code review context when completing development phases.
 
-**Version**: 0.3.0 - Enhanced with auto-prompt generation, standalone CLI tools, MCP text response chaining, and TDD-based auto-prompt workflows.
+**Version**: 0.3.9 - Enhanced with optimized auto meta prompt generation (default enabled), multi-mode AI review support, MCP text response chaining, and streamlined command structure.
 
 ## 🎯 Usage Options
 
-**🤖 MCP Server** (Primary): Integration with AI agents (Claude Desktop, Claude Code, Cursor)  
+**🤖 MCP Server** (Primary): Integration with AI agents (Claude Code, Cursor)  
 **🖥️ Standalone CLI**: Direct command-line usage for manual code reviews + auto-prompt generation  
 **⚠️ Note**: Use development commands if getting cached/old versions  
 **🔗 Hybrid**: Use CLI for testing/auto-prompts, then integrate as MCP server for AI workflows
@@ -15,7 +15,7 @@ An MCP server designed for **AI coding agents** (Cursor, Claude Code, etc.) with
 
 ## 🚀 Quick Start
 
-> **💡 Most Common Command**: `uvx task-list-code-review-mcp /path/to/project`
+> **💡 Most Common Command**: `uvx task-list-code-review-mcp generate-code-review /path/to/project`
 
 ### Try It First (No Installation Required)
 
@@ -29,7 +29,7 @@ export GEMINI_API_KEY=your_key_here
 # cp .env.example .env  # then edit with your keys
 
 # Run directly without installing anything (uvx handles everything)
-uvx task-list-code-review-mcp /path/to/your/project
+uvx task-list-code-review-mcp generate-code-review /path/to/your/project
 
 # Shows real-time progress and model capabilities:
 # 🔍 Analyzing project: my-app
@@ -44,21 +44,12 @@ uvx task-list-code-review-mcp /path/to/your/project
 **If you're working with the source code or getting cached version issues:**
 
 ```bash
-# 🎯 Wrapper scripts (intelligent fallback: dev mode → installed package)
-./review /path/to/project --scope full_project
-./prompt --project-path /path/to/project
-
 # 🔧 Direct module execution (always works in dev mode)
 python -m src.generate_code_review_context /path/to/project --scope full_project
-python -m src.auto_prompt_generator --project-path /path/to/project
-
-# 🧹 Makefile commands (use PROJECT= parameter)
-make review PROJECT=/path/to/project
-make prompt PROJECT=/path/to/project
-make help  # Show all available commands
+python -m src.meta_prompt_generator --project-path /path/to/project
 
 # 🗺️ Clear uvx cache if getting old versions
-uv cache clean
+uv cache clean && uvx --force task-list-code-review-mcp generate-code-review /path/to/project
 ```
 
 ### Install Globally (If You Like It)
@@ -68,18 +59,21 @@ uv cache clean
 pip install task-list-code-review-mcp
 
 # Now available as commands
-task-list-code-review-mcp /path/to/your/project
-generate-auto-prompt --context-file tasks/context.md
+generate-code-review /path/to/your/project
+generate-meta-prompt --context-file tasks/context.md
+# Also available: code-review (semantic alias)
 ```
 
 ## ✨ Key Features
 
-### 🎯 Auto-Prompt Generation (NEW!)
-- **🤖 MCP Tool**: `generate_auto_prompt` → Creates AI-optimized review prompts from completed work
-- **🖥️ Standalone CLI**: `generate-auto-prompt` → Command-line auto-prompt generation
-- **📄 File Output**: Saves formatted auto-prompts to timestamped .md files (default: current directory)
+### 🎯 Meta-Prompt Generation (Enhanced & Optimized!)
+- **🤖 MCP Tool**: `generate_meta_prompt` → Creates AI-optimized review prompts from completed work
+- **🖥️ Standalone CLI**: `generate-meta-prompt` → Command-line meta-prompt generation
+- **⚡ Auto-Enabled**: `auto_meta_prompt=true` by default in context generation (v0.3.9+)
+- **🚀 Optimized**: No intermediate files created - direct project analysis and generation
+- **📄 File Output**: Saves formatted meta-prompts to timestamped .md files (default: current directory)
 - **📡 Stream Output**: `--stream` flag outputs prompts directly to stdout
-- **🎨 Custom Templates**: Support for custom auto-prompt templates
+- **🎨 Custom Templates**: Support for custom meta-prompt templates
 - **🧠 Intelligent Analysis**: Analyzes codebase context to create targeted review prompts
 
 ### Smart Scope Detection
@@ -103,21 +97,21 @@ generate-auto-prompt --context-file tasks/context.md
 ### 🚀 Essential Commands (80% Use Cases)
 
 > **⚡ Quick Reference**:
-> - `uvx task-list-code-review-mcp .` - Smart review current project  
-> - `uvx task-list-code-review-mcp . --auto-prompt` - With optimization
-> - `generate-auto-prompt --project-path . --stream` - Just the prompt
+> - `uvx task-list-code-review-mcp generate-code-review .` - Smart review current project  
+> - `uvx task-list-code-review-mcp generate-code-review . --auto-prompt` - With optimization
+> - `uvx generate-meta-prompt --project-path . --stream` - Just the meta-prompt
 
 ```bash
 # Most common: Smart review of your project
-uvx task-list-code-review-mcp /path/to/project
+uvx task-list-code-review-mcp generate-code-review /path/to/project
 # 🔍 Auto-detects completion status → 🤖 Model capabilities → 📄 Generated files
 
 # With auto-prompt optimization
-uvx task-list-code-review-mcp /path/to/project --auto-prompt
+uvx task-list-code-review-mcp generate-code-review /path/to/project --auto-prompt
 # Generates custom prompt first, then uses it for targeted review
 
 # Review entire project
-uvx task-list-code-review-mcp /path/to/project --scope full_project
+uvx task-list-code-review-mcp generate-code-review /path/to/project --scope full_project
 ```
 
 ### 🔧 Advanced Usage
@@ -125,31 +119,31 @@ uvx task-list-code-review-mcp /path/to/project --scope full_project
 ```bash
 # 🎯 AUTO-PROMPT GENERATION
 
-# Generate optimized prompt for your completed work
-generate-auto-prompt --project-path /path/to/project --stream
+# Generate optimized meta-prompt for your completed work
+uvx generate-meta-prompt --project-path /path/to/project --stream
 # Outputs to console for copy/paste
 
-generate-auto-prompt --context-file tasks/context.md
-# Saves to auto-prompt-YYYYMMDD-HHMMSS.md
+uvx generate-meta-prompt --context-file tasks/context.md
+# Saves to meta-prompt-YYYYMMDD-HHMMSS.md
 
 # 📊 SCOPE CONTROL
 
 # Review specific phase
-uvx task-list-code-review-mcp /path/to/project --scope specific_phase --phase-number 2.0
+uvx task-list-code-review-mcp generate-code-review /path/to/project --scope specific_phase --phase-number 2.0
 
 # Use specific task list (when multiple exist)
-uvx task-list-code-review-mcp /path/to/project --task-list tasks-auth-system.md
+uvx task-list-code-review-mcp generate-code-review /path/to/project --task-list tasks-auth-system.md
 
 # Context generation only (no AI review)
-uvx task-list-code-review-mcp /path/to/project --context-only
+uvx task-list-code-review-mcp generate-code-review /path/to/project --context-only
 
 # 🤖 MODEL SELECTION
 
 # Use different Gemini model
-GEMINI_MODEL=gemini-2.5-pro uvx task-list-code-review-mcp /path/to/project
+GEMINI_MODEL=gemini-2.5-pro uvx task-list-code-review-mcp generate-code-review /path/to/project
 
 # Works without task lists
-uvx task-list-code-review-mcp /path/to/project --default-prompt "Review security and performance"
+uvx task-list-code-review-mcp generate-code-review /path/to/project --default-prompt "Review security and performance"
 ```
 
 ### Task List Discovery
@@ -171,74 +165,36 @@ uvx task-list-code-review-mcp /path/to/project --default-prompt "Review security
 # Tool output: "Auto-selected most recent: tasks-payment-flow.md"
 
 # Override auto-selection:
-uvx task-list-code-review-mcp . --task-list tasks-auth-system.md
+uvx task-list-code-review-mcp generate-code-review . --task-list tasks-auth-system.md
 ```
 
 ### MCP Server Integration
 
-#### Claude Desktop/Cursor Configuration
-**Setup** (`claude_desktop_config.json`):
-```json
-{
-  "mcpServers": {
-    "task-list-reviewer": {
-      "command": "uvx",
-      "args": ["task-list-code-review-mcp"],
-      "env": {
-        "GEMINI_API_KEY": "your_key_here",
-        "GITHUB_TOKEN": "your_github_token_here"
-      }
-    }
-  }
-}
-```
+#### Cursor Configuration
+**Setup** (`.cursorrules` or `.cursor/rules/*.mdc`):
+The MCP server automatically discovers and includes Cursor rules in code reviews when `--include-cursor-rules` is used.
 
 **For GitHub PR Review Support**: Add your GitHub token to enable `generate_pr_review` tool.
 Create token at: https://github.com/settings/tokens (scopes: `repo` or `public_repo`)
-
-**Usage in Claude Desktop:**
-```
-Human: Generate a code review context for my project at /Users/myname/projects/my-app
-
-Claude: I'll generate a code review context using smart scope detection.
-
-[Tool Use: generate_code_review_context]
-{
-  "project_path": "/Users/myname/projects/my-app"
-}
-
-[Tool Result] Successfully generated: code-review-context-full-project-20241201-143052.md
-```
-
-**With Configuration Control:**
-```
-Human: Review my project but include Cursor rules and disable CLAUDE.md files
-
-Claude: I'll generate a review with Cursor rules enabled and CLAUDE.md disabled.
-
-[Tool Use: generate_code_review_context]
-{
-  "project_path": "/Users/myname/projects/my-app",
-  "include_claude_memory": false,
-  "include_cursor_rules": true
-}
-
-[Tool Result] 🔍 Discovered Cursor rules... ✅ Found 0 Claude memory files, 3 Cursor rules
-```
 
 #### Claude Code CLI Integration
 
 **Add this MCP server to Claude Code:**
 ```bash
-# Add the MCP server (set your API keys)
+# Add the MCP server with environment variables
 claude mcp add task-list-reviewer -e GEMINI_API_KEY=your_key_here -e GITHUB_TOKEN=your_github_token_here -- uvx task-list-code-review-mcp
 
 # Verify it's added
 claude mcp list
 
-# Use in Claude Code sessions
-claude # Opens Claude Code with MCP server available
+# Optional: Check server details
+claude mcp get task-list-reviewer
 ```
+
+**Server Scope Options:**
+- `--scope local` (default): Project-specific server
+- `--scope project`: Shared via `.mcp.json` 
+- `--scope user`: Available across all projects
 
 **Usage in Claude Code:**
 ```
@@ -306,30 +262,16 @@ claude mcp remove task-list-reviewer
 
 | Command | Purpose | When to Use |
 |---------|---------|-------------|
-| `uvx task-list-code-review-mcp` | **Primary CLI** - Full code review workflow | Most common use case |
-| `generate-auto-prompt` | **Auto-prompt generation** - Creates optimized review prompts | When you need custom prompts |
-| `review-with-ai` | **AI review only** - Reviews existing context files | When you have pre-generated context |
+| `uvx task-list-code-review-mcp generate-code-review` | **Primary CLI** - Complete code review workflow (context + AI feedback) | Most common use case |
+| `uvx task-list-code-review-mcp generate-code-review --auto-prompt` | **Code review with meta-prompt** - Includes generated meta-prompt in context | For optimized reviews |
+| `uvx generate-meta-prompt` | **Meta-prompt only** - Creates optimized review prompts | When you need just the prompt |
 
-**Note**: `task-list-code-review-mcp` without `uvx` starts the MCP server, not the CLI.
+**Note**: These commands work via uvx for easy access without installation.
 
-### 🚨 Development Mode Commands
 
-**When working with source code or testing locally:**
+## 🎯 Meta-Prompt Generation CLI
 
-```bash
-# Main code review (context + AI feedback)
-python -m src.generate_code_review_context /path/to/project --scope full_project
-
-# Meta-prompt generation
-python -m src.auto_prompt_generator --project-path /path/to/project
-
-# AI review from existing context
-python -m src.ai_code_review /path/to/context-file.md
-```
-
-## 🎯 Auto-Prompt Generation CLI
-
-**NEW**: Dedicated CLI tool for generating auto-prompts from completed development work.
+**NEW**: Dedicated CLI tool for generating meta-prompts from completed development work.
 
 ### 📋 Available Flags
 
@@ -350,16 +292,16 @@ python -m src.ai_code_review /path/to/context-file.md
 
 ```bash
 # From context file → saves to current directory
-generate-auto-prompt --context-file tasks/context.md
+uvx generate-meta-prompt --context-file tasks/context.md
 
-# From project → stream to stdout  
-generate-auto-prompt --project-path /path/to/project --stream
+# From project → stream to stdout
+uvx generate-meta-prompt --project-path /path/to/project --stream
 
 # Custom directory + template
-generate-auto-prompt --project-path . --output-dir ./prompts --custom-template "Security focus: {context}"
+uvx generate-meta-prompt --project-path . --output-dir ./prompts --custom-template "Security focus: {context}"
 
 # Specific scope
-generate-auto-prompt --project-path . --scope full_project
+uvx generate-meta-prompt --project-path . --scope full_project
 ```
 
 ### 📄 Output Modes
@@ -377,7 +319,7 @@ generate-auto-prompt --project-path . --scope full_project
 
 ```bash
 # CLI generation → MCP usage
-generate-auto-prompt --project-path . --output-dir ./prompts
+uvx generate-meta-prompt --project-path . --output-dir ./prompts
 # Creates: ./prompts/meta-prompt-20241201-143052.md
 
 # Then use in MCP tools:
@@ -389,13 +331,13 @@ generate-auto-prompt --project-path . --output-dir ./prompts
 
 **📊 [Complete Workflow Diagrams](./WORKFLOW_DIAGRAMS.md)** - Visual ASCII flow diagrams
 
-### 🎯 `generate_auto_prompt`
+### 🎯 `generate_meta_prompt`
 **Creates optimized prompts from completed work**
 
 ```javascript
 await use_mcp_tool({
   server_name: "task-list-code-review-mcp",
-  tool_name: "generate_auto_prompt",
+  tool_name: "generate_meta_prompt",
   arguments: {
     project_path: "/path/to/project",
     text_output: true  // Returns content directly for AI chaining
@@ -404,7 +346,7 @@ await use_mcp_tool({
 ```
 
 ### 📋 `generate_code_review_context`
-**Primary context generation tool**
+**Primary context generation tool (with auto meta prompt enabled by default)**
 
 ```javascript
 await use_mcp_tool({
@@ -413,22 +355,48 @@ await use_mcp_tool({
   arguments: {
     project_path: "/path/to/project",
     scope: "recent_phase",  // or full_project, specific_phase
+    auto_meta_prompt: true,  // Default: true - generates project-aware meta prompts
+    text_output: true,       // Default: true - returns content for AI chaining
     raw_context_only: false
   }
 });
 ```
 
 ### 🤖 `generate_ai_code_review`
-**AI-powered feedback from context files**
+**AI-powered feedback with multi-mode support (file/content/project)**
 
 ```javascript
+// Mode 1: From existing context file
 await use_mcp_tool({
   server_name: "task-list-code-review-mcp",
   tool_name: "generate_ai_code_review",
   arguments: {
     context_file_path: "/path/to/context.md",
     custom_prompt: "Focus on security vulnerabilities...",
-    temperature: 0.5
+    text_output: true  // Default: true - returns content for AI chaining
+  }
+});
+
+// Mode 2: From direct content (AI chaining)
+await use_mcp_tool({
+  server_name: "task-list-code-review-mcp",
+  tool_name: "generate_ai_code_review",
+  arguments: {
+    context_content: "Context content here...",
+    custom_prompt: "Focus on performance...",
+    text_output: true
+  }
+});
+
+// Mode 3: Direct project analysis (one-shot)
+await use_mcp_tool({
+  server_name: "task-list-code-review-mcp",
+  tool_name: "generate_ai_code_review",
+  arguments: {
+    project_path: "/path/to/project",
+    auto_meta_prompt: true,  // Default: true - generates meta prompts
+    scope: "recent_phase",   // Scope for project analysis
+    text_output: true        // Returns content directly
   }
 });
 ```
@@ -477,24 +445,27 @@ await use_mcp_tool({
 
 ## 🚀 MCP Workflow Patterns
 
-### Pattern 1: AI-Optimized Review (Recommended)
-**Auto-prompt generation → Targeted review**
+### Pattern 1: Enhanced Default Workflow (Recommended)
+**Auto meta prompt enabled by default → Intelligent review**
 
 ```bash
-# AI agent automatically generates custom prompt, then uses it
-Human: Generate an optimized review for my authentication system
+# Single tool call with auto meta prompt enabled by default
+Human: Generate a comprehensive review for my authentication system
 
-[Tool Use: generate_auto_prompt]
+[Tool Use: generate_code_review_context]
 {
   "project_path": "/Users/dev/auth-service",
-  "text_output": true
+  "scope": "recent_phase",
+  "auto_meta_prompt": true,  // Default: enabled
+  "text_output": true        // Returns content for AI chaining
 }
-# AI returns: "Focus on authentication security, input validation..."
+# AI returns: Enhanced context with project-aware meta prompt embedded
 
+# Optional: Follow up with AI review if needed
 [Tool Use: generate_ai_code_review]
 {
-  "context_file_path": "/Users/dev/auth-service/context.md",
-  "custom_prompt": "Focus on authentication security, input validation..."
+  "context_content": "Enhanced context content...",
+  "text_output": true
 }
 ```
 
@@ -565,19 +536,19 @@ export GITHUB_TOKEN=your_github_token
 
 ```bash
 # Default behavior (CLAUDE.md enabled, Cursor rules disabled)
-uvx task-list-code-review-mcp /path/to/project
+uvx task-list-code-review-mcp generate-code-review /path/to/project
 
 # Disable CLAUDE.md inclusion
-uvx task-list-code-review-mcp /path/to/project --no-claude-memory
+uvx task-list-code-review-mcp generate-code-review /path/to/project --no-claude-memory
 
 # Enable Cursor rules inclusion  
-uvx task-list-code-review-mcp /path/to/project --include-cursor-rules
+uvx task-list-code-review-mcp generate-code-review /path/to/project --include-cursor-rules
 
 # Enable both configuration types
-uvx task-list-code-review-mcp /path/to/project --include-cursor-rules
+uvx task-list-code-review-mcp generate-code-review /path/to/project --include-cursor-rules
 
 # Disable all configurations
-uvx task-list-code-review-mcp /path/to/project --no-claude-memory
+uvx task-list-code-review-mcp generate-code-review /path/to/project --no-claude-memory
 ```
 
 #### 🎯 Smart Features
@@ -765,13 +736,11 @@ git clone <repository-url>
 cd task-list-code-review-mcp
 pip install -e .
 
-# 🎯 Test CLI with wrapper scripts (recommended)
-./review . --scope full_project
-./prompt --project-path .
+# 🎯 Test CLI commands (recommended)
+python -m src.generate_code_review_context . --scope full_project
+python -m src.meta_prompt_generator --project-path .
 
-# 🧹 Or use Makefile (with proper PROJECT= syntax)
-make review PROJECT=.
-make prompt PROJECT=.
+# 🧹 Or use Makefile
 make test
 ```
 
@@ -780,7 +749,7 @@ make test
 ```bash
 # Direct module execution (always works)
 python -m src.generate_code_review_context . --scope full_project
-python -m src.auto_prompt_generator --project-path .
+python -m src.meta_prompt_generator --project-path .
 
 # Run tests and diagnostics
 pytest
@@ -791,8 +760,7 @@ make test-cli  # Test CLI functionality
 ## 📄 Project Structure
 
 - `src/generate_code_review_context.py` - Core context generation
-- `src/ai_code_review.py` - Standalone AI review tool
-- `src/auto_prompt_generator.py` - **NEW**: Auto-prompt generation CLI and MCP tool
+- `src/meta_prompt_generator.py` - **NEW**: Meta-prompt generation CLI and MCP tool
 - `src/server.py` - MCP server wrapper
 - `src/model_config.json` - Model configuration and aliases
 - `tests/` - Comprehensive test suite including TDD for auto-prompt features

@@ -3113,22 +3113,21 @@ def validate_cli_arguments(args):
 def execute_auto_prompt_workflow(project_path: str, scope: str = "recent_phase", 
                                 temperature: float = 0.5, auto_prompt: bool = False,
                                 generate_prompt_only: bool = False, **kwargs) -> str:
-    """Execute auto-prompt generation workflow using MCP tools internally."""
+    """Execute auto-prompt generation workflow with optimized single-file approach."""
     try:
-        # Import MCP tools from server module
+        # Use optimized meta prompt generation without creating intermediate files
         try:
-            from .server import generate_auto_prompt, generate_ai_code_review
+            from .meta_prompt_analyzer import generate_optimized_meta_prompt
         except ImportError:
-            from server import generate_auto_prompt, generate_ai_code_review
+            from meta_prompt_analyzer import generate_optimized_meta_prompt
         
-        # Step 1: Generate optimized prompt using project path
+        # Step 1: Generate optimized prompt using project analysis (no intermediate files)
         print("🤖 Generating optimized prompt using Gemini analysis...")
         
-        import asyncio
-        prompt_result = asyncio.run(generate_auto_prompt(
+        prompt_result = generate_optimized_meta_prompt(
             project_path=project_path,
             scope=scope
-        ))
+        )
         
         if not prompt_result.get("analysis_completed"):
             raise Exception("Auto-prompt generation failed")

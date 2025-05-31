@@ -17,8 +17,7 @@ def check_command_availability():
     commands = [
         ("task-list-code-review-mcp", "Main CLI (installed package)"),
         ("generate-code-review", "Context generation CLI (installed package)"),
-        ("generate-auto-prompt", "Meta-prompt CLI (installed package)"),
-        ("review-with-ai", "AI review CLI (installed package)")
+        ("generate-meta-prompt", "Meta-prompt CLI (installed package)")
     ]
     
     available = []
@@ -46,8 +45,7 @@ def check_development_mode():
     
     dev_commands = [
         ("python3 -m src.generate_code_review_context --help", "Main CLI (development)"),
-        ("python3 -m src.auto_prompt_generator --help", "Meta-prompt CLI (development)"),
-        ("python3 -m src.ai_code_review --help", "AI review CLI (development)")
+        ("python3 -m src.auto_prompt_generator --help", "Meta-prompt CLI (development)")
     ]
     
     for cmd, description in dev_commands:
