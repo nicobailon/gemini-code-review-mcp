@@ -51,7 +51,7 @@ def analyze_project_for_meta_prompt(project_path: str, scope: str = "recent_phas
         
         # Discover project configuration (CLAUDE.md/cursor rules)
         try:
-            from generate_code_review_context import discover_project_configurations
+            from .generate_code_review_context import discover_project_configurations
             config_data = discover_project_configurations(project_path)
             
             if config_data and (config_data.get('claude_memory_files') or config_data.get('cursor_rules_files')):
@@ -137,10 +137,19 @@ def _get_lightweight_git_context(project_path: str) -> str:
     """Get lightweight git context without full diffs."""
     try:
         import subprocess
+        from pathlib import Path
+        
+        # Validate and resolve project path for security
+        try:
+            validated_path = Path(project_path).resolve()
+            if not validated_path.exists() or not validated_path.is_dir():
+                return "Invalid project path"
+        except (OSError, ValueError):
+            return "Invalid project path"
         
         # Check if git is available and this is a git repo
         result = subprocess.run(['git', 'status', '--porcelain'], 
-                              cwd=project_path, 
+                              cwd=str(validated_path), 
                               capture_output=True, 
                               text=True, 
                               timeout=10)
@@ -226,7 +235,7 @@ def generate_meta_prompt_from_analysis(project_data: Dict[str, Any],
                 template_used = "environment"
             else:
                 # Load the default meta-prompt template
-                from generate_code_review_context import get_meta_prompt_template
+                from .generate_code_review_context import get_meta_prompt_template
                 
                 template = get_meta_prompt_template("default")
                 if not template:
@@ -256,7 +265,7 @@ Scope: {project_data['scope']}
         
         # Use Gemini API to generate the final meta-prompt
         try:
-            from generate_code_review_context import send_to_gemini_for_review
+            from .generate_code_review_context import send_to_gemini_for_review
             
             generated_prompt = send_to_gemini_for_review(
                 context_content=meta_prompt,

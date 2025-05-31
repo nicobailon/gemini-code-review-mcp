@@ -52,7 +52,7 @@ class TestPackageInstallation:
         """Test that all required dependencies are available"""
         # Test the actual package imports that are used in the code
         dependencies = [
-            ("mcp", "import mcp"),
+            ("fastmcp", "from fastmcp import FastMCP"),
             ("google-genai", "from google import genai"),  # google-genai provides google.genai
             ("python-dotenv", "import dotenv")  # python-dotenv provides dotenv
         ]

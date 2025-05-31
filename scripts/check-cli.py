@@ -67,7 +67,15 @@ def check_package_version():
     
     # Check local pyproject.toml version
     try:
-        import tomllib
+        # Handle tomllib import for different Python versions
+        try:
+            import tomllib  # Python 3.11+
+        except ImportError:
+            try:
+                import tomli as tomllib  # Python 3.10 and earlier
+            except ImportError:
+                raise ImportError("Neither tomllib nor tomli available for TOML parsing")
+        
         with open("pyproject.toml", "rb") as f:
             data = tomllib.load(f)
             local_version = data["project"]["version"]

@@ -23,6 +23,7 @@ import json
 import time
 from datetime import datetime
 from typing import Dict, List, Optional, Any
+from dataclasses import dataclass
 import logging
 
 # Git branch comparison functionality removed - use GitHub PR integration instead
@@ -2226,6 +2227,28 @@ def generate_enhanced_review_context(
     return enhanced_context
 
 
+@dataclass
+class CodeReviewConfig:
+    """Configuration for code review generation."""
+    project_path: Optional[str] = None
+    phase: Optional[str] = None  # Legacy parameter
+    output: Optional[str] = None
+    enable_gemini_review: bool = True
+    scope: str = "recent_phase"
+    phase_number: Optional[str] = None
+    task_number: Optional[str] = None
+    temperature: float = 0.5
+    task_list: Optional[str] = None
+    default_prompt: Optional[str] = None
+    compare_branch: Optional[str] = None
+    target_branch: Optional[str] = None
+    github_pr_url: Optional[str] = None
+    include_claude_memory: bool = True
+    include_cursor_rules: bool = False
+    raw_context_only: bool = False
+    auto_prompt_content: Optional[str] = None
+
+
 def generate_code_review_context_main(project_path: Optional[str] = None, phase: Optional[str] = None, output: Optional[str] = None, enable_gemini_review: bool = True, 
          scope: str = "recent_phase", phase_number: Optional[str] = None, task_number: Optional[str] = None, temperature: float = 0.5,
          task_list: Optional[str] = None, default_prompt: Optional[str] = None, compare_branch: Optional[str] = None, 
@@ -2243,6 +2266,12 @@ def generate_code_review_context_main(project_path: Optional[str] = None, phase:
         scope: Review scope - "recent_phase", "full_project", "specific_phase", "specific_task"
         phase_number: Phase number for specific_phase scope (e.g., "2.0")
         task_number: Task number for specific_task scope (e.g., "1.2")
+        temperature: Temperature for AI model (0.0-2.0)
+        task_list: Custom task list filename
+        default_prompt: Default prompt when no task list found
+        compare_branch: Source branch for comparison (deprecated - use GitHub PR)
+        target_branch: Target branch for comparison (deprecated - use GitHub PR)
+        github_pr_url: GitHub PR URL for analysis
         include_claude_memory: Whether to include CLAUDE.md files (default: True)
         include_cursor_rules: Whether to include Cursor rules files (default: False)
         raw_context_only: Exclude default AI review instructions (default: False)
@@ -2251,12 +2280,46 @@ def generate_code_review_context_main(project_path: Optional[str] = None, phase:
     Returns:
         Tuple of (context_file_path, gemini_review_path). gemini_review_path is None if not generated.
     """
-    if project_path is None:
-        project_path = os.getcwd()
+    # Create config object for internal use (better maintainability)
+    config = CodeReviewConfig(
+        project_path=project_path,
+        phase=phase,
+        output=output,
+        enable_gemini_review=enable_gemini_review,
+        scope=scope,
+        phase_number=phase_number,
+        task_number=task_number,
+        temperature=temperature,
+        task_list=task_list,
+        default_prompt=default_prompt,
+        compare_branch=compare_branch,
+        target_branch=target_branch,
+        github_pr_url=github_pr_url,
+        include_claude_memory=include_claude_memory,
+        include_cursor_rules=include_cursor_rules,
+        raw_context_only=raw_context_only,
+        auto_prompt_content=auto_prompt_content
+    )
+    
+    return _generate_code_review_context_impl(config)
+
+
+def _generate_code_review_context_impl(config: CodeReviewConfig) -> tuple[str, Optional[str]]:
+    """
+    Internal implementation of code review context generation.
+    
+    Args:
+        config: CodeReviewConfig object containing all configuration parameters
+        
+    Returns:
+        Tuple of (context_file_path, gemini_review_path). gemini_review_path is None if not generated.
+    """
+    if config.project_path is None:
+        config.project_path = os.getcwd()
     
     # Detect and validate review mode
     review_modes = []
-    if github_pr_url:
+    if config.github_pr_url:
         review_modes.append("github_pr")
     if not review_modes:
         review_modes.append("task_list_based")
@@ -2281,12 +2344,12 @@ Working examples:
     
     # Validate scope parameter
     valid_scopes = ["recent_phase", "full_project", "specific_phase", "specific_task"]
-    if scope not in valid_scopes:
-        raise ValueError(f"Invalid scope '{scope}'. Must be one of: {', '.join(valid_scopes)}")
+    if config.scope not in valid_scopes:
+        raise ValueError(f"Invalid scope '{config.scope}'. Must be one of: {', '.join(valid_scopes)}")
     
     # Validate scope-specific parameters
-    if scope == "specific_phase":
-        if not phase_number:
+    if config.scope == "specific_phase":
+        if not config.phase_number:
             error_msg = """phase_number is required when scope is 'specific_phase'
 
 Working examples:
@@ -2299,8 +2362,8 @@ Working examples:
   # Use environment variable for API key
   GEMINI_API_KEY=your_key generate-code-review . --scope specific_phase --phase-number 3.0"""
             raise ValueError(error_msg)
-        if not re.match(r'^\d+\.0$', phase_number):
-            error_msg = f"""Invalid phase_number format '{phase_number}'. Must be in format 'X.0'
+        if not re.match(r'^\d+\.0$', config.phase_number):
+            error_msg = f"""Invalid phase_number format '{config.phase_number}'. Must be in format 'X.0'
 
 Working examples:
   # Correct formats
@@ -2314,8 +2377,8 @@ Working examples:
   --phase-number v1.0 ❌ (no prefix allowed)"""
             raise ValueError(error_msg)
     
-    if scope == "specific_task":
-        if not task_number:
+    if config.scope == "specific_task":
+        if not config.task_number:
             error_msg = """task_number is required when scope is 'specific_task'
 
 Working examples:
@@ -2328,8 +2391,8 @@ Working examples:
   # Use with custom temperature
   generate-code-review . --scope specific_task --task-number 3.4 --temperature 0.3"""
             raise ValueError(error_msg)
-        if not re.match(r'^\d+\.\d+$', task_number) or task_number.endswith('.0'):
-            error_msg = f"""Invalid task_number format '{task_number}'. Must be in format 'X.Y'
+        if not re.match(r'^\d+\.\d+$', config.task_number) or config.task_number.endswith('.0'):
+            error_msg = f"""Invalid task_number format '{config.task_number}'. Must be in format 'X.Y'
 
 Working examples:
   # Correct formats
@@ -2344,13 +2407,13 @@ Working examples:
             raise ValueError(error_msg)
     
     # Validate GitHub PR URL if provided
-    if github_pr_url:
+    if config.github_pr_url:
         try:
             # Import here to avoid circular imports
             # Check if GitHub PR integration is available
             if not parse_github_pr_url:
                 raise ImportError("GitHub PR integration not available")
-            parse_github_pr_url(github_pr_url)  # This will raise ValueError if invalid
+            parse_github_pr_url(config.github_pr_url)  # This will raise ValueError if invalid
         except ValueError as e:
             error_msg = f"""Invalid GitHub PR URL: {e}
 
@@ -2367,24 +2430,24 @@ Working examples:
     
     try:
         # Initial user feedback  
-        print(f"🔍 Analyzing project: {os.path.basename(os.path.abspath(project_path))}")
+        print(f"🔍 Analyzing project: {os.path.basename(os.path.abspath(config.project_path))}")
         
         # Display review mode
         current_mode = review_modes[0]
         if current_mode == "github_pr":
             print(f"🔗 Review mode: GitHub PR analysis")
-            print(f"🌐 PR URL: {github_pr_url}")
+            print(f"🌐 PR URL: {config.github_pr_url}")
         else:
-            print(f"📊 Review scope: {scope}")
+            print(f"📊 Review scope: {config.scope}")
         
-        if enable_gemini_review:
-            print(f"🌡️  AI temperature: {temperature}")
+        if config.enable_gemini_review:
+            print(f"🌡️  AI temperature: {config.temperature}")
         
         # Load model config for default prompt
         config = load_model_config()
         
         # Find project files (PRD is now optional)
-        prd_file, task_file = find_project_files(project_path, task_list)
+        prd_file, task_file = find_project_files(config.project_path, config.task_list)
         
         # Handle different scenarios
         prd_summary = None
@@ -2406,8 +2469,8 @@ Working examples:
                 prd_summary = generate_prd_summary_from_task_list(task_data)
         else:
             # No task list - use default prompt
-            if default_prompt:
-                prd_summary = default_prompt
+            if config.default_prompt:
+                prd_summary = config.default_prompt
             else:
                 prd_summary = config['defaults']['default_prompt']
             
@@ -2423,7 +2486,7 @@ Working examples:
             }
         
         # Handle scope-based review logic
-        if scope == "recent_phase":
+        if config.scope == "recent_phase":
             # Smart defaulting: if ALL phases are complete, automatically review full project
             phases = task_data.get('phases', []) if task_data else []
             all_phases_complete = all(p.get('subtasks_complete', False) for p in phases)
@@ -2445,15 +2508,15 @@ Working examples:
                     'subtasks_completed': all_completed_subtasks
                 })
                 # Update scope to reflect the automatic expansion
-                scope = "full_project"
+                config.scope = "full_project"
             else:
                 # Use default behavior (already parsed by detect_current_phase)
                 # Override with legacy phase parameter if provided
-                if phase:
+                if config.phase:
                     # Find the specified phase
                     phases = task_data.get('phases', []) if task_data else []
                     for i, p in enumerate(phases):
-                        if p['number'] == phase:
+                        if p['number'] == config.phase:
                             # Find previous completed phase
                             previous_phase_completed = ''
                             if i > 0:
@@ -2476,7 +2539,7 @@ Working examples:
                             })
                             break
         
-        elif scope == "full_project":
+        elif config.scope == "full_project":
             # Analyze all completed phases
             phases = task_data.get('phases', []) if task_data else []
             completed_phases = [p for p in phases if p.get('subtasks_complete', False)]
@@ -2499,18 +2562,18 @@ Working examples:
                 # No completed phases, use default behavior
                 pass
         
-        elif scope == "specific_phase":
+        elif config.scope == "specific_phase":
             # Find and validate the specified phase
             target_phase = None
             phases = task_data.get('phases', []) if task_data else []
             for i, p in enumerate(phases):
-                if p['number'] == phase_number:
+                if p['number'] == config.phase_number:
                     target_phase = (i, p)
                     break
             
             if target_phase is None:
                 available_phases = [p['number'] for p in phases]
-                error_msg = f"""Phase {phase_number} not found in task list
+                error_msg = f"""Phase {config.phase_number} not found in task list
 
 Available phases: {', '.join(available_phases) if available_phases else 'none found'}
 
@@ -2547,14 +2610,14 @@ Working examples:
                 'subtasks_completed': p['subtasks_completed']
             })
         
-        elif scope == "specific_task":
+        elif config.scope == "specific_task":
             # Find and validate the specified task
             target_task = None
             target_phase = None
             phases = task_data.get('phases', []) if task_data else []
             for i, p in enumerate(phases if phases is not None else []):
                 for subtask in p['subtasks']:
-                    if subtask['number'] == task_number:
+                    if subtask['number'] == config.task_number:
                         target_task = subtask
                         target_phase = (i, p)
                         break
@@ -2568,7 +2631,7 @@ Working examples:
                     if isinstance(phase, dict):
                         available_tasks.extend([t['number'] for t in phase.get('subtasks', [])])
                 
-                error_msg = f"""Task {task_number} not found in task list
+                error_msg = f"""Task {config.task_number} not found in task list
 
 Available tasks: {', '.join(available_tasks[:10]) if available_tasks else 'none found'}{' (showing first 10)' if len(available_tasks) > 10 else ''}
 
@@ -2577,7 +2640,7 @@ Working examples:
   {f'generate-code-review . --scope specific_task --task-number {available_tasks[0]}' if available_tasks else 'generate-code-review . --scope recent_phase  # Use default scope instead'}
   
   # Review entire phase instead
-  generate-code-review . --scope specific_phase --phase-number {task_number.split('.')[0] if task_number else '1'}.0
+  generate-code-review . --scope specific_phase --phase-number {config.task_number.split('.')[0] if config.task_number else '1'}.0
   
   # Use default scope (most recent incomplete phase)
   generate-code-review ."""
@@ -2597,15 +2660,15 @@ Working examples:
         
         # Discover configurations early for integration
         config_types = []
-        if include_claude_memory:
+        if config.include_claude_memory:
             config_types.append("Claude memory")
-        if include_cursor_rules:
+        if config.include_cursor_rules:
             config_types.append("Cursor rules")
         
         if config_types:
             print(f"🔍 Discovering {' and '.join(config_types)}...")
             configurations = discover_project_configurations_with_flags(
-                project_path, include_claude_memory, include_cursor_rules
+                config.project_path, config.include_claude_memory, config.include_cursor_rules
             )
         else:
             print(f"ℹ️  Configuration discovery disabled")
@@ -2640,15 +2703,15 @@ Working examples:
                     raise ImportError("GitHub PR integration not available")
                 
                 # Type guard: Ensure github_pr_url is not None
-                if github_pr_url is None:
+                if config.github_pr_url is None:
                     raise ValueError("GitHub PR URL is required for PR analysis mode")
                 
-                pr_analysis = get_complete_pr_analysis(github_pr_url)
+                pr_analysis = get_complete_pr_analysis(config.github_pr_url)
                 
                 # Convert PR file changes to our expected format
                 for file_change in pr_analysis['file_changes']['changed_files']:
                     changed_files.append({
-                        'path': os.path.join(project_path, file_change['path']),
+                        'path': os.path.join(config.project_path, file_change['path']),
                         'status': f"PR-{file_change['status']}",
                         'content': file_change.get('patch', '[Content not available]')
                     })
@@ -2669,14 +2732,14 @@ Working examples:
             except Exception as e:
                 print(f"❌ Failed to fetch PR data: {e}")
                 # Fallback to task list mode
-                changed_files = get_changed_files(project_path)
+                changed_files = get_changed_files(config.project_path)
                 
         else:
             # Task list based mode (default)
-            changed_files = get_changed_files(project_path)
+            changed_files = get_changed_files(config.project_path)
         
         # Generate file tree
-        file_tree = generate_file_tree(project_path)
+        file_tree = generate_file_tree(config.project_path)
         
         # Get applicable configuration rules for changed files
         changed_file_paths = [f['path'] for f in changed_files]
@@ -2700,12 +2763,12 @@ Working examples:
             'next_phase': task_data['next_phase'],
             'current_phase_description': task_data['current_phase_description'],
             'subtasks_completed': task_data['subtasks_completed'],
-            'project_path': project_path,
+            'project_path': config.project_path,
             'file_tree': file_tree,
             'changed_files': changed_files,
-            'scope': scope,
-            'phase_number': phase_number if scope == "specific_phase" else None,
-            'task_number': task_number if scope == "specific_task" else None,
+            'scope': config.scope,
+            'phase_number': config.phase_number if config.scope == "specific_phase" else None,
+            'task_number': config.task_number if config.scope == "specific_task" else None,
             'branch_comparison_data': pr_data,
             'review_mode': current_mode,
             # Enhanced configuration data
@@ -2714,15 +2777,15 @@ Working examples:
             'cursor_rules': configurations['cursor_rules'],
             'applicable_rules': applicable_rules,
             'configuration_errors': configurations['discovery_errors'],
-            'raw_context_only': raw_context_only,
-            'auto_prompt_content': auto_prompt_content
+            'raw_context_only': config.raw_context_only,
+            'auto_prompt_content': config.auto_prompt_content
         }
         
         # Format template
         review_context = format_review_template(template_data)
         
         # Save output with scope-based naming
-        if output is None:
+        if config.output is None:
             timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
             
             # Generate mode and scope-specific filename
@@ -2730,41 +2793,41 @@ Working examples:
                 mode_prefix = "github-pr"
             else:
                 # Task list based mode - use scope-specific naming
-                if scope == "recent_phase":
+                if config.scope == "recent_phase":
                     mode_prefix = "recent-phase"
-                elif scope == "full_project":
+                elif config.scope == "full_project":
                     mode_prefix = "full-project"
-                elif scope == "specific_phase":
-                    if phase_number is None:
+                elif config.scope == "specific_phase":
+                    if config.phase_number is None:
                         raise ValueError("Phase number is required for specific_phase scope")
-                    phase_safe = phase_number.replace(".", "-")
+                    phase_safe = config.phase_number.replace(".", "-")
                     mode_prefix = f"phase-{phase_safe}"
-                elif scope == "specific_task":
-                    if task_number is None:
+                elif config.scope == "specific_task":
+                    if config.task_number is None:
                         raise ValueError("Task number is required for specific_task scope")
-                    task_safe = task_number.replace(".", "-")
+                    task_safe = config.task_number.replace(".", "-")
                     mode_prefix = f"task-{task_safe}"
                 else:
                     mode_prefix = "unknown"
             
-            output = os.path.join(project_path, f'code-review-context-{mode_prefix}-{timestamp}.md')
+            config.output = os.path.join(config.project_path, f'code-review-context-{mode_prefix}-{timestamp}.md')
         
-        with open(output, 'w', encoding='utf-8') as f:
+        with open(config.output, 'w', encoding='utf-8') as f:
             f.write(review_context)
         
-        print(f"📝 Generated review context: {os.path.basename(output)}")
+        print(f"📝 Generated review context: {os.path.basename(config.output)}")
         
         # Send to Gemini for comprehensive review if enabled
         gemini_output = None
-        if enable_gemini_review:
+        if config.enable_gemini_review:
             print(f"🔄 Sending to Gemini for AI code review...")
-            gemini_output = send_to_gemini_for_review(review_context, project_path, temperature)
+            gemini_output = send_to_gemini_for_review(review_context, config.project_path, config.temperature)
             if gemini_output:
                 print(f"✅ AI code review completed: {os.path.basename(gemini_output)}")
             else:
                 print(f"⚠️  AI code review failed or was skipped (check API key and model availability)")
         
-        return output, gemini_output
+        return config.output, gemini_output
         
     except Exception as e:
         logger.error(f"Error generating review context: {e}")
