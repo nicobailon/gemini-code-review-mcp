@@ -28,7 +28,9 @@ class TestCoreImports:
         """Test generate_code_review_context module imports"""
         import generate_code_review_context
         assert hasattr(generate_code_review_context, 'main')
-        assert hasattr(generate_code_review_context, 'load_model_config')
+        # load_model_config is now in model_config_manager
+        from model_config_manager import load_model_config
+        assert callable(load_model_config)
         
     def test_ai_code_review_imports(self):
         """Test ai_code_review functionality is available in server"""
@@ -55,7 +57,7 @@ class TestPackageStructure:
         
     def test_model_config_loads(self):
         """Test that model configuration loads successfully"""
-        from generate_code_review_context import load_model_config
+        from model_config_manager import load_model_config
         
         config = load_model_config()
         assert isinstance(config, dict)
@@ -72,7 +74,7 @@ class TestEnvironmentHandling:
         assert os.getenv('NONEXISTENT_VAR', 'default') == 'default'
         
         # Test model config defaults work
-        from generate_code_review_context import load_model_config
+        from model_config_manager import load_model_config
         config = load_model_config()
         
         # Should have reasonable defaults even without env vars
@@ -83,7 +85,7 @@ class TestModelConfiguration:
     
     def test_model_aliases_exist(self):
         """Test that model aliases are properly configured"""
-        from generate_code_review_context import load_model_config
+        from model_config_manager import load_model_config
         
         config = load_model_config()
         aliases = config.get('model_aliases', {})
@@ -93,7 +95,7 @@ class TestModelConfiguration:
         
     def test_capability_detection(self):
         """Test that model capabilities are defined"""
-        from generate_code_review_context import load_model_config
+        from model_config_manager import load_model_config
         
         config = load_model_config()
         capabilities = config.get('model_capabilities', {})

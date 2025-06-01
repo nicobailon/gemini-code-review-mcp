@@ -75,10 +75,10 @@ yaml = [
 # MCP Server
 task-list-code-review-mcp = "src.server:main"
 # CLI Tools
-generate-code-review = "src.generate_code_review_context:main"
+generate-code-review = "src.cli_main:main"
 generate-meta-prompt = "src.meta_prompt_generator:main"
 # Semantic shortcuts (when installed)
-code-review = "src.generate_code_review_context:main"
+code-review = "src.cli_main:main"
 
 [dependency-groups]
 dev = [

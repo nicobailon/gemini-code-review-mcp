@@ -2,24 +2,30 @@
 Smoke tests for essential functionality - minimal test suite for CI
 Tests core functionality without external dependencies (no API calls)
 """
-import pytest
 import os
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 def test_package_imports():
     """Test that all main modules can be imported"""
-    import src.server
-    import src.generate_code_review_context
+    # Import modules to verify they load without errors
+    try:
+        import src.server
+        import src.generate_code_review_context
+        # Verify the modules have expected attributes to satisfy linter
+        assert hasattr(src.server, 'mcp')
+        assert hasattr(src.generate_code_review_context, 'generate_code_review_context_main')
+    except ImportError as e:
+        assert False, f"Failed to import module: {e}"
     # model_config is a JSON file, not a Python module
     assert True  # If we get here, imports worked
 
 def test_model_config_loading():
     """Test model configuration loading works"""
-    from generate_code_review_context import load_model_config
+    from src.model_config_manager import load_model_config
     
     config = load_model_config()
     assert isinstance(config, dict)
@@ -29,7 +35,6 @@ def test_model_config_loading():
 
 def test_entry_points_defined():
     """Test that console script entry points are properly defined"""
-    import sys
     from pathlib import Path
     
     # Check pyproject.toml has the entry points defined
@@ -49,20 +54,18 @@ def test_entry_points_defined():
     for cmd in expected_commands:
         assert cmd in content, f"Missing entry point in pyproject.toml: {cmd}"
 
-@patch('generate_code_review_context.GEMINI_AVAILABLE', False)
+@patch('src.gemini_api_client.GEMINI_AVAILABLE', False)
 def test_graceful_fallback_no_gemini():
     """Test that the system works without Gemini API available"""
-    from generate_code_review_context import send_to_gemini_for_review
+    from src.gemini_api_client import send_to_gemini_for_review
     
     result = send_to_gemini_for_review("test content", "/tmp", 0.5)
     assert result is None  # Should gracefully return None without Gemini
 
 def test_cli_help_functions():
     """Test that CLI help functions work without crashes"""
-    import argparse
-    
     # Test that we can create argument parsers without errors
-    from generate_code_review_context import cli_main
+    from src.cli_main import cli_main
     
     # These should not crash when imported
     assert callable(cli_main)
@@ -85,7 +88,7 @@ def test_environment_variable_handling():
 
 def test_model_alias_resolution():
     """Test that model aliases resolve correctly"""
-    from generate_code_review_context import load_model_config
+    from src.model_config_manager import load_model_config
     
     config = load_model_config()
     aliases = config.get('model_aliases', {})

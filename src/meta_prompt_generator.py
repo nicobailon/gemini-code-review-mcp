@@ -36,7 +36,7 @@ def _get_generate_meta_prompt() -> Any:
     global _generate_meta_prompt
     if _generate_meta_prompt is None:
         try:
-            from .server import generate_meta_prompt
+            from server import generate_meta_prompt
 
             _generate_meta_prompt = generate_meta_prompt
         except ImportError:
@@ -46,10 +46,9 @@ def _get_generate_meta_prompt() -> Any:
                 _generate_meta_prompt = generate_meta_prompt
             except (ImportError, SystemExit):
                 # Import failed - implement the functionality directly
-                from .generate_code_review_context import (
-                    generate_code_review_context_main,
-                    load_model_config,
-                )
+                from context_generator import generate_review_context_data, format_review_template
+                from config_types import CodeReviewConfig
+                from model_config_manager import load_model_config
 
                 async def generate_meta_prompt(*args: Any, **kwargs: Any) -> Dict[str, Any]:
                     """Generate meta-prompt directly without server dependency."""
@@ -60,17 +59,21 @@ def _get_generate_meta_prompt() -> Any:
                     if not project_path:
                         raise ValueError("project_path is required")
 
-                    # Generate context using existing function
-                    context_file, _ = generate_code_review_context_main(
+                    # Generate context directly in memory
+                    review_config = CodeReviewConfig(
                         project_path=project_path,
                         scope=scope,
-                        enable_gemini_review=False,  # Context only
+                        enable_gemini_review=False,
                         raw_context_only=True,
+                        include_claude_memory=True,
+                        include_cursor_rules=False,
                     )
-
-                    # Read the generated context
-                    with open(context_file, "r", encoding="utf-8") as f:
-                        context_content = f.read()
+                    
+                    # Generate context data
+                    template_data = generate_review_context_data(review_config)
+                    
+                    # Format the context as markdown
+                    context_content = format_review_template(template_data)
 
                     # Load model config for template
                     model_config = load_model_config()

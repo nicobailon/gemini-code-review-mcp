@@ -12,7 +12,7 @@ import os
 import re
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Any, TypedDict
+from typing import Dict, List, Any, TypedDict, TypeGuard, cast
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +71,20 @@ class ConfigurationContextDict(TypedDict):
     merged_content: str
     auto_apply_rules: List[CursorRule]
     error_summary: List[Dict[str, Any]]
+
+
+def is_cursor_rule(obj: Any) -> TypeGuard[CursorRule]:
+    """TypeGuard to check if an object is an instance of CursorRule."""
+    return isinstance(obj, CursorRule)
+
+
+def extract_cursor_rules_from_context(data: Any) -> List[CursorRule]:
+    """Extract and validate CursorRule objects from context data."""
+    if not isinstance(data, list):
+        return []
+    # Cast to List[Any] after isinstance check to help type checker
+    items = cast(List[Any], data)
+    return [item for item in items if is_cursor_rule(item)]
 
 
 def sort_claude_memory_by_precedence(
@@ -480,23 +494,31 @@ def validate_configuration_context(context: Dict[str, Any]) -> List[str]:
 
     # Validate that auto_apply_rules are a subset of cursor_rules
     if "auto_apply_rules" in context and "cursor_rules" in context:
-        auto_apply_rules_data = context["auto_apply_rules"]
-        cursor_rules_data = context["cursor_rules"]
+        # Extract values once and work with them
+        auto_apply_data = context.get("auto_apply_rules")
+        cursor_data = context.get("cursor_rules")
         
-        if isinstance(auto_apply_rules_data, list) and isinstance(cursor_rules_data, list):
-            # Type guard to ensure we have CursorRule objects
-            auto_apply_rules: List[CursorRule] = []
-            cursor_rules: List[CursorRule] = []
+        # Extract and validate rules using the helper function
+        auto_apply_rules = extract_cursor_rules_from_context(auto_apply_data)
+        cursor_rules = extract_cursor_rules_from_context(cursor_data)
+        
+        # Check data types and provide specific error messages
+        if auto_apply_data is not None and not isinstance(auto_apply_data, list):
+            errors.append("auto_apply_rules must be a list")
+        elif cursor_data is not None and not isinstance(cursor_data, list):
+            errors.append("cursor_rules must be a list")
+        elif isinstance(auto_apply_data, list) and isinstance(cursor_data, list):
+            # Check for non-CursorRule items
+            auto_apply_count = len(cast(List[Any], auto_apply_data))
+            cursor_count = len(cast(List[Any], cursor_data))
             
-            for rule in auto_apply_rules_data:
-                # CursorRule objects from dataclass have file_path attribute
-                if isinstance(rule, CursorRule):
-                    auto_apply_rules.append(rule)
-            
-            for rule in cursor_rules_data:
-                # CursorRule objects from dataclass have file_path attribute
-                if isinstance(rule, CursorRule):
-                    cursor_rules.append(rule)
+            if len(auto_apply_rules) != auto_apply_count:
+                errors.append("auto_apply_rules contains non-CursorRule objects")
+            if len(cursor_rules) != cursor_count:
+                errors.append("cursor_rules contains non-CursorRule objects")
+        
+        # Validate subset relationship
+        if auto_apply_rules and cursor_rules:
             auto_paths: set[str] = {rule.file_path for rule in auto_apply_rules}
             all_paths: set[str] = {rule.file_path for rule in cursor_rules}
 

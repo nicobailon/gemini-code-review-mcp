@@ -52,7 +52,7 @@ def analyze_project_for_meta_prompt(
 
         # Discover project configuration (CLAUDE.md/cursor rules)
         try:
-            from .generate_code_review_context import discover_project_configurations
+            from context_builder import discover_project_configurations
 
             config_data = discover_project_configurations(project_path)
 
@@ -266,7 +266,7 @@ def generate_meta_prompt_from_analysis(
                 template_used = "environment"
             else:
                 # Load the default meta-prompt template
-                from .generate_code_review_context import get_meta_prompt_template
+                from model_config_manager import get_meta_prompt_template
 
                 template = get_meta_prompt_template("default")
                 if not template:
@@ -298,7 +298,7 @@ Scope: {project_data['scope']}
 
         # Use Gemini API to generate the final meta-prompt
         try:
-            from .generate_code_review_context import send_to_gemini_for_review
+            from gemini_api_client import send_to_gemini_for_review
 
             generated_prompt = send_to_gemini_for_review(
                 context_content=meta_prompt,
