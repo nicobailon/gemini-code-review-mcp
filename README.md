@@ -38,7 +38,7 @@ Transform your git diffs into actionable insights with contextual awareness of y
 # Visit: https://ai.google.dev/gemini-api/docs/api-key
 
 # 2. Add to Claude Code
-claude mcp add gemini-reviewer \
+claude mcp add gemini-code-review \
   -e GEMINI_API_KEY=your_key_here \
   -- uvx gemini-code-review-mcp
 
@@ -53,7 +53,7 @@ claude mcp add gemini-reviewer \
 
 ```bash
 # Add GitHub token for PR analysis
-claude mcp add gemini-reviewer \
+claude mcp add gemini-code-review \
   -e GEMINI_API_KEY=your_key_here \
   -e GITHUB_TOKEN=your_github_token \
   -- uvx gemini-code-review-mcp
@@ -65,11 +65,11 @@ claude mcp add gemini-reviewer \
 
 If the MCP tools aren't working:
 1. Check your installation: `claude mcp list`
-2. Verify API key is set: `claude mcp get gemini-reviewer`
+2. Verify API key is set: `claude mcp get gemini-code-review`
 3. If API key shows empty, remove and re-add:
    ```bash
-   claude mcp remove gemini-reviewer
-   claude mcp add gemini-reviewer -e GEMINI_API_KEY=your_actual_key -- uvx gemini-code-review-mcp
+   claude mcp remove gemini-code-review
+   claude mcp add gemini-code-review -e GEMINI_API_KEY=your_actual_key -- uvx gemini-code-review-mcp
    ```
 4. **Always restart Claude Desktop after any MCP configuration changes**
 
@@ -214,10 +214,10 @@ git clone https://github.com/yourusername/gemini-code-review-mcp
 cd gemini-code-review-mcp
 pip install -e ".[dev]"
 
-# Test
-pytest              # Run tests
-make lint          # Check code style
-make test-cli      # Test CLI commands
+# Testing commands
+python -m pytest tests/    # Run all tests in venv
+make lint                  # Check code style
+make test-cli             # Test CLI commands
 ```
 
 ## 📏 License
@@ -226,4 +226,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 👥 Credits
 
-Built with ❤️ by [Nico Bailon](https://github.com/nicobailon).
+Built by [Nico Bailon](https://github.com/nicobailon).
