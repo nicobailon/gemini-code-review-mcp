@@ -35,19 +35,13 @@ Transform your git diffs into actionable insights with contextual awareness of y
 
 **Option A:** Install the MCP server to Claude Code as user-scoped MCP server:
 ```
-claude mcp add-json gemini-code-review -s user '{"type":"stdio","comm
-and":"npx","args":["@modelcontextprotocol/server-gemini-code-review"],
-"env":{"GEMINI_API_KEY":"your_key_here","GIT
-HUB_TOKEN":"your_key_here"}}'
+claude mcp add-json gemini-code-review -s user '{"type":"stdio","command":"npx","args":["@modelcontextprotocol/server-gemini-code-review"], "env":{"GEMINI_API_KEY":"your_key_here","GITHUB_TOKEN":"your_key_here"}}'
 ```
 (`-s user` installs as user-scoped and will be available to you across all projects on your machine, and will be private to you. Omit `-s user` to install the as locally scoped.)
 
 **Option B:** Install the MCP server to Claude Code as project-scoped MCP server:
 ```
-claude mcp add-json gemini-code-review -s project /path/to/server '{"type":"stdio","comm
-and":"npx","args":["@modelcontextprotocol/server-gemini-code-review"],
-"env":{"GEMINI_API_KEY":"your_key_here","GIT
-HUB_TOKEN":"your_key_here"}}'
+claude mcp add-json gemini-code-review -s project /path/to/server '{"type":"stdio","command":"npx","args":["@modelcontextprotocol/server-gemini-code-review"], "env":{"GEMINI_API_KEY":"your_key_here","GITHUB_TOKEN":"your_key_here"}}'
 ```
 
 The command above creates or updates a `.mcp.json` file to the project root with the following structure:
@@ -57,8 +51,7 @@ The command above creates or updates a `.mcp.json` file to the project root with
     "gemini-code-review": {
       "command": "/path/to/server",
       "args": ["@modelcontextprotocol/server-gemini-code-review"],
-      "env": {"GEMINI_API_KEY":"your_key_here","GIT
-HUB_TOKEN":"your_key_here"}
+      "env": {"GEMINI_API_KEY":"your_key_here","GITHUB_TOKEN":"your_key_here"}
     }
   }
 }
