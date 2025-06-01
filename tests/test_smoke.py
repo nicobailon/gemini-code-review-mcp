@@ -53,7 +53,7 @@ def test_entry_points_defined():
 
     # Check our main entry points exist in pyproject.toml
     expected_commands = [
-        "task-list-code-review-mcp",
+        "gemini-code-review-mcp",
         "generate-code-review",
         "generate-meta-prompt",
     ]
