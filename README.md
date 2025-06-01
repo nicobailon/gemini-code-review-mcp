@@ -33,31 +33,24 @@ Transform your git diffs into actionable insights with contextual awareness of y
 
 ## 🚀 Claude Code Installation
 
-```bash
-# 1. Get your Gemini API key
-# Visit: https://ai.google.dev/gemini-api/docs/api-key
-
-# 2. Add to Claude Code
-# Docs for setting up MCP for Claude Code: https://docs.anthropic.com/en/docs/claude-code/tutorials#set-up-model-context-protocol-mcp
-
-# Install the MCP server to Claude Code as user-scoped across the machine or local-scoped for this project for the user
+**Option A:** Install the MCP server to Claude Code as user-scoped MCP server:
 ```
-# `-s user` installs as user-scoped and will be available to you across all projects on your machine, and will be private to you. Omit `-s user` to install the as locally scoped.
 claude mcp add-json gemini-code-review -s user '{"type":"stdio","comm
 and":"npx","args":["@modelcontextprotocol/server-gemini-code-review"],
 "env":{"GEMINI_API_KEY":"your_key_here","GIT
 HUB_TOKEN":"your_key_here"}}'
 ```
+(`-s user` installs as user-scoped and will be available to you across all projects on your machine, and will be private to you. Omit `-s user` to install the as locally scoped.)
 
-# Install the MCP server to Claude Code as project-scoped MCP server (.mcp.json)
+**Option B:** Install the MCP server to Claude Code as project-scoped MCP server:
 ```
-# Add a project-scoped server
 claude mcp add-json gemini-code-review -s project /path/to/server '{"type":"stdio","comm
 and":"npx","args":["@modelcontextprotocol/server-gemini-code-review"],
 "env":{"GEMINI_API_KEY":"your_key_here","GIT
 HUB_TOKEN":"your_key_here"}}'
+```
 
-# This command creates or updates a `.mcp.json` file to the project root with the following structure:
+The command above creates or updates a `.mcp.json` file to the project root with the following structure:
 ```
 {
   "mcpServers": {
@@ -71,6 +64,13 @@ HUB_TOKEN":"your_key_here"}
 }
 ```
 
+Get your Gemini API key:  https://ai.google.dev/gemini-api/docs/api-key
+
+Get your GitHub token: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token
+
+Docs for setting up MCP for Claude Code: https://docs.anthropic.com/en/docs/claude-code/tutorials#set-up-model-context-protocol-mcp
+
+
 ### Troubleshooting MCP Installation
 
 If the MCP tools aren't working:
@@ -79,8 +79,9 @@ If the MCP tools aren't working:
 3. If API key shows empty, remove and re-add:
    ```bash
    claude mcp remove gemini-code-review
-   claude mcp add gemini-code-review -e GEMINI_API_KEY=your_actual_key -- uvx gemini-code-review-mcp
+   claude mcp add-json gemini-code-review -s user '{"type":"stdio","command":"npx","args":["@modelcontextprotocol/server-gemini-code-review"],"env":{"GEMINI_API_KEY":"your_key_here","GITHUB_TOKEN":"your_key_here"}}'
    ```
+   (Make sure you replace `/path/to/server` with the path to your server executable)
 4. **Always restart Claude Desktop after any MCP configuration changes**
 
 ## 📋 Available MCP Tools
