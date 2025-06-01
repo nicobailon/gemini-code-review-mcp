@@ -317,11 +317,11 @@ async def generate_pr_review(
         use_templated_instructions: Use templated backup instructions instead of generated meta prompt (default: false)
         create_context_file: Save context to file and return context content (default: false)
         raw_context_only: Return raw context content without AI processing (default: false)
-        text_output: Return content directly instead of saving to file (default: false)
+        text_output: Return content directly without saving (default: false - saves to timestamped .md file)
 
     Returns:
-        Default (text_output=False): Success message with AI feedback file path
-        If text_output=True: AI review content directly as text string (NO files created)
+        Default: Saves review to pr-review-feedback-[timestamp].md file and returns success message
+        If text_output=True: Returns AI review content directly as text (no file created)
         If raw_context_only=True: Context content or success message with context file path
     """
     try:
@@ -581,12 +581,12 @@ def generate_code_review_context(
         include_claude_memory: Include CLAUDE.md files in context (default: true)
         include_cursor_rules: Include Cursor rules files in context (default: false)
         raw_context_only: Exclude default AI review instructions (default: false)
-        text_output: Return text content directly instead of file info (default: true for AI agent chaining)
+        text_output: Return context directly as text (default: true - for AI agent chaining)
         auto_meta_prompt: Automatically generate and embed meta prompt in user_instructions (default: true)
 
     Returns:
-        If text_output=True: Generated context content as text string
-        If text_output=False: Success message with file paths (legacy mode)
+        Default (text_output=True): Generated context content as text string for AI agent chaining
+        If text_output=False: Success message with file paths (saves to code-review-context-[timestamp].md)
     """
 
     # Comprehensive error handling to prevent TaskGroup issues
@@ -772,14 +772,14 @@ def generate_ai_code_review(
         model: Optional Gemini model name (e.g., 'gemini-2.0-flash-exp', 'gemini-1.5-pro')
         temperature: Temperature for AI model (default: 0.5, range: 0.0-2.0)
         custom_prompt: Optional custom AI prompt to override default instructions
-        text_output: Return text content directly instead of file info (default: true for AI agent chaining)
+        text_output: Return review directly as text (default: true - for AI agent chaining)
         auto_meta_prompt: Automatically generate and embed meta prompt (default: true)
         include_claude_memory: Include CLAUDE.md files in context (default: true)
         include_cursor_rules: Include Cursor rules files in context (default: false)
 
     Returns:
-        If text_output=True: Generated AI review content as text string
-        If text_output=False: Success message with file paths (legacy mode)
+        Default (text_output=True): Generated AI review content as text string for AI agent chaining
+        If text_output=False: Saves to code-review-ai-feedback-[timestamp].md and returns success message
     """
 
     # Import the required function

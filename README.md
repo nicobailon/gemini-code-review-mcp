@@ -42,6 +42,9 @@ claude mcp add gemini-reviewer \
   -e GEMINI_API_KEY=your_key_here \
   -- uvx gemini-code-review-mcp
 
+# IMPORTANT: Restart Claude Desktop after adding the server
+# The MCP server won't be available until you restart
+
 # 3. Use in your AI agent
 # "Generate a code review for my project"
 ```
@@ -54,7 +57,21 @@ claude mcp add gemini-reviewer \
   -e GEMINI_API_KEY=your_key_here \
   -e GITHUB_TOKEN=your_github_token \
   -- uvx gemini-code-review-mcp
+
+# Remember to restart Claude Desktop after adding/updating
 ```
+
+### Troubleshooting MCP Installation
+
+If the MCP tools aren't working:
+1. Check your installation: `claude mcp list`
+2. Verify API key is set: `claude mcp get gemini-reviewer`
+3. If API key shows empty, remove and re-add:
+   ```bash
+   claude mcp remove gemini-reviewer
+   claude mcp add gemini-reviewer -e GEMINI_API_KEY=your_actual_key -- uvx gemini-code-review-mcp
+   ```
+4. **Always restart Claude Desktop after any MCP configuration changes**
 
 ## 📋 Available MCP Tools
 
