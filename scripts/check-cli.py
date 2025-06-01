@@ -15,7 +15,7 @@ def check_command_availability():
     print("🔍 Checking CLI Command Availability...\n")
     
     commands = [
-        ("task-list-code-review-mcp", "Main CLI (installed package)"),
+        ("gemini-code-review-mcp", "Main CLI (installed package)"),
         ("generate-code-review", "Context generation CLI (installed package)"),
         ("generate-meta-prompt", "Meta-prompt CLI (installed package)")
     ]
@@ -86,7 +86,7 @@ def check_package_version():
     
     # Check installed package version
     try:
-        result = subprocess.run(["pip", "show", "task-list-code-review-mcp"], 
+        result = subprocess.run(["pip", "show", "gemini-code-review-mcp"], 
                               capture_output=True, text=True)
         if result.returncode == 0:
             for line in result.stdout.split('\n'):
@@ -108,8 +108,8 @@ def provide_recommendations():
     print("\n💡 Recommendations:\n")
     
     print("🎯 For Users:")
-    print("   • Use: uvx task-list-code-review-mcp /path/to/project")
-    print("   • If issues: uv cache clean && uvx --force task-list-code-review-mcp")
+    print("   • Use: uvx gemini-code-review-mcp /path/to/project")
+    print("   • If issues: uv cache clean && uvx --force gemini-code-review-mcp")
     print()
     
     print("🔧 For Developers:")

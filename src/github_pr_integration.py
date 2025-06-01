@@ -165,7 +165,7 @@ def fetch_pr_data(
         headers = {
             "Authorization": f"token {token}",
             "Accept": "application/vnd.github.v3+json",
-            "User-Agent": "task-list-code-review-mcp",
+            "User-Agent": "gemini-code-review-mcp",
         }
 
         response = requests.get(api_url, headers=headers, timeout=30)
@@ -248,7 +248,7 @@ def get_pr_file_changes(
         headers = {
             "Authorization": f"token {token}",
             "Accept": "application/vnd.github.v3+json",
-            "User-Agent": "task-list-code-review-mcp",
+            "User-Agent": "gemini-code-review-mcp",
         }
 
         response = requests.get(api_url, headers=headers, timeout=30)

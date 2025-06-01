@@ -32,7 +32,7 @@ def test_in_memory_context_generation_no_files():
 
         # Generate context in memory
         context_content = generate_context_in_memory(
-            github_pr_url="https://github.com/nicobailon/task-list-code-review-mcp/pull/5",
+            github_pr_url="https://github.com/nicobailon/gemini-code-review-mcp/pull/5",
             project_path=temp_dir,
             include_claude_memory=True,
             include_cursor_rules=False,
@@ -64,7 +64,7 @@ def test_in_memory_context_content_quality():
 
     with tempfile.TemporaryDirectory() as temp_dir:
         context_content = generate_context_in_memory(
-            github_pr_url="https://github.com/nicobailon/task-list-code-review-mcp/pull/5",
+            github_pr_url="https://github.com/nicobailon/gemini-code-review-mcp/pull/5",
             project_path=temp_dir,
             include_claude_memory=True,
             include_cursor_rules=False,

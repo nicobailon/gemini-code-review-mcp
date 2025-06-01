@@ -56,7 +56,7 @@ def load_api_key() -> Optional[str]:
             logger.debug("python-dotenv not available, skipping .env file")
 
     # Strategy 3: User's home directory .env file
-    home_env = Path.home() / ".task-list-code-review-mcp.env"
+    home_env = Path.home() / ".gemini-code-review-mcp.env"
     if home_env.exists():
         try:
             api_key = home_env.read_text().strip()
@@ -87,15 +87,15 @@ def require_api_key():
 
 🔧 FOR UVX USERS:
    # Method 1: Environment variable prefix (most reliable)
-   GEMINI_API_KEY=your_key uvx task-list-code-review-mcp generate-code-review .
+   GEMINI_API_KEY=your_key uvx gemini-code-review-mcp generate-code-review .
    
    # Method 2: Create project .env file
    echo "GEMINI_API_KEY=your_key_here" > .env
-   uvx task-list-code-review-mcp generate-code-review .
+   uvx gemini-code-review-mcp generate-code-review .
    
    # Method 3: Global user config
-   echo "GEMINI_API_KEY=your_key_here" > ~/.task-list-code-review-mcp.env
-   uvx task-list-code-review-mcp generate-code-review .
+   echo "GEMINI_API_KEY=your_key_here" > ~/.gemini-code-review-mcp.env
+   uvx gemini-code-review-mcp generate-code-review .
 
 📝 FOR MCP SERVER USERS:
    Add to your Claude Desktop configuration:
@@ -103,7 +103,7 @@ def require_api_key():
      "mcpServers": {
        "task-list-reviewer": {
          "command": "uvx",
-         "args": ["task-list-code-review-mcp"],
+         "args": ["gemini-code-review-mcp"],
          "env": {
            "GEMINI_API_KEY": "your_key_here"
          }
@@ -116,7 +116,7 @@ def require_api_key():
    echo $GEMINI_API_KEY
    
    # Test API key with minimal command:
-   GEMINI_API_KEY=your_key uvx task-list-code-review-mcp generate-code-review . --no-gemini
+   GEMINI_API_KEY=your_key uvx gemini-code-review-mcp generate-code-review . --no-gemini
    
    # Verify current directory structure:
    ls -la tasks/

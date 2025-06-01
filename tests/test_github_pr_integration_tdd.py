@@ -107,7 +107,7 @@ class TestGitHubAPIIntegration:
         from github_pr_integration import fetch_pr_data
 
         # Mock data based on real GitHub API response structure
-        # (based on https://github.com/nicobailon/task-list-code-review-mcp/pull/3)
+        # (based on https://github.com/nicobailon/gemini-code-review-mcp/pull/3)
         mock_response_data = {
             "url": "https://api.github.com/repos/testowner/testrepo/pulls/123",
             "id": 2553516570,

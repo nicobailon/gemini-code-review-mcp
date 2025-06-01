@@ -101,7 +101,7 @@ class TestPackageMetadata:
 
         # Check basic metadata
         project = config["project"]
-        assert project["name"] == "task-list-code-review-mcp"
+        assert project["name"] == "gemini-code-review-mcp"
         assert project["version"] == "0.3.9"
         assert (
             "MCP server" in project["description"]
@@ -117,8 +117,8 @@ class TestPackageMetadata:
 
         # Check scripts
         scripts = project["scripts"]
-        assert "task-list-code-review-mcp" in scripts
-        assert scripts["task-list-code-review-mcp"] == "src.server:main"
+        assert "gemini-code-review-mcp" in scripts
+        assert scripts["gemini-code-review-mcp"] == "src.server:main"
 
         # Check build system
         build_system = config["build-system"]
@@ -182,5 +182,5 @@ class TestBuildArtifacts:
 
             # Check naming convention
             for wheel in wheel_files:
-                assert "task_list_code_review_mcp" in wheel.name
+                assert "gemini_code_review_mcp" in wheel.name
                 assert "0.3.9" in wheel.name

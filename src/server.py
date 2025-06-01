@@ -1125,7 +1125,7 @@ async def generate_meta_prompt(
       "mcpServers": {
         "task-list-reviewer": {
           "command": "uvx",
-          "args": ["task-list-code-review-mcp"],
+          "args": ["gemini-code-review-mcp"],
           "env": {
             "GEMINI_API_KEY": "your_key_here",
             "META_PROMPT_TEMPLATE": "Your custom template with {configuration_context} and {context} placeholders"

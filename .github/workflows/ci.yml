@@ -66,7 +66,7 @@ jobs:
                 console_scripts = eps.get('console_scripts', [])
             our_eps = [ep for ep in console_scripts if 'task-list' in ep.name or 'generate-code' in ep.name or 'generate-meta' in ep.name or 'code-review' in ep.name]
             print(f'✅ Found {len(our_eps)} entry points: {[ep.name for ep in our_eps]}')
-            assert len(our_eps) >= 3, f'Expected at least 3 entry points (task-list-code-review-mcp, generate-code-review, generate-meta-prompt), found {len(our_eps)}: {[ep.name for ep in our_eps]}'
+            assert len(our_eps) >= 3, f'Expected at least 3 entry points (gemini-code-review-mcp, generate-code-review, generate-meta-prompt), found {len(our_eps)}: {[ep.name for ep in our_eps]}'
         except Exception as e:
             # Simplified fallback - just check the commands exist
             import subprocess
@@ -75,7 +75,7 @@ jobs:
             print('✅ Testing entry points by checking if commands are available...')
             
             # Test that the package was installed and entry points work
-            result = subprocess.run(['python', '-m', 'pip', 'show', 'task-list-code-review-mcp'], 
+            result = subprocess.run(['python', '-m', 'pip', 'show', 'gemini-code-review-mcp'], 
                                   capture_output=True, text=True)
             if result.returncode == 0:
                 print('✅ Package is installed')

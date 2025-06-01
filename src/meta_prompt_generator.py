@@ -376,7 +376,7 @@ FILE FORMAT:
     parser.add_argument(
         "--version",
         action="version",
-        version="task-list-code-review-mcp 0.3.0 (auto-prompt-generator)",
+        version="gemini-code-review-mcp 0.3.0 (auto-prompt-generator)",
     )
 
     return parser

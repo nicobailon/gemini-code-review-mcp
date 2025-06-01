@@ -177,13 +177,13 @@ def create_argument_parser():
 
 ⚙️ ENVIRONMENT SETUP:
   # Using uvx (recommended for latest version)
-  GEMINI_API_KEY=your_key uvx task-list-code-review-mcp generate-code-review .
+  GEMINI_API_KEY=your_key uvx gemini-code-review-mcp generate-code-review .
   
   # With .env file (project-specific)
   echo "GEMINI_API_KEY=your_key" > .env && generate-code-review .
   
-  # Global config (~/.task-list-code-review-mcp.env)
-  echo "GEMINI_API_KEY=your_key" > ~/.task-list-code-review-mcp.env
+  # Global config (~/.gemini-code-review-mcp.env)
+  echo "GEMINI_API_KEY=your_key" > ~/.gemini-code-review-mcp.env
 
 🛠️ ADVANCED OPTIONS:
   # Generate context only (no AI review)

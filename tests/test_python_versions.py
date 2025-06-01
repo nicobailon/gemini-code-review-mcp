@@ -499,7 +499,7 @@ import pkg_resources
 
 try:
     # Test package is discoverable
-    distribution = pkg_resources.get_distribution('task-list-code-review-mcp')
+    distribution = pkg_resources.get_distribution('gemini-code-review-mcp')
     print(f'Package discovery on Python {sys.version_info.major}.{sys.version_info.minor}: OK')
     print(f'Package version: {distribution.version}')
     
@@ -507,7 +507,7 @@ try:
     entry_points = distribution.get_entry_map()
     if 'console_scripts' in entry_points:
         scripts = entry_points['console_scripts']
-        if 'task-list-code-review-mcp' in scripts:
+        if 'gemini-code-review-mcp' in scripts:
             print('Entry point available: OK')
         else:
             print('Entry point missing')
