@@ -2,15 +2,15 @@
 """
 Gemini API client module.
 
-This module manages API key loading and encapsulates the core interaction logic 
+This module manages API key loading and encapsulates the core interaction logic
 with the Gemini API, including advanced features like thinking mode and grounding.
 """
 
-import os
 import logging
-from typing import Dict, List, Optional, Any
+import os
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 # Import model configuration functions
 try:
@@ -310,7 +310,10 @@ def send_to_gemini_for_review(
         # Environment variable is handled at the caller level
 
         # Build configuration parameters
-        config_params: Dict[str, Any] = {"max_output_tokens": 8000, "temperature": temperature}
+        config_params: Dict[str, Any] = {
+            "max_output_tokens": 8000,
+            "temperature": temperature,
+        }
 
         if tools:
             config_params["tools"] = tools

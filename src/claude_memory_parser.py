@@ -12,9 +12,9 @@ This module implements parsing of CLAUDE.md files with support for:
 Follows TDD implementation pattern with comprehensive error handling.
 """
 
-import os
 import logging
-from typing import Dict, List, Any, Optional, Set
+import os
+from typing import Any, Dict, List, Optional, Set
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ FastMCP server for generating code review context from PRDs and git changes
 
 import os
 import sys
-from typing import Optional, Dict, Any, List, Protocol, Callable, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Protocol, Union, cast
 
 print("🚨 DEBUG: server.py module is being loaded!")
 
@@ -14,11 +14,12 @@ sys.path.insert(0, os.path.dirname(__file__))
 try:
     # Import external library - will be wrapped for type safety
     from fastmcp import FastMCP
+
+    from gemini_api_client import send_to_gemini_for_review
     from generate_code_review_context import (
         generate_code_review_context_main as generate_review_context,
     )
     from model_config_manager import load_model_config
-    from gemini_api_client import send_to_gemini_for_review
 except ImportError as e:
     print(f"Required dependencies not available: {e}", file=sys.stderr)
     sys.exit(1)
@@ -26,52 +27,53 @@ except ImportError as e:
 
 class MCPServer(Protocol):
     """Protocol for MCP server with tool decorator."""
+
     def tool(self) -> Callable[..., Any]: ...
     def run(self) -> None: ...
 
 
 class TypedMCPServer:
     """Type-safe wrapper for FastMCP with runtime validation."""
-    
+
     _server: object  # Explicitly typed as object for untyped external library
     _name: str
-    
+
     def __init__(self, server_instance: object, name: str):
         """Initialize with runtime validation of required methods."""
         # Validate required methods exist
-        if not hasattr(server_instance, 'tool'):
+        if not hasattr(server_instance, "tool"):
             raise TypeError(f"Invalid MCP server '{name}': missing 'tool' method")
-        if not hasattr(server_instance, 'run'):
+        if not hasattr(server_instance, "run"):
             raise TypeError(f"Invalid MCP server '{name}': missing 'run' method")
-        
+
         # Validate tool method is callable
-        if not callable(getattr(server_instance, 'tool')):
+        if not callable(getattr(server_instance, "tool")):
             raise TypeError(f"Invalid MCP server '{name}': 'tool' is not callable")
-        if not callable(getattr(server_instance, 'run')):
+        if not callable(getattr(server_instance, "run")):
             raise TypeError(f"Invalid MCP server '{name}': 'run' is not callable")
-        
+
         self._server = server_instance
         self._name = name
-    
+
     def tool(self) -> Callable[..., Any]:
         """Delegate to wrapped server's tool method."""
-        return getattr(self._server, 'tool')()
-    
+        return getattr(self._server, "tool")()
+
     def run(self) -> None:
         """Delegate to wrapped server's run method."""
-        return getattr(self._server, 'run')()
+        return getattr(self._server, "run")()
 
 
 def create_mcp_server(name: str) -> TypedMCPServer:
     """Factory function to create type-safe MCP server with runtime validation.
-    
+
     Note: FastMCP is an untyped external library, which causes Pylance/pyright to report
     'reportUnknownVariableType' and 'reportUnknownArgumentType' warnings. This is acceptable
     because:
     1. We use 'object' type annotation (not 'Any') to maintain type discipline
     2. TypedMCPServer performs runtime validation of the required interface
     3. This approach avoids forbidden patterns like 'type: ignore' or 'Any'
-    
+
     The warnings indicate static analysis limitations with external untyped libraries,
     not a flaw in our type safety approach.
     """
@@ -80,7 +82,7 @@ def create_mcp_server(name: str) -> TypedMCPServer:
         # We use cast() to explicitly tell the type checker we're treating the unknown
         # FastMCP type as object. This avoids 'Any' while satisfying the linter.
         server_instance: object = cast(object, FastMCP(name))
-        
+
         # Wrap with type-safe wrapper that validates at runtime
         # Pylance warning 'reportUnknownArgumentType' here is also expected:
         # The TypedMCPServer performs runtime validation to ensure the untyped
@@ -129,11 +131,12 @@ def generate_context_in_memory(
     """
     try:
         # Import here to avoid circular imports
-        from github_pr_integration import get_complete_pr_analysis
+        import datetime
+
         from context_builder import (
             discover_project_configurations_with_fallback,
         )
-        import datetime
+        from github_pr_integration import get_complete_pr_analysis
 
         if not project_path:
             project_path = os.getcwd()
@@ -158,11 +161,11 @@ def generate_context_in_memory(
 
         # Project summary
         project_name = os.path.basename(os.path.abspath(project_path))
-        context_parts.append("<overall_prd_summary>")
+        context_parts.append("<project_context>")
         context_parts.append(
             f"Generate comprehensive code review for recent development changes focusing on code quality, security, performance, and best practices for project: {project_name}"
         )
-        context_parts.append("</overall_prd_summary>")
+        context_parts.append("</project_context>")
         context_parts.append("")
 
         # GitHub PR Analysis
@@ -345,7 +348,7 @@ async def generate_pr_review(
 
         # Generate GitHub PR review
         import io
-        from contextlib import redirect_stdout, redirect_stderr
+        from contextlib import redirect_stderr, redirect_stdout
 
         # Capture stdout to detect error messages
         stdout_capture = io.StringIO()
@@ -564,7 +567,7 @@ def generate_code_review_context(
     text_output: bool = True,
     auto_meta_prompt: bool = True,
 ) -> str:
-    """Generate code review context with flexible scope options and configuration discovery.
+    """Prepare analysis data and context for code review (does not generate the actual review).
 
     Args:
         project_path: Absolute path to project root directory
@@ -784,9 +787,6 @@ def generate_ai_code_review(
 
     # Comprehensive error handling
     try:
-        # 🔍 DEBUG: Check if generate_ai_code_review is being called
-        if project_path and "nicobailon" in str(project_path):
-            return f"🔍 DEBUG: generate_ai_code_review() WAS CALLED with project_path={project_path}"
 
         # Validate input parameters - exactly one should be provided
         provided_params = sum(
@@ -957,11 +957,12 @@ Provide specific, actionable feedback with code examples where appropriate."""
 
             else:
                 # Generate context internally from project_path and clean up intermediate files
+                import tempfile
+
                 from generate_code_review_context import (
                     generate_code_review_context_main,
                 )
                 from meta_prompt_analyzer import generate_optimized_meta_prompt
-                import tempfile
 
                 # Generate context internally with temporary file cleanup
                 temp_context_file = None
@@ -1100,14 +1101,6 @@ Provide specific, actionable feedback with code examples where appropriate."""
 
 
 @mcp.tool()
-async def debug_mcp_params(
-    test_bool: bool = False, test_string: str = "default"
-) -> str:
-    """Debug tool to see what parameters MCP is actually passing."""
-    return f"🔍 MCP DEBUG: test_bool={test_bool}, test_string='{test_string}'"
-
-
-@mcp.tool()
 async def generate_meta_prompt(
     context_file_path: Optional[str] = None,
     context_content: Optional[str] = None,
@@ -1206,9 +1199,12 @@ async def generate_meta_prompt(
 
         elif project_path is not None:
             # Generate context directly in memory without saving to file
-            from context_generator import generate_review_context_data, format_review_template
             from config_types import CodeReviewConfig
-            
+            from context_generator import (
+                format_review_template,
+                generate_review_context_data,
+            )
+
             # Create config for context generation
             review_config = CodeReviewConfig(
                 project_path=project_path,
@@ -1218,10 +1214,10 @@ async def generate_meta_prompt(
                 include_claude_memory=True,
                 include_cursor_rules=False,
             )
-            
+
             # Generate context data (this gathers all the data but doesn't save anything)
             template_data = generate_review_context_data(review_config)
-            
+
             # Format the context as markdown (this just formats the data, no file I/O)
             content = format_review_template(template_data).strip()
             analyzed_length = len(content)
@@ -1324,7 +1320,7 @@ async def generate_meta_prompt(
         if text_output:
             # Return just the prompt text for easy chaining
             return generated_prompt
-        
+
         # Prepare the full result dictionary
         result = {
             "generated_prompt": generated_prompt,
@@ -1333,12 +1329,12 @@ async def generate_meta_prompt(
             "analysis_completed": True,
             "context_analyzed": analyzed_length,
         }
-        
+
         # Save to file if output_path is provided
         if output_path:
             # Import datetime for timestamp
             from datetime import datetime
-            
+
             # Create the full file content with metadata
             file_content = f"""# Generated Meta-Prompt for Code Review
 *Generated on {datetime.now().strftime('%Y-%m-%d at %H:%M:%S')}*
@@ -1359,19 +1355,19 @@ async def generate_meta_prompt(
 - Analysis completed: {result['analysis_completed']}
 - Context size: {result['context_analyzed']:,} characters
 """
-            
+
             # Ensure directory exists
             output_dir = os.path.dirname(output_path)
             if output_dir and not os.path.exists(output_dir):
                 os.makedirs(output_dir, exist_ok=True)
-            
+
             # Write the file
-            with open(output_path, 'w', encoding='utf-8') as f:
+            with open(output_path, "w", encoding="utf-8") as f:
                 f.write(file_content)
-            
+
             # Return success message
             return f"Meta-prompt saved to: {output_path}"
-        
+
         # Return the full dictionary if no file output requested
         return result
 

@@ -6,18 +6,18 @@ This module handles parsing of markdown task lists, extracting phase information
 and generating PRD-style summaries.
 """
 
-import re
-import os
 import logging
-from typing import List, Optional, Any, TypedDict, TypeGuard
+import os
+import re
+from typing import Any, List, Optional, TypedDict, TypeGuard
 
 # Import model configuration functions
 try:
-    from .model_config_manager import load_model_config
     from .gemini_api_client import load_api_key
+    from .model_config_manager import load_model_config
 except ImportError:
-    from model_config_manager import load_model_config
     from gemini_api_client import load_api_key
+    from model_config_manager import load_model_config
 
 # Optional Gemini import for LLM summarization
 genai: Any = None
@@ -120,7 +120,11 @@ def parse_task_list(content: str) -> TaskData:
             number = subtask_match.group(2)
             description = subtask_match.group(3).strip()
 
-            subtask: SubtaskData = {"number": number, "description": description, "complete": completed}
+            subtask: SubtaskData = {
+                "number": number,
+                "description": description,
+                "complete": completed,
+            }
             current_phase["subtasks"].append(subtask)
 
             if completed:
@@ -129,9 +133,7 @@ def parse_task_list(content: str) -> TaskData:
     # Determine if each phase is complete (all subtasks complete)
     for phase in phases:
         if phase["subtasks"]:
-            phase["subtasks_complete"] = all(
-                st["complete"] for st in phase["subtasks"]
-            )
+            phase["subtasks_complete"] = all(st["complete"] for st in phase["subtasks"])
         else:
             phase["subtasks_complete"] = True
 

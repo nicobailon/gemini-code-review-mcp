@@ -6,10 +6,10 @@ This module provides utility functions for interacting with Git (e.g., getting c
 and generating ASCII file trees.
 """
 
+import fnmatch
+import logging
 import os
 import subprocess
-import logging
-import fnmatch
 from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,24 @@ def get_changed_files(project_path: str) -> List[Dict[str, str]]:
     try:
         changed_files: List[Dict[str, str]] = []
         max_lines_env = os.getenv("MAX_FILE_CONTENT_LINES", "500")
-        max_lines = int(max_lines_env) if max_lines_env else 500
+        try:
+            max_lines = int(max_lines_env) if max_lines_env else 500
+            # Ensure max_lines is reasonable (10-10000)
+            if max_lines < 10:
+                logger.warning(
+                    f"MAX_FILE_CONTENT_LINES={max_lines} too small, using 10"
+                )
+                max_lines = 10
+            elif max_lines > 10000:
+                logger.warning(
+                    f"MAX_FILE_CONTENT_LINES={max_lines} too large, using 10000"
+                )
+                max_lines = 10000
+        except ValueError:
+            logger.warning(
+                f"Invalid MAX_FILE_CONTENT_LINES='{max_lines_env}', using default 500"
+            )
+            max_lines = 500
         debug_mode = os.getenv("DEBUG_MODE", "false").lower() == "true"
 
         if debug_mode:

@@ -3,24 +3,25 @@ Python version compatibility tests for MCP server
 Tests compatibility across Python 3.8, 3.9, 3.10, 3.11, 3.12
 """
 
-import os
-import sys
-import subprocess
-import tempfile
-import pytest
-from pathlib import Path
 import json
+import os
 import platform
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+import pytest
 
 
 class TestPythonVersionCompatibility:
     """Test Python version compatibility for the MCP server package"""
-    
+
     def setup_method(self):
         """Set up test environment"""
         self.project_root = Path(__file__).parent.parent
         self.current_python = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
-        
+
     def test_current_python_version_info(self):
         """Display current Python version information"""
         version_info = sys.version_info
@@ -28,11 +29,14 @@ class TestPythonVersionCompatibility:
         print(f"Version info: {version_info}")
         print(f"Platform: {platform.platform()}")
         print(f"Architecture: {platform.architecture()}")
-        
+
         # Verify we're running on a supported version
         assert version_info >= (3, 8), f"Python 3.8+ required, got {version_info}"
-        assert version_info < (4, 0), f"Python 4.x not yet supported, got {version_info}"
-        
+        assert version_info < (
+            4,
+            0,
+        ), f"Python 4.x not yet supported, got {version_info}"
+
     def test_syntax_compatibility(self):
         """Test that code syntax is compatible with target Python versions"""
         # Test our main server module can be parsed
@@ -40,25 +44,40 @@ class TestPythonVersionCompatibility:
             ["uvx", "--from", ".", "python", "-m", "py_compile", "src/server.py"],
             cwd=self.project_root,
             capture_output=True,
-            text=True
+            text=True,
         )
         assert result.returncode == 0, f"Syntax error in server.py: {result.stderr}"
-        
+
         # Test core module
         result = subprocess.run(
-            ["uvx", "--from", ".", "python", "-m", "py_compile", "src/generate_code_review_context.py"],
+            [
+                "uvx",
+                "--from",
+                ".",
+                "python",
+                "-m",
+                "py_compile",
+                "src/generate_code_review_context.py",
+            ],
             cwd=self.project_root,
             capture_output=True,
-            text=True
+            text=True,
         )
-        assert result.returncode == 0, f"Syntax error in generate_code_review_context.py: {result.stderr}"
+        assert (
+            result.returncode == 0
+        ), f"Syntax error in generate_code_review_context.py: {result.stderr}"
         print("Syntax compatibility: OK")
-        
+
     def test_import_compatibility(self):
         """Test that imports work correctly"""
         result = subprocess.run(
-            ["uvx", "--from", ".", "python", "-c",
-             """
+            [
+                "uvx",
+                "--from",
+                ".",
+                "python",
+                "-c",
+                """
 import sys
 print(f'Python version: {sys.version}')
 
@@ -89,21 +108,27 @@ try:
 except ImportError as e:
     print(f'Import error: {e}')
     exit(1)
-             """],
+             """,
+            ],
             cwd=self.project_root,
             capture_output=True,
-            text=True
+            text=True,
         )
         assert result.returncode == 0
         assert "Server module import: OK" in result.stdout
         assert "FastMCP import: OK" in result.stdout
         print("Import compatibility: OK")
-        
+
     def test_typing_annotations_compatibility(self):
         """Test that type annotations work across Python versions"""
         result = subprocess.run(
-            ["uvx", "--from", ".", "python", "-c",
-             """
+            [
+                "uvx",
+                "--from",
+                ".",
+                "python",
+                "-c",
+                """
 import sys
 from typing import Optional, List, Dict, Union
 
@@ -128,20 +153,26 @@ def complex_typing_test(
     return 'Complex typing: OK'
 
 print(complex_typing_test({'test': 'data'}))
-             """],
+             """,
+            ],
             cwd=self.project_root,
             capture_output=True,
-            text=True
+            text=True,
         )
         assert result.returncode == 0
         assert "typing: OK" in result.stdout
         print("Type annotations compatibility: OK")
-        
+
     def test_pathlib_compatibility(self):
         """Test pathlib usage across Python versions"""
         result = subprocess.run(
-            ["uvx", "--from", ".", "python", "-c",
-             """
+            [
+                "uvx",
+                "--from",
+                ".",
+                "python",
+                "-c",
+                """
 from pathlib import Path
 import tempfile
 import os
@@ -166,20 +197,26 @@ with tempfile.TemporaryDirectory() as temp_dir:
     assert os.path.isabs(str(test_file))
     
     print('pathlib compatibility: OK')
-             """],
+             """,
+            ],
             cwd=self.project_root,
             capture_output=True,
-            text=True
+            text=True,
         )
         assert result.returncode == 0
         assert "pathlib compatibility: OK" in result.stdout
         print("pathlib compatibility: OK")
-        
+
     def test_f_string_compatibility(self):
         """Test f-string usage (Python 3.6+ feature)"""
         result = subprocess.run(
-            ["uvx", "--from", ".", "python", "-c",
-             '''
+            [
+                "uvx",
+                "--from",
+                ".",
+                "python",
+                "-c",
+                """
 import sys
 
 # Test f-strings used in our code
@@ -198,20 +235,26 @@ print(status)
 # F-string with method calls
 version = f"Python {sys.version_info.major}.{sys.version_info.minor}"
 print(f"f-string test on {version}: OK")
-             '''],
+             """,
+            ],
             cwd=self.project_root,
             capture_output=True,
-            text=True
+            text=True,
         )
         assert result.returncode == 0
         assert "f-string test on" in result.stdout
         print("f-string compatibility: OK")
-        
+
     def test_asyncio_compatibility(self):
         """Test asyncio features if used by FastMCP"""
         result = subprocess.run(
-            ["uvx", "--from", ".", "python", "-c",
-             """
+            [
+                "uvx",
+                "--from",
+                ".",
+                "python",
+                "-c",
+                """
 import asyncio
 import sys
 
@@ -228,28 +271,34 @@ except AttributeError:
     result = loop.run_until_complete(test_async())
     print(result)
     loop.close()
-             """],
+             """,
+            ],
             cwd=self.project_root,
             capture_output=True,
-            text=True
+            text=True,
         )
         assert result.returncode == 0
         assert "Asyncio on Python" in result.stdout
         print("asyncio compatibility: OK")
-        
+
 
 class TestDependencyVersionCompatibility:
     """Test that dependencies work across Python versions"""
-    
+
     def setup_method(self):
         """Set up test environment"""
         self.project_root = Path(__file__).parent.parent
-        
+
     def test_fastmcp_version_compatibility(self):
         """Test FastMCP compatibility across Python versions"""
         result = subprocess.run(
-            ["uvx", "--from", ".", "python", "-c",
-             """
+            [
+                "uvx",
+                "--from",
+                ".",
+                "python",
+                "-c",
+                """
 import sys
 import fastmcp
 
@@ -272,20 +321,26 @@ try:
 except Exception as e:
     print(f'FastMCP error: {e}')
     exit(1)
-             """],
+             """,
+            ],
             cwd=self.project_root,
             capture_output=True,
-            text=True
+            text=True,
         )
         assert result.returncode == 0
         assert "FastMCP instance creation: OK" in result.stdout
         print("FastMCP version compatibility: OK")
-        
+
     def test_google_genai_compatibility(self):
         """Test google-genai package compatibility"""
         result = subprocess.run(
-            ["uvx", "--from", ".", "python", "-c",
-             """
+            [
+                "uvx",
+                "--from",
+                ".",
+                "python",
+                "-c",
+                """
 import sys
 try:
     import google.genai
@@ -297,20 +352,26 @@ try:
 except ImportError as e:
     print(f'google-genai import error: {e}')
     exit(1)
-             """],
+             """,
+            ],
             cwd=self.project_root,
             capture_output=True,
-            text=True
+            text=True,
         )
         assert result.returncode == 0
         assert "google-genai on Python" in result.stdout
         print("google-genai compatibility: OK")
-        
+
     def test_python_dotenv_compatibility(self):
         """Test python-dotenv package compatibility"""
         result = subprocess.run(
-            ["uvx", "--from", ".", "python", "-c",
-             """
+            [
+                "uvx",
+                "--from",
+                ".",
+                "python",
+                "-c",
+                """
 import sys
 try:
     import dotenv
@@ -323,10 +384,11 @@ try:
 except ImportError as e:
     print(f'python-dotenv import error: {e}')
     exit(1)
-             """],
+             """,
+            ],
             cwd=self.project_root,
             capture_output=True,
-            text=True
+            text=True,
         )
         assert result.returncode == 0
         assert "python-dotenv on Python" in result.stdout
@@ -335,16 +397,21 @@ except ImportError as e:
 
 class TestFunctionalCompatibility:
     """Test functional compatibility across Python versions"""
-    
+
     def setup_method(self):
         """Set up test environment"""
         self.project_root = Path(__file__).parent.parent
-        
+
     def test_server_startup_compatibility(self):
         """Test that the server can start on different Python versions"""
         result = subprocess.run(
-            ["uvx", "--from", ".", "python", "-c",
-             """
+            [
+                "uvx",
+                "--from",
+                ".",
+                "python",
+                "-c",
+                """
 import sys
 sys.path.insert(0, 'src')
 
@@ -359,26 +426,31 @@ try:
 except Exception as e:
     print(f'Server startup error: {e}')
     exit(1)
-             """],
+             """,
+            ],
             cwd=self.project_root,
             capture_output=True,
-            text=True
+            text=True,
         )
         assert result.returncode == 0
         assert "Server startup compatibility: OK" in result.stdout
         print("Server startup compatibility: OK")
-        
+
     def test_tool_function_compatibility(self):
         """Test that tool functions work across Python versions"""
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
-            
+
             # Create minimal test environment
             tasks_dir = temp_path / "tasks"
             tasks_dir.mkdir()
-            (tasks_dir / "prd-test.md").write_text("# Test PRD\n## Requirements\n- Test requirement")
-            (tasks_dir / "tasks-prd-test.md").write_text("## Tasks\n- [ ] 1.0 Test task")
-            
+            (tasks_dir / "prd-test.md").write_text(
+                "# Test PRD\n## Requirements\n- Test requirement"
+            )
+            (tasks_dir / "tasks-prd-test.md").write_text(
+                "## Tasks\n- [ ] 1.0 Test task"
+            )
+
             test_code = f"""
 import sys
 sys.path.insert(0, 'src')
@@ -401,22 +473,27 @@ except Exception as e:
     print(f'Tool function error: {{e}}')
     exit(1)
             """
-            
+
             result = subprocess.run(
                 ["uvx", "--from", ".", "python", "-c", test_code],
                 cwd=self.project_root,
                 capture_output=True,
-                text=True
+                text=True,
             )
             assert result.returncode == 0
             assert "Function execution: OK" in result.stdout
             print("Tool function compatibility: OK")
-            
+
     def test_package_metadata_compatibility(self):
         """Test that package metadata is accessible across Python versions"""
         result = subprocess.run(
-            ["uvx", "--from", ".", "python", "-c",
-             """
+            [
+                "uvx",
+                "--from",
+                ".",
+                "python",
+                "-c",
+                """
 import sys
 import pkg_resources
 
@@ -440,10 +517,11 @@ try:
 except Exception as e:
     print(f'Package metadata error: {e}')
     # Don't exit(1) as this might fail in development mode
-             """],
+             """,
+            ],
             cwd=self.project_root,
             capture_output=True,
-            text=True
+            text=True,
         )
         # Don't assert returncode as pkg_resources might not find dev package
         if "Package discovery" in result.stdout:
@@ -454,16 +532,21 @@ except Exception as e:
 
 class TestPythonVersionSpecificFeatures:
     """Test version-specific features and compatibility"""
-    
+
     def setup_method(self):
         """Set up test environment"""
         self.project_root = Path(__file__).parent.parent
-        
+
     def test_python_38_features(self):
         """Test Python 3.8+ specific features if used"""
         result = subprocess.run(
-            ["uvx", "--from", ".", "python", "-c",
-             """
+            [
+                "uvx",
+                "--from",
+                ".",
+                "python",
+                "-c",
+                """
 import sys
 
 # Test walrus operator (Python 3.8+) - if we use it
@@ -489,19 +572,25 @@ except:
     print('Positional-only parameters: Not supported')
 
 print(f'Python {sys.version_info.major}.{sys.version_info.minor} features: OK')
-             """],
+             """,
+            ],
             cwd=self.project_root,
             capture_output=True,
-            text=True
+            text=True,
         )
         assert result.returncode == 0
         print("Python version-specific features: OK")
-        
+
     def test_backwards_compatibility(self):
         """Test backwards compatibility with older syntax"""
         result = subprocess.run(
-            ["uvx", "--from", ".", "python", "-c",
-             """
+            [
+                "uvx",
+                "--from",
+                ".",
+                "python",
+                "-c",
+                """
 import sys
 
 # Test older-style type hints that should work across versions
@@ -522,10 +611,11 @@ legacy_message = 'Legacy formatting on Python %d.%d: OK' % (
     sys.version_info.major, sys.version_info.minor
 )
 print(legacy_message)
-             """],
+             """,
+            ],
             cwd=self.project_root,
             capture_output=True,
-            text=True
+            text=True,
         )
         assert result.returncode == 0
         assert "Old style typing" in result.stdout
@@ -534,17 +624,22 @@ print(legacy_message)
 
 class TestPythonVersionMatrix:
     """Test matrix of Python version compatibility scenarios"""
-    
+
     def setup_method(self):
         """Set up test environment"""
         self.project_root = Path(__file__).parent.parent
         self.current_version = f"{sys.version_info.major}.{sys.version_info.minor}"
-        
+
     def test_version_matrix_report(self):
         """Generate a compatibility report for the current Python version"""
         result = subprocess.run(
-            ["uvx", "--from", ".", "python", "-c",
-             """
+            [
+                "uvx",
+                "--from",
+                ".",
+                "python",
+                "-c",
+                """
 import sys
 import platform
 
@@ -608,19 +703,20 @@ except ImportError as e:
 
 print('\\n=== Compatibility Status ===')
 print(f'Python {sys.version_info.major}.{sys.version_info.minor}: ✅ Compatible')
-             """],
+             """,
+            ],
             cwd=self.project_root,
             capture_output=True,
-            text=True
+            text=True,
         )
         assert result.returncode == 0
         print(f"Python {self.current_version} compatibility report generated")
-        
+
         # Store the report for documentation
-        report_lines = result.stdout.split('\n')
-        
+        report_lines = result.stdout.split("\n")
+
         # Verify key compatibility indicators
         assert "Compatible" in result.stdout
         assert "✅" in result.stdout  # Should have some successful checks
-        
+
         return result.stdout

@@ -11,7 +11,7 @@ import asyncio
 import os
 import sys
 from datetime import datetime
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
 
 
 def validate_prompt(prompt: Dict[str, Any]) -> Dict[str, Any]:
@@ -23,8 +23,39 @@ def validate_prompt(prompt: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Validation result with valid flag and error list
     """
-    # Implementation will make tests pass
-    raise NotImplementedError("validate_prompt function not yet implemented")
+    errors: List[str] = []
+
+    # Check required fields
+    required_fields = [
+        "generated_prompt",
+        "template_used",
+        "configuration_included",
+        "analysis_completed",
+    ]
+    for field in required_fields:
+        if field not in prompt:
+            errors.append(f"Missing required field: {field}")
+
+    # Validate generated_prompt
+    if "generated_prompt" in prompt:
+        if not isinstance(prompt["generated_prompt"], str):
+            errors.append("generated_prompt must be a string")
+        elif len(prompt["generated_prompt"]) < 10:
+            errors.append("generated_prompt is too short (minimum 10 characters)")
+
+    # Validate template_used
+    if "template_used" in prompt:
+        valid_templates = ["default", "custom", "environment"]
+        if prompt["template_used"] not in valid_templates:
+            errors.append(f"Invalid template_used: {prompt['template_used']}")
+
+    # Validate boolean fields
+    bool_fields = ["configuration_included", "analysis_completed"]
+    for field in bool_fields:
+        if field in prompt and not isinstance(prompt[field], bool):
+            errors.append(f"{field} must be a boolean")
+
+    return {"valid": len(errors) == 0, "errors": errors}
 
 
 # Deferred import to avoid loading server module during module import
@@ -46,11 +77,16 @@ def _get_generate_meta_prompt() -> Any:
                 _generate_meta_prompt = generate_meta_prompt
             except (ImportError, SystemExit):
                 # Import failed - implement the functionality directly
-                from context_generator import generate_review_context_data, format_review_template
                 from config_types import CodeReviewConfig
+                from context_generator import (
+                    format_review_template,
+                    generate_review_context_data,
+                )
                 from model_config_manager import load_model_config
 
-                async def generate_meta_prompt(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+                async def generate_meta_prompt(
+                    *args: Any, **kwargs: Any
+                ) -> Dict[str, Any]:
                     """Generate meta-prompt directly without server dependency."""
                     # Get project context first
                     project_path: Optional[str] = kwargs.get("project_path")
@@ -68,10 +104,10 @@ def _get_generate_meta_prompt() -> Any:
                         include_claude_memory=True,
                         include_cursor_rules=False,
                     )
-                    
+
                     # Generate context data
                     template_data = generate_review_context_data(review_config)
-                    
+
                     # Format the context as markdown
                     context_content = format_review_template(template_data)
 
@@ -408,7 +444,7 @@ def main() -> None:
         sys.exit(1)
     except Exception as e:
         print(f"Unexpected error: {e}", file=sys.stderr)
-        if args and hasattr(args, 'verbose') and args.verbose:
+        if args and hasattr(args, "verbose") and args.verbose:
             import traceback
 
             traceback.print_exc()

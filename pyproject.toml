@@ -28,9 +28,9 @@ exclude = [
 ]
 
 [project]
-name = "task-list-code-review-mcp"
+name = "gemini-code-review-mcp"
 version = "0.3.9"
-description = "MCP server and CLI tools for AI-powered code reviews with meta-prompt generation"
+description = "MCP server for AI-powered code reviews using Google Gemini with contextual awareness"
 authors = [
     {name = "Nico Bailon", email = "nico604@pm.me"},
 ]
@@ -73,7 +73,7 @@ yaml = [
 
 [project.scripts]
 # MCP Server
-task-list-code-review-mcp = "src.server:main"
+gemini-code-review-mcp = "src.server:main"
 # CLI Tools
 generate-code-review = "src.cli_main:main"
 generate-meta-prompt = "src.meta_prompt_generator:main"
@@ -88,7 +88,7 @@ dev = [
 
 [tool.black]
 line-length = 88
-target-version = ['py38']
+target-version = ['py310', 'py311', 'py312']
 
 [tool.isort]
 profile = "black"

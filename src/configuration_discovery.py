@@ -9,12 +9,12 @@ This module implements file system traversal and discovery functionality for:
 Follows TDD implementation pattern with comprehensive error handling.
 """
 
-import os
+import glob
 import logging
+import os
 import platform
 import re
-import glob
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -377,7 +377,11 @@ def discover_configuration_files(
         - cursor_rules: List of discovered Cursor rules (placeholder for future implementation)
         - legacy_cursorrules: Legacy .cursorrules content (placeholder for future implementation)
     """
-    result: Dict[str, Any] = {"claude_memory_files": [], "cursor_rules": [], "legacy_cursorrules": None}
+    result: Dict[str, Any] = {
+        "claude_memory_files": [],
+        "cursor_rules": [],
+        "legacy_cursorrules": None,
+    }
 
     # Discover all Claude memory files (project + user-level + enterprise-level)
     try:
@@ -459,12 +463,27 @@ def _basic_frontmatter_parse(frontmatter: str) -> Dict[str, Any]:
     """
     metadata: Dict[str, Any] = {}
 
+    # Check for common YAML syntax that basic parser can't handle
+    if any(
+        indicator in frontmatter
+        for indicator in ["- ", "  -", ": |", ": >", ": &", ": *"]
+    ):
+        logger.warning(
+            "Complex YAML syntax detected in frontmatter. "
+            "Install PyYAML for proper parsing: pip install pyyaml"
+        )
+
     for line in frontmatter.split("\n"):
         line = line.strip()
-        if ":" in line:
+        if ":" in line and not line.startswith("#"):  # Skip comments
             key, value = line.split(":", 1)
             key = key.strip()
             value = value.strip()
+
+            # Validate key format
+            if not key or not key.replace("_", "").replace("-", "").isalnum():
+                logger.warning(f"Skipping potentially malformed key: {key}")
+                continue
 
             # Handle boolean values
             if value.lower() in ("true", "false"):

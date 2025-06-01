@@ -5,10 +5,16 @@ Generate code review context by parsing PRD, task lists, and git changes.
 This is now a thin wrapper that imports functionality from modularized components.
 The main implementation has been split into smaller, focused modules for better
 maintainability and testing.
+
+Note: Helper functions are re-exported for backward compatibility. For new code,
+consider importing directly from the specific modules:
+- cli_main: CLI argument parsing and validation
+- context_generator: Core review context generation
+- model_config_manager: Model configuration management
 """
 
 import logging
-from typing import Optional, Any
+from typing import Any, Optional
 
 # Import only what's actually used in this module
 try:
@@ -32,6 +38,7 @@ try:
 except ImportError:
     from config_types import CodeReviewConfig
 
+
 # Re-export CLI functions for backward compatibility
 # These are imported lazily to avoid circular imports
 def suggest_path_corrections(*args: Any, **kwargs: Any) -> str:
@@ -42,6 +49,7 @@ def suggest_path_corrections(*args: Any, **kwargs: Any) -> str:
         from cli_main import suggest_path_corrections as _func
     return _func(*args, **kwargs)
 
+
 def create_argument_parser(*args: Any, **kwargs: Any) -> Any:
     """Lazy import wrapper for create_argument_parser"""
     try:
@@ -49,6 +57,7 @@ def create_argument_parser(*args: Any, **kwargs: Any) -> Any:
     except ImportError:
         from cli_main import create_argument_parser as _func
     return _func(*args, **kwargs)
+
 
 def validate_cli_arguments(*args: Any, **kwargs: Any) -> None:
     """Lazy import wrapper for validate_cli_arguments"""
@@ -58,6 +67,7 @@ def validate_cli_arguments(*args: Any, **kwargs: Any) -> None:
         from cli_main import validate_cli_arguments as _func
     return _func(*args, **kwargs)
 
+
 def execute_auto_prompt_workflow(*args: Any, **kwargs: Any) -> str:
     """Lazy import wrapper for execute_auto_prompt_workflow"""
     try:
@@ -65,6 +75,7 @@ def execute_auto_prompt_workflow(*args: Any, **kwargs: Any) -> str:
     except ImportError:
         from cli_main import execute_auto_prompt_workflow as _func
     return _func(*args, **kwargs)
+
 
 def format_auto_prompt_output(*args: Any, **kwargs: Any) -> str:
     """Lazy import wrapper for format_auto_prompt_output"""
@@ -74,6 +85,7 @@ def format_auto_prompt_output(*args: Any, **kwargs: Any) -> str:
         from cli_main import format_auto_prompt_output as _func
     return _func(*args, **kwargs)
 
+
 def detect_execution_mode(*args: Any, **kwargs: Any) -> str:
     """Lazy import wrapper for detect_execution_mode"""
     try:
@@ -81,6 +93,7 @@ def detect_execution_mode(*args: Any, **kwargs: Any) -> str:
     except ImportError:
         from cli_main import detect_execution_mode as _func
     return _func(*args, **kwargs)
+
 
 def cli_main(*args: Any, **kwargs: Any) -> None:
     """Lazy import wrapper for cli_main"""
@@ -90,6 +103,7 @@ def cli_main(*args: Any, **kwargs: Any) -> None:
         from cli_main import cli_main as _func
     return _func(*args, **kwargs)
 
+
 def main(*args: Any, **kwargs: Any) -> None:
     """Lazy import wrapper for main"""
     try:
@@ -97,6 +111,7 @@ def main(*args: Any, **kwargs: Any) -> None:
     except ImportError:
         from cli_main import main as _func
     return _func(*args, **kwargs)
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -112,8 +127,9 @@ def load_model_config(*args: Any, **kwargs: Any) -> Any:
         from model_config_manager import load_model_config as _func
     return _func(*args, **kwargs)
 
+
 # Re-export for backward compatibility
-__all__ = ['CodeReviewConfig', 'load_model_config']
+__all__ = ["CodeReviewConfig", "load_model_config"]
 
 
 def generate_code_review_context_main(
@@ -192,7 +208,7 @@ def _generate_code_review_context_impl(
 ) -> tuple[str, Optional[str]]:
     """
     Internal implementation using the new modularized architecture.
-    
+
     This function now orchestrates calls to specialized modules:
     1. context_generator.generate_review_context_data() for data gathering
     2. context_generator.process_and_output_review() for output generation
@@ -200,10 +216,10 @@ def _generate_code_review_context_impl(
     try:
         # Step 1: Generate all review context data
         template_data = generate_review_context_data(config)
-        
+
         # Step 2: Process and output the review
         return process_and_output_review(config, template_data)
-        
+
     except Exception as e:
         logger.error(f"Error generating review context: {e}")
         raise
@@ -212,4 +228,5 @@ def _generate_code_review_context_impl(
 # For backward compatibility, keep the module runnable
 if __name__ == "__main__":
     from cli_main import cli_main
+
     cli_main()

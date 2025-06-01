@@ -44,13 +44,13 @@ def check_development_mode():
     print("\n🔧 Checking Development Mode Commands...\n")
     
     dev_commands = [
-        ("python3 -m src.generate_code_review_context --help", "Main CLI (development)"),
-        ("python3 -m src.auto_prompt_generator --help", "Meta-prompt CLI (development)")
+        (["python3", "-m", "src.cli_main", "--help"], "Main CLI (development)"),
+        (["python3", "-m", "src.meta_prompt_generator", "--help"], "Meta-prompt CLI (development)")
     ]
     
     for cmd, description in dev_commands:
         try:
-            result = subprocess.run(cmd.split(), 
+            result = subprocess.run(cmd, 
                                   capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
                 print(f"✅ {description}")
@@ -113,9 +113,9 @@ def provide_recommendations():
     print()
     
     print("🔧 For Developers:")
-    print("   • Use: python -m src.generate_code_review_context /path/to/project")
+    print("   • Use: python -m src.cli_main /path/to/project")
     print("   • Install development mode: pip install -e .")
-    print("   • Test meta-prompts: python -m src.auto_prompt_generator --help")
+    print("   • Test meta-prompts: python -m src.meta_prompt_generator --help")
     print()
     
     print("🚨 If Nothing Works:")

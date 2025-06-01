@@ -74,10 +74,10 @@ test:  ## Run tests
 test-cli:  ## Test CLI functionality
 	python3 scripts/check-cli.py
 
-lint:  ## Run code linting
+lint:  ## Run code formatting and type checking
 	python3 -m black src/ tests/
 	python3 -m isort src/ tests/
-	python3 -m flake8 src/ tests/
+	python3 -m pyright src/
 
 clean:  ## Clean generated files
 	rm -f code-review-*.md

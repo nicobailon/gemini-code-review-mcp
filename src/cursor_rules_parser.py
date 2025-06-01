@@ -8,12 +8,12 @@ and file reference resolution.
 Follows TDD implementation pattern with comprehensive error handling.
 """
 
+import fnmatch
+import glob
+import logging
 import os
 import re
-import glob
-import fnmatch
-import logging
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ def parse_legacy_cursorrules(file_path: str) -> Dict[str, Any]:
         "description": "Legacy .cursorrules file",
         "precedence": 0,  # Highest precedence
         "globs": [],
-        "always_apply": True,  # Legacy rules always apply
+        "alwaysApply": True,  # Legacy rules always apply
         "metadata": {},
     }
 
@@ -124,7 +124,7 @@ def parse_mdc_file(file_path: str) -> Dict[str, Any]:
         "content": content,
         "description": description,
         "globs": globs,
-        "always_apply": always_apply,
+        "alwaysApply": always_apply,
         "precedence": precedence,
         "metadata": additional_metadata,
     }
@@ -264,21 +264,25 @@ def extract_precedence_from_filename(file_path: str) -> int:
     Returns:
         Precedence number, or 999 as default if no number found
     """
-    # Extract filename from path, handling both Unix and Windows separators
-    filename = file_path
-
-    # Handle Unix-style paths
-    if "/" in filename:
-        filename = filename.split("/")[-1]
-
-    # Handle Windows-style paths
-    if "\\" in filename:
-        filename = filename.split("\\")[-1]
+    # Use os.path.basename for cross-platform compatibility
+    filename = os.path.basename(file_path)
 
     # Look for leading numbers in filename
     match = re.match(r"^(\d+)", filename)
     if match:
-        return int(match.group(1))
+        try:
+            precedence = int(match.group(1))
+            # Ensure precedence is reasonable (0-9999)
+            if 0 <= precedence <= 9999:
+                return precedence
+            else:
+                logger.warning(
+                    f"Precedence {precedence} out of range in {filename}, using default"
+                )
+                return 999
+        except ValueError:
+            logger.warning(f"Invalid precedence number in {filename}, using default")
+            return 999
     return 999  # Default precedence for files without numbers
 
 
@@ -475,7 +479,11 @@ def parse_cursor_rules_directory(project_root: str) -> Dict[str, Any]:
         - modern_rules: List of modern MDC rules sorted by precedence
         - parse_errors: List of parsing errors encountered
     """
-    result: Dict[str, Any] = {"legacy_rules": None, "modern_rules": [], "parse_errors": []}
+    result: Dict[str, Any] = {
+        "legacy_rules": None,
+        "modern_rules": [],
+        "parse_errors": [],
+    }
 
     # Parse legacy .cursorrules
     legacy_file = os.path.join(project_root, ".cursorrules")
@@ -550,7 +558,7 @@ def _parse_modern_rules_directory(
                 "precedence": 0,  # No precedence logic
                 "description": f"Rules from {filename}",
                 "globs": [],  # No glob matching
-                "always_apply": True,  # Always include
+                "alwaysApply": True,
                 "metadata": {},
                 "file_references": [],
             }

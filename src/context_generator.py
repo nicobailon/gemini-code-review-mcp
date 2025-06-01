@@ -2,58 +2,64 @@
 """
 Context generator module.
 
-This module houses the primary orchestration logic for gathering all necessary data 
-(task info, git changes, configurations), preparing the final review context data, 
+This module houses the primary orchestration logic for gathering all necessary data
+(task info, git changes, configurations), preparing the final review context data,
 and handling the output (saving to file, calling Gemini).
 """
 
+import logging
 import os
 import re
-import logging
-from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
 # Import necessary modules
 try:
+    from .config_types import CodeReviewConfig
+    from .configuration_context import ClaudeMemoryFile, CursorRule
+    from .context_builder import (
+        DiscoveredConfigurations,
+        discover_project_configurations_with_flags,
+        format_configuration_context_for_ai,
+        get_applicable_rules_for_files,
+    )
+    from .gemini_api_client import send_to_gemini_for_review
+    from .git_utils import generate_file_tree, get_changed_files
     from .model_config_manager import load_model_config
     from .task_list_parser import (
-        TaskData, PhaseData, parse_task_list, extract_prd_summary,
-        generate_prd_summary_from_task_list
+        PhaseData,
+        TaskData,
+        extract_prd_summary,
+        generate_prd_summary_from_task_list,
+        parse_task_list,
     )
-    from .git_utils import get_changed_files, generate_file_tree
-    from .gemini_api_client import send_to_gemini_for_review
-    from .context_builder import (
-        discover_project_configurations_with_flags,
-        get_applicable_rules_for_files,
-        format_configuration_context_for_ai,
-        DiscoveredConfigurations
-    )
-    from .configuration_context import ClaudeMemoryFile, CursorRule
-    from .config_types import CodeReviewConfig
 except ImportError:
     # Fallback for absolute imports
+    from config_types import CodeReviewConfig
+    from configuration_context import ClaudeMemoryFile, CursorRule
+    from context_builder import (
+        DiscoveredConfigurations,
+        discover_project_configurations_with_flags,
+        format_configuration_context_for_ai,
+        get_applicable_rules_for_files,
+    )
+    from gemini_api_client import send_to_gemini_for_review
+    from git_utils import generate_file_tree, get_changed_files
     from model_config_manager import load_model_config
     from task_list_parser import (
-        TaskData, PhaseData, parse_task_list, extract_prd_summary,
-        generate_prd_summary_from_task_list
+        PhaseData,
+        TaskData,
+        extract_prd_summary,
+        generate_prd_summary_from_task_list,
+        parse_task_list,
     )
-    from git_utils import get_changed_files, generate_file_tree
-    from gemini_api_client import send_to_gemini_for_review
-    from context_builder import (
-        discover_project_configurations_with_flags,
-        get_applicable_rules_for_files,
-        format_configuration_context_for_ai,
-        DiscoveredConfigurations
-    )
-    from configuration_context import ClaudeMemoryFile, CursorRule
-    from config_types import CodeReviewConfig
 
 # Import GitHub PR integration (optional)
 try:
-    from .github_pr_integration import parse_github_pr_url, get_complete_pr_analysis
+    from .github_pr_integration import get_complete_pr_analysis, parse_github_pr_url
 except ImportError:
     try:
-        from github_pr_integration import parse_github_pr_url, get_complete_pr_analysis
+        from github_pr_integration import get_complete_pr_analysis, parse_github_pr_url
     except ImportError:
         print("⚠️  GitHub PR integration not available")
         parse_github_pr_url = None
@@ -112,7 +118,14 @@ def format_review_template(data: Dict[str, Any]) -> str:
             scope_info += f" (Task: {data['task_number']})"
 
     template = f"""# Code Review Context - {scope_info}
+"""
 
+    # Check if we have task list data (total_phases > 0 indicates a task list exists)
+    has_task_list = data.get('total_phases', 0) > 0
+    
+    if has_task_list:
+        # Include PRD/task list related tags only when task list exists
+        template += f"""
 <overall_prd_summary>
 {data['prd_summary']}
 </overall_prd_summary>
@@ -126,29 +139,36 @@ def format_review_template(data: Dict[str, Any]) -> str:
 </current_phase_number>
 """
 
-    # Only add previous phase if it exists
-    if data["previous_phase_completed"]:
-        template += f"""
+        # Only add previous phase if it exists
+        if data["previous_phase_completed"]:
+            template += f"""
 <previous_phase_completed>
 {data['previous_phase_completed']}
 </previous_phase_completed>
 """
 
-    # Only add next phase if it exists
-    if data["next_phase"]:
-        template += f"""
+        # Only add next phase if it exists
+        if data["next_phase"]:
+            template += f"""
 <next_phase>
 {data['next_phase']}
 </next_phase>
 """
 
-    template += f"""<current_phase_description>
+        template += f"""<current_phase_description>
 {data['current_phase_description']}
 </current_phase_description>
 
 <subtasks_completed>
 {chr(10).join(f"- {subtask}" for subtask in data['subtasks_completed'])}
 </subtasks_completed>"""
+    else:
+        # For projects without task lists, just include the summary/prompt
+        if data.get('prd_summary'):
+            template += f"""
+<project_context>
+{data['prd_summary']}
+</project_context>"""
 
     # Add GitHub PR metadata if available
     branch_data = data.get("branch_comparison_data")
@@ -306,7 +326,7 @@ def find_project_files(
         Tuple of (prd_file_path, task_list_path). prd_file_path may be None.
     """
     import glob
-    
+
     tasks_dir = os.path.join(project_path, "tasks")
 
     # Create tasks directory if it doesn't exist (for new projects)
@@ -387,14 +407,14 @@ Working examples:
 def generate_review_context_data(config: CodeReviewConfig) -> Dict[str, Any]:
     """
     Generate review context data by gathering all necessary information.
-    
-    This function encapsulates all data gathering steps (parsing task lists, 
-    getting git changes, discovering configurations, etc.) and returns a 
+
+    This function encapsulates all data gathering steps (parsing task lists,
+    getting git changes, discovering configurations, etc.) and returns a
     comprehensive dictionary of template_data.
-    
+
     Args:
         config: CodeReviewConfig object with all configuration parameters
-        
+
     Returns:
         Dictionary containing all data needed for review template
     """
@@ -578,8 +598,10 @@ Working examples:
 
     # At this point, task_data is guaranteed to be non-None
     assert task_data is not None, "task_data should be initialized"
-    
+
     # Handle scope-based review logic
+    effective_scope = config.scope  # Track effective scope without modifying config
+
     if config.scope == "recent_phase":
         # Smart defaulting: if ALL phases are complete, automatically review full project
         phases: List[PhaseData] = task_data.get("phases", []) if task_data else []
@@ -605,21 +627,25 @@ Working examples:
                     "subtasks_completed": all_completed_subtasks,
                 }
             )
-            # Update scope to reflect the automatic expansion
-            config.scope = "full_project"
+            # Track scope change without modifying config
+            effective_scope = "full_project"
         else:
             # Use default behavior (already parsed by detect_current_phase)
             # Override with legacy phase parameter if provided
             if config.phase:
                 # Find the specified phase
-                phases: List[PhaseData] = task_data.get("phases", []) if task_data else []
+                phases: List[PhaseData] = (
+                    task_data.get("phases", []) if task_data else []
+                )
                 for i, p in enumerate(phases):
                     if p["number"] == config.phase:
                         # Find previous completed phase
                         previous_phase_completed = ""
                         if i > 0:
                             prev_phase = phases[i - 1]
-                            previous_phase_completed = f"{prev_phase['number']} {prev_phase['description']}"
+                            previous_phase_completed = (
+                                f"{prev_phase['number']} {prev_phase['description']}"
+                            )
 
                         # Find next phase
                         next_phase = ""
@@ -629,14 +655,14 @@ Working examples:
 
                         # Override the detected phase data
                         task_data.update(
-                                {
-                                    "current_phase_number": p["number"],
-                                    "current_phase_description": p["description"],
-                                    "previous_phase_completed": previous_phase_completed,
-                                    "next_phase": next_phase,
-                                    "subtasks_completed": p["subtasks_completed"],
-                                }
-                            )
+                            {
+                                "current_phase_number": p["number"],
+                                "current_phase_description": p["description"],
+                                "previous_phase_completed": previous_phase_completed,
+                                "next_phase": next_phase,
+                                "subtasks_completed": p["subtasks_completed"],
+                            }
+                        )
                         break
 
     elif config.scope == "full_project":
@@ -652,14 +678,14 @@ Working examples:
                 phase_descriptions.append(f"{p['number']} {p['description']}")
 
             task_data.update(
-                    {
-                        "current_phase_number": f"Full Project ({len(completed_phases)} phases)",
-                        "current_phase_description": f"Analysis of all completed phases: {', '.join(phase_descriptions)}",
-                        "previous_phase_completed": "",
-                        "next_phase": "",
-                        "subtasks_completed": all_completed_subtasks,
-                    }
-                )
+                {
+                    "current_phase_number": f"Full Project ({len(completed_phases)} phases)",
+                    "current_phase_description": f"Analysis of all completed phases: {', '.join(phase_descriptions)}",
+                    "previous_phase_completed": "",
+                    "next_phase": "",
+                    "subtasks_completed": all_completed_subtasks,
+                }
+            )
         else:
             # No completed phases, use default behavior
             pass
@@ -703,19 +729,17 @@ Working examples:
         next_phase = ""
         if i < len(phases) - 1:
             next_phase_obj = phases[i + 1]
-            next_phase = (
-                f"{next_phase_obj['number']} {next_phase_obj['description']}"
-            )
+            next_phase = f"{next_phase_obj['number']} {next_phase_obj['description']}"
 
         # Override with specific phase data
         task_data.update(
-                {
-                    "current_phase_number": p["number"],
-                    "current_phase_description": p["description"],
-                    "previous_phase_completed": previous_phase_completed,
-                    "next_phase": next_phase,
-                    "subtasks_completed": p["subtasks_completed"],
-                }
+            {
+                "current_phase_number": p["number"],
+                "current_phase_description": p["description"],
+                "previous_phase_completed": previous_phase_completed,
+                "next_phase": next_phase,
+                "subtasks_completed": p["subtasks_completed"],
+            }
         )
 
     elif config.scope == "specific_task":
@@ -762,12 +786,12 @@ Working examples:
         i, p = target_phase
         # Override with specific task data
         task_data.update(
-                {
-                    "current_phase_number": target_task["number"],
-                    "current_phase_description": f"Specific task: {target_task['description']} (from {p['number']} {p['description']})",
-                    "previous_phase_completed": "",
-                    "next_phase": "",
-                    "subtasks_completed": [
+            {
+                "current_phase_number": target_task["number"],
+                "current_phase_description": f"Specific task: {target_task['description']} (from {p['number']} {p['description']})",
+                "previous_phase_completed": "",
+                "next_phase": "",
+                "subtasks_completed": [
                     f"{target_task['number']} {target_task['description']}"
                 ],
             }
@@ -782,10 +806,12 @@ Working examples:
 
     if config_types:
         print(f"🔍 Discovering {' and '.join(config_types)}...")
-        configurations: DiscoveredConfigurations = discover_project_configurations_with_flags(
-            config.project_path,
-            config.include_claude_memory,
-            config.include_cursor_rules,
+        configurations: DiscoveredConfigurations = (
+            discover_project_configurations_with_flags(
+                config.project_path,
+                config.include_claude_memory,
+                config.include_cursor_rules,
+            )
         )
     else:
         print("ℹ️  Configuration discovery disabled")
@@ -793,14 +819,14 @@ Working examples:
             "claude_memory_files": [],
             "cursor_rules": [],
             "discovery_errors": [],
-            "performance_stats": {}
+            "performance_stats": {},
         }
 
     # Extract typed values from configurations
     claude_memory_files: List[ClaudeMemoryFile] = configurations["claude_memory_files"]
     cursor_rules: List[CursorRule] = configurations["cursor_rules"]
     discovery_errors: List[Dict[str, Any]] = configurations["discovery_errors"]
-    
+
     claude_files_count = len(claude_memory_files)
     cursor_rules_count = len(cursor_rules)
     errors_count = len(discovery_errors)
@@ -837,13 +863,9 @@ Working examples:
             for file_change in pr_analysis["file_changes"]["changed_files"]:
                 changed_files.append(
                     {
-                        "path": os.path.join(
-                            config.project_path, file_change["path"]
-                        ),
+                        "path": os.path.join(config.project_path, file_change["path"]),
                         "status": f"PR-{file_change['status']}",
-                        "content": file_change.get(
-                            "patch", "[Content not available]"
-                        ),
+                        "content": file_change.get("patch", "[Content not available]"),
                     }
                 )
 
@@ -876,9 +898,7 @@ Working examples:
 
     # Get applicable configuration rules for changed files
     changed_file_paths = [f["path"] for f in changed_files]
-    applicable_rules = get_applicable_rules_for_files(
-        cursor_rules, changed_file_paths
-    )
+    applicable_rules = get_applicable_rules_for_files(cursor_rules, changed_file_paths)
 
     # Format configuration content for AI consumption
     configuration_content = format_configuration_context_for_ai(
@@ -897,7 +917,7 @@ Working examples:
         "project_path": config.project_path,
         "file_tree": file_tree,
         "changed_files": changed_files,
-        "scope": config.scope,
+        "scope": effective_scope,  # Use effective scope to reflect auto-expansion
         "phase_number": (
             config.phase_number if config.scope == "specific_phase" else None
         ),
@@ -915,22 +935,24 @@ Working examples:
         "raw_context_only": config.raw_context_only,
         "auto_prompt_content": config.auto_prompt_content,
     }
-    
+
     return template_data
 
 
-def process_and_output_review(config: CodeReviewConfig, template_data: Dict[str, Any]) -> Tuple[str, Optional[str]]:
+def process_and_output_review(
+    config: CodeReviewConfig, template_data: Dict[str, Any]
+) -> Tuple[str, Optional[str]]:
     """
     Process template data and output review results.
-    
-    This function takes the prepared template_data, formats it using 
-    format_review_template, saves it to a file, and then conditionally 
+
+    This function takes the prepared template_data, formats it using
+    format_review_template, saves it to a file, and then conditionally
     calls send_to_gemini_for_review.
-    
+
     Args:
         config: CodeReviewConfig object
         template_data: Dictionary containing all template data
-        
+
     Returns:
         Tuple of (context_file_path, gemini_review_path)
     """
@@ -960,16 +982,16 @@ def process_and_output_review(config: CodeReviewConfig, template_data: Dict[str,
                 mode_prefix = f"phase-{phase_safe}"
             elif config.scope == "specific_task":
                 if config.task_number is None:
-                    raise ValueError(
-                        "Task number is required for specific_task scope"
-                    )
+                    raise ValueError("Task number is required for specific_task scope")
                 task_safe = config.task_number.replace(".", "-")
                 mode_prefix = f"task-{task_safe}"
             else:
                 mode_prefix = "unknown"
 
         # Ensure project_path is not None
-        project_path = config.project_path if config.project_path is not None else os.getcwd()
+        project_path = (
+            config.project_path if config.project_path is not None else os.getcwd()
+        )
         config.output = os.path.join(
             project_path, f"code-review-context-{mode_prefix}-{timestamp}.md"
         )
@@ -977,7 +999,7 @@ def process_and_output_review(config: CodeReviewConfig, template_data: Dict[str,
     # config.output is guaranteed to be set at this point
     output_path = config.output
     assert output_path is not None, "Output path should be set by now"
-        
+
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(review_context)
 
@@ -988,7 +1010,9 @@ def process_and_output_review(config: CodeReviewConfig, template_data: Dict[str,
     if config.enable_gemini_review:
         print("🔄 Sending to Gemini for AI code review...")
         # Ensure project_path is not None
-        project_path = config.project_path if config.project_path is not None else os.getcwd()
+        project_path = (
+            config.project_path if config.project_path is not None else os.getcwd()
+        )
         gemini_output = send_to_gemini_for_review(
             review_context, project_path, config.temperature
         )

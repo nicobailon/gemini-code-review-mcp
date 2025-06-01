@@ -7,8 +7,9 @@ and retrieving file changes for code review.
 
 import os
 import subprocess
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
+
 import requests
 
 

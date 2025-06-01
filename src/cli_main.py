@@ -2,16 +2,16 @@
 """
 CLI main module.
 
-This module serves as the main command-line interface entry point for the 
-generate-code-review tool, handling argument parsing, validation, and execution 
+This module serves as the main command-line interface entry point for the
+generate-code-review tool, handling argument parsing, validation, and execution
 of the core workflow.
 """
 
 import argparse
-import sys
-import os
 import logging
-from typing import Dict, List, Optional, Any
+import os
+import sys
+from typing import Any, Dict, List, Optional
 
 # Import the main generation function from the old module
 try:
@@ -569,7 +569,12 @@ Working examples:
         if args.output:
             output_dir = os.path.dirname(args.output)
             if output_dir and not os.path.exists(output_dir):
-                error_msg = f"""Output directory does not exist: {output_dir}
+                try:
+                    os.makedirs(output_dir, exist_ok=True)
+                    logger.info(f"Created output directory: {output_dir}")
+                except OSError as e:
+                    error_msg = f"""Failed to create output directory: {output_dir}
+Error: {e}
 
 Working examples:
   # Use existing directory
@@ -578,12 +583,12 @@ Working examples:
   # Use relative path
   generate-code-review . --output ./output/review.md
   
-  # Create directory first
-  mkdir -p /path/to/output && generate-code-review . --output /path/to/output/review.md
+  # Let tool auto-create directory
+  generate-code-review . --output /path/to/new/dir/review.md
   
   # Or let tool auto-generate in project
-  generate-code-review .  # creates in project/tasks/"""
-                raise FileNotFoundError(error_msg)
+  generate-code-review .  # creates in project root"""
+                    raise FileNotFoundError(error_msg)
 
         # Handle both new and legacy flags (prioritize new flag)
         enable_gemini = not (args.context_only or args.no_gemini)

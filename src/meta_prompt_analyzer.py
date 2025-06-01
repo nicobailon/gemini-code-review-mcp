@@ -6,8 +6,8 @@ structure and configuration without creating temporary context files.
 """
 
 import os
-from typing import Dict, Any, Optional, List
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 
 def analyze_project_for_meta_prompt(
@@ -52,7 +52,10 @@ def analyze_project_for_meta_prompt(
 
         # Discover project configuration (CLAUDE.md/cursor rules)
         try:
-            from context_builder import discover_project_configurations
+            try:
+                from .context_builder import discover_project_configurations
+            except ImportError:
+                from context_builder import discover_project_configurations
 
             config_data = discover_project_configurations(project_path)
 

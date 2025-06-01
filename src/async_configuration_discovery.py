@@ -12,12 +12,12 @@ Key optimizations:
 """
 
 import asyncio
-import os
-import logging
-import platform
 import glob
-from typing import Dict, List, Any, Optional, Tuple
+import logging
+import os
+import platform
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -179,9 +179,8 @@ async def async_discover_claude_md_in_subdirectories(
         return found_files
 
     # Run directory walking in thread pool to avoid blocking
-    loop = asyncio.get_event_loop()
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        claude_files = await loop.run_in_executor(executor, _walk_directories)
+    # Using asyncio.to_thread for Python 3.9+ compatibility
+    claude_files = await asyncio.to_thread(_walk_directories)
 
     return claude_files
 
@@ -210,9 +209,8 @@ async def async_discover_modern_cursor_rules(project_path: str) -> List[Dict[str
         return glob.glob(mdc_pattern, recursive=True)
 
     # Find .mdc files in thread pool
-    loop = asyncio.get_event_loop()
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        mdc_files = await loop.run_in_executor(executor, _find_mdc_files)
+    # Using asyncio.to_thread for Python 3.9+ compatibility
+    mdc_files = await asyncio.to_thread(_find_mdc_files)
 
     if not mdc_files:
         return rules

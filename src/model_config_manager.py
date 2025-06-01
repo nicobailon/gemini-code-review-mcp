@@ -2,15 +2,15 @@
 """
 Model configuration and meta-prompt template management module.
 
-This module centralizes all logic related to loading, validating, and managing 
+This module centralizes all logic related to loading, validating, and managing
 model configurations and meta-prompt templates.
 """
 
 import json
+import logging
 import os
 import re
-import logging
-from typing import Dict, List, Optional, Any, cast
+from typing import Any, Dict, List, Optional, cast
 
 logger = logging.getLogger(__name__)
 

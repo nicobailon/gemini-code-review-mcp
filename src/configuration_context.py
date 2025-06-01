@@ -8,11 +8,11 @@ and conflict resolution.
 Following TDD implementation pattern with comprehensive error handling.
 """
 
+import logging
 import os
 import re
-import logging
 from dataclasses import dataclass
-from typing import Dict, List, Any, TypedDict, TypeGuard, cast
+from typing import Any, Dict, List, Set, TypedDict, TypeGuard, cast
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ class ConfigurationContext:
 
 class ConfigurationContextDict(TypedDict):
     """TypedDict for configuration context dictionary representation."""
-    
+
     claude_memory_files: List[ClaudeMemoryFile]
     cursor_rules: List[CursorRule]
     merged_content: str
@@ -218,7 +218,7 @@ def deduplicate_claude_memory_files(
     Returns:
         List of unique ClaudeMemoryFile objects (keeps first occurrence)
     """
-    seen_paths: set[str] = set()
+    seen_paths: Set[str] = set()
     unique_files: List[ClaudeMemoryFile] = []
 
     for memory_file in memory_files:
@@ -245,7 +245,7 @@ def deduplicate_cursor_rules(cursor_rules: List[CursorRule]) -> List[CursorRule]
     Returns:
         List of unique CursorRule objects (keeps first occurrence)
     """
-    seen_paths: set[str] = set()
+    seen_paths: Set[str] = set()
     unique_rules: List[CursorRule] = []
 
     for rule in cursor_rules:
@@ -276,7 +276,7 @@ def merge_with_deduplication(content_parts: List[str]) -> str:
         return ""
 
     # Keep track of seen content to avoid duplicates
-    seen_content: set[str] = set()
+    seen_content: Set[str] = set()
     unique_parts: List[str] = []
 
     for content in content_parts:
@@ -497,11 +497,11 @@ def validate_configuration_context(context: Dict[str, Any]) -> List[str]:
         # Extract values once and work with them
         auto_apply_data = context.get("auto_apply_rules")
         cursor_data = context.get("cursor_rules")
-        
+
         # Extract and validate rules using the helper function
         auto_apply_rules = extract_cursor_rules_from_context(auto_apply_data)
         cursor_rules = extract_cursor_rules_from_context(cursor_data)
-        
+
         # Check data types and provide specific error messages
         if auto_apply_data is not None and not isinstance(auto_apply_data, list):
             errors.append("auto_apply_rules must be a list")
@@ -511,19 +511,21 @@ def validate_configuration_context(context: Dict[str, Any]) -> List[str]:
             # Check for non-CursorRule items
             auto_apply_count = len(cast(List[Any], auto_apply_data))
             cursor_count = len(cast(List[Any], cursor_data))
-            
+
             if len(auto_apply_rules) != auto_apply_count:
                 errors.append("auto_apply_rules contains non-CursorRule objects")
             if len(cursor_rules) != cursor_count:
                 errors.append("cursor_rules contains non-CursorRule objects")
-        
+
         # Validate subset relationship
         if auto_apply_rules and cursor_rules:
-            auto_paths: set[str] = {rule.file_path for rule in auto_apply_rules}
-            all_paths: set[str] = {rule.file_path for rule in cursor_rules}
+            auto_paths: Set[str] = {rule.file_path for rule in auto_apply_rules}
+            all_paths: Set[str] = {rule.file_path for rule in cursor_rules}
 
             if not auto_paths.issubset(all_paths):
-                errors.append("auto_apply_rules contains rules not found in cursor_rules")
+                errors.append(
+                    "auto_apply_rules contains rules not found in cursor_rules"
+                )
 
     return errors
 
