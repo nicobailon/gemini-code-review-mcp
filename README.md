@@ -31,34 +31,44 @@ Transform your git diffs into actionable insights with contextual awareness of y
 - **🔄 Flexible Workflows**: GitHub PR reviews, project analysis, or custom scopes
 - **⚡ Smart Defaults**: Auto-detects what to review based on your project state
 
-## 🚀 Quick Start
+## 🚀 Claude Code Installation
 
 ```bash
 # 1. Get your Gemini API key
 # Visit: https://ai.google.dev/gemini-api/docs/api-key
 
 # 2. Add to Claude Code
-claude mcp add gemini-code-review \
-  -e GEMINI_API_KEY=your_key_here \
-  -- uvx gemini-code-review-mcp
+# Docs for setting up MCP for Claude Code: https://docs.anthropic.com/en/docs/claude-code/tutorials#set-up-model-context-protocol-mcp
 
-# IMPORTANT: Restart Claude Desktop after adding the server
-# The MCP server won't be available until you restart
-
-# 3. Use in your AI agent
-# "Generate a code review for my project"
+# Install the MCP server to Claude Code as user-scoped across the machine or local-scoped for this project for the user
+```
+# `-s user` installs as user-scoped and will be available to you across all projects on your machine, and will be private to you. Omit `-s user` to install the as locally scoped.
+claude mcp add-json gemini-code-review -s user '{"type":"stdio","comm
+and":"npx","args":["@modelcontextprotocol/server-gemini-code-review"],
+"env":{"GEMINI_API_KEY":"your_key_here","GIT
+HUB_TOKEN":"your_key_here"}}'
 ```
 
-### Optional: GitHub PR Reviews
+# Install the MCP server to Claude Code as project-scoped MCP server (.mcp.json)
+```
+# Add a project-scoped server
+claude mcp add-json gemini-code-review -s project /path/to/server '{"type":"stdio","comm
+and":"npx","args":["@modelcontextprotocol/server-gemini-code-review"],
+"env":{"GEMINI_API_KEY":"your_key_here","GIT
+HUB_TOKEN":"your_key_here"}}'
 
-```bash
-# Add GitHub token for PR analysis
-claude mcp add gemini-code-review \
-  -e GEMINI_API_KEY=your_key_here \
-  -e GITHUB_TOKEN=your_github_token \
-  -- uvx gemini-code-review-mcp
-
-# Remember to restart Claude Desktop after adding/updating
+# This command creates or updates a `.mcp.json` file to the project root with the following structure:
+```
+{
+  "mcpServers": {
+    "gemini-code-review": {
+      "command": "/path/to/server",
+      "args": ["@modelcontextprotocol/server-gemini-code-review"],
+      "env": {"GEMINI_API_KEY":"your_key_here","GIT
+HUB_TOKEN":"your_key_here"}
+    }
+  }
+}
 ```
 
 ### Troubleshooting MCP Installation
