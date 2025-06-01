@@ -103,8 +103,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-# Re-export CodeReviewConfig for backward compatibility
-__all__ = ['CodeReviewConfig']
+# Import for re-export
+def load_model_config(*args: Any, **kwargs: Any) -> Any:
+    """Lazy import wrapper for load_model_config"""
+    try:
+        from .model_config_manager import load_model_config as _func
+    except ImportError:
+        from model_config_manager import load_model_config as _func
+    return _func(*args, **kwargs)
+
+# Re-export for backward compatibility
+__all__ = ['CodeReviewConfig', 'load_model_config']
 
 
 def generate_code_review_context_main(

@@ -20,7 +20,7 @@ from unittest.mock import patch, mock_open, MagicMock
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from generate_code_review_context import load_model_config
+from model_config_manager import load_model_config
 
 
 class TestModelConfigurationLoading:
@@ -90,7 +90,7 @@ class TestModelConfigurationLoading:
     def test_load_config_file_not_found(self):
         """Test fallback when config file doesn't exist."""
         with patch("os.path.exists", return_value=False):
-            with patch("generate_code_review_context.logger") as mock_logger:
+            with patch("model_config_manager.logger") as mock_logger:
                 result = load_model_config()
         
         # Should return default configuration
@@ -108,7 +108,7 @@ class TestModelConfigurationLoading:
         
         with patch("builtins.open", mock_open(read_data=invalid_json)):
             with patch("os.path.exists", return_value=True):
-                with patch("generate_code_review_context.logger") as mock_logger:
+                with patch("model_config_manager.logger") as mock_logger:
                     result = load_model_config()
         
         # Should return default configuration
@@ -124,7 +124,7 @@ class TestModelConfigurationLoading:
         """Test fallback when file cannot be read due to IO error."""
         with patch("builtins.open", side_effect=IOError("Permission denied")):
             with patch("os.path.exists", return_value=True):
-                with patch("generate_code_review_context.logger") as mock_logger:
+                with patch("model_config_manager.logger") as mock_logger:
                     result = load_model_config()
         
         # Should return default configuration
