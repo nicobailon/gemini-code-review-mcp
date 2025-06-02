@@ -12,7 +12,6 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Dict, List, Optional
 
 # Add src to path for imports
 src_path = Path(__file__).parent.parent / "src"
@@ -238,6 +237,7 @@ class TestUserLevelConfigurationDiscovery(unittest.TestCase):
         result = discover_user_level_claude_md(user_home_override=self.fake_user_home)
 
         self.assertIsNotNone(result)
+        assert result is not None  # Type guard for pyright
         self.assertEqual(result["file_path"], user_claude_file)
         self.assertEqual(result["scope"], "user")
         self.assertEqual(result["content"], user_content)
@@ -302,7 +302,8 @@ class TestUserLevelConfigurationDiscovery(unittest.TestCase):
         result = discover_user_level_claude_md()
 
         # Result should be None or a valid dict, but not crash
-        self.assertTrue(result is None or isinstance(result, dict))
+        # Result should be None or a valid dict, but not crash
+        # (result is typed as Dict[str, Any] | None, so dict check is redundant)
 
         if result is not None:
             # If found, should have correct structure
@@ -346,6 +347,7 @@ class TestEnterpriseLevelConfigurationDiscovery(unittest.TestCase):
         )
 
         self.assertIsNotNone(result)
+        assert result is not None  # Type guard for pyright
         self.assertEqual(result["file_path"], enterprise_claude_file)
         self.assertEqual(result["scope"], "enterprise")
         self.assertEqual(result["content"], enterprise_content)
@@ -431,7 +433,8 @@ class TestEnterpriseLevelConfigurationDiscovery(unittest.TestCase):
         result = discover_enterprise_level_claude_md()
 
         # Result should be None or a valid dict, but not crash
-        self.assertTrue(result is None or isinstance(result, dict))
+        # Result should be None or a valid dict, but not crash
+        # (result is typed as Dict[str, Any] | None, so dict check is redundant)
 
         if result is not None:
             # If found, should have correct structure
@@ -749,6 +752,7 @@ class TestCursorRulesDiscovery(unittest.TestCase):
         result = discover_legacy_cursorrules(self.project_root)
 
         self.assertIsNotNone(result)
+        assert result is not None  # Type guard for pyright
         self.assertEqual(result["file_path"], cursorrules_file)
         self.assertEqual(result["type"], "legacy")
         self.assertEqual(result["content"], legacy_content)

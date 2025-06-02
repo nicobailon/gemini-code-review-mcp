@@ -5,34 +5,38 @@ This test defines the requirement: we need a function that generates
 context content in memory without ANY file system operations.
 """
 
-import os
+import sys
 import tempfile
 from pathlib import Path
+from typing import Any, Callable
 
 import pytest
 
+# Add src to path
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-def test_in_memory_context_generation_exists():
+
+def test_in_memory_context_generation_exists() -> None:
     """🔴 RED: Test that we have an in-memory context generation function."""
     try:
-        from src.server import generate_context_in_memory
+        from src.server import generate_context_in_memory  # type: ignore
 
         assert callable(generate_context_in_memory), "Function should be callable"
     except ImportError:
         pytest.fail("🔴 generate_context_in_memory function does not exist yet")
 
 
-def test_in_memory_context_generation_no_files():
+def test_in_memory_context_generation_no_files() -> None:
     """🔴 RED: Test that in-memory generation creates NO files."""
-    from src.server import generate_context_in_memory
+    from src.server import generate_context_in_memory  # type: ignore
 
     with tempfile.TemporaryDirectory() as temp_dir:
         # Files before
         files_before = set(Path(temp_dir).glob("*"))
 
         # Generate context in memory
-        context_content = generate_context_in_memory(
-            github_pr_url="https://github.com/nicobailon/gemini-code-review-mcp/pull/5",
+        context_content: str = generate_context_in_memory(
+            github_pr_url="https://github.com/nicobailon/gemini-code-review-mcp/pull/9",
             project_path=temp_dir,
             include_claude_memory=True,
             include_cursor_rules=False,
@@ -58,13 +62,13 @@ def test_in_memory_context_generation_no_files():
         ), "Should contain context header"
 
 
-def test_in_memory_context_content_quality():
+def test_in_memory_context_content_quality() -> None:
     """🔴 RED: Test that in-memory generated content has expected structure."""
-    from src.server import generate_context_in_memory
+    from src.server import generate_context_in_memory  # type: ignore
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        context_content = generate_context_in_memory(
-            github_pr_url="https://github.com/nicobailon/gemini-code-review-mcp/pull/5",
+        context_content: str = generate_context_in_memory(
+            github_pr_url="https://github.com/nicobailon/gemini-code-review-mcp/pull/9",
             project_path=temp_dir,
             include_claude_memory=True,
             include_cursor_rules=False,

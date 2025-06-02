@@ -7,12 +7,10 @@ Cursor rules, and configuration context management with precedence handling.
 Following TDD protocol: Tests written FIRST to define expected behavior.
 """
 
-import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 # Add src to path for imports
 src_path = Path(__file__).parent.parent / "src"

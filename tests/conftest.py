@@ -9,19 +9,18 @@ import shutil
 import sys
 import tempfile
 import threading
-import time
 from pathlib import Path
-from unittest.mock import Mock, patch
+from typing import Any, Dict, List, Optional, Callable, Generator
+from unittest.mock import patch
 
 import pytest
 
 # Optional psutil import for memory monitoring
+_psutil_available = False
 try:
     import psutil
-
-    PSUTIL_AVAILABLE = True
+    _psutil_available = True
 except ImportError:
-    PSUTIL_AVAILABLE = False
     psutil = None
 
 
@@ -64,7 +63,7 @@ def test_isolation():
 
     # Store initial state (only if psutil is available)
     initial_memory = None
-    if PSUTIL_AVAILABLE:
+    if _psutil_available and psutil is not None:
         initial_memory = psutil.Process().memory_info().rss
 
     yield
@@ -73,7 +72,7 @@ def test_isolation():
     gc.collect()
 
     # Verify no significant memory leaks (only if psutil is available)
-    if PSUTIL_AVAILABLE and initial_memory is not None:
+    if _psutil_available and initial_memory is not None and psutil is not None:
         final_memory = psutil.Process().memory_info().rss
         memory_growth = (final_memory - initial_memory) / 1024 / 1024  # MB
 
@@ -93,23 +92,12 @@ def isolated_temp_dir():
 
 
 @pytest.fixture
-def mock_gemini_isolated():
-    """Provide isolated Gemini API mock for each test."""
-    with patch("src.server.get_gemini_model") as mock_gemini:
-        from tests.test_gemini_api_mocks import MockGeminiClient
-
-        mock_client = MockGeminiClient()
-        mock_gemini.return_value = mock_client
-        yield mock_client
-
-
-@pytest.fixture
 def clean_file_system():
     """Ensure clean file system state for tests."""
     # Track created files/directories for cleanup
-    created_paths = []
+    created_paths: List[str] = []
 
-    def track_creation(path):
+    def track_creation(path: str) -> str:
         """Track paths created during test."""
         created_paths.append(path)
         return path
@@ -132,29 +120,29 @@ def process_monitor():
     """Monitor process resources during test execution."""
 
     class ProcessMonitor:
-        def __init__(self):
-            self.process = psutil.Process() if PSUTIL_AVAILABLE else None
-            self.start_memory = None
-            self.start_cpu_percent = None
-            self.peak_memory = None
-            self.psutil_available = PSUTIL_AVAILABLE
+        def __init__(self) -> None:
+            self.process: Optional[Any] = psutil.Process() if _psutil_available and psutil is not None else None
+            self.start_memory: Optional[float] = None
+            self.start_cpu_percent: Optional[float] = None
+            self.peak_memory: Optional[float] = None
+            self.psutil_available: bool = _psutil_available
 
-        def start_monitoring(self):
-            if not self.psutil_available:
+        def start_monitoring(self) -> None:
+            if not self.psutil_available or self.process is None:
                 return
             self.start_memory = self.process.memory_info().rss / 1024 / 1024  # MB
             self.start_cpu_percent = self.process.cpu_percent()
             self.peak_memory = self.start_memory
 
-        def update_peak(self):
-            if not self.psutil_available:
+        def update_peak(self) -> None:
+            if not self.psutil_available or self.process is None:
                 return
             current_memory = self.process.memory_info().rss / 1024 / 1024  # MB
-            if current_memory > self.peak_memory:
+            if self.peak_memory is not None and current_memory > self.peak_memory:
                 self.peak_memory = current_memory
 
-        def get_stats(self):
-            if not self.psutil_available:
+        def get_stats(self) -> Dict[str, float]:
+            if not self.psutil_available or self.process is None:
                 return {"memory_delta": 0, "peak_memory_delta": 0, "current_memory": 0}
             current_memory = self.process.memory_info().rss / 1024 / 1024  # MB
             return {
@@ -162,7 +150,7 @@ def process_monitor():
                     current_memory - self.start_memory if self.start_memory else 0
                 ),
                 "peak_memory_delta": (
-                    self.peak_memory - self.start_memory if self.start_memory else 0
+                    self.peak_memory - self.start_memory if self.start_memory and self.peak_memory else 0
                 ),
                 "current_memory": current_memory,
             }
@@ -172,12 +160,12 @@ def process_monitor():
 
 
 @pytest.fixture
-def thread_isolation():
+def thread_isolation() -> Generator[Callable[[threading.Thread], threading.Thread], None, None]:
     """Ensure thread isolation and cleanup."""
     initial_thread_count = threading.active_count()
-    created_threads = []
+    created_threads: List[threading.Thread] = []
 
-    def track_thread(thread):
+    def track_thread(thread: threading.Thread) -> threading.Thread:
         """Track threads created during test."""
         created_threads.append(thread)
         return thread
@@ -200,22 +188,22 @@ def thread_isolation():
 
 
 @pytest.fixture
-def mock_file_operations():
+def mock_file_operations() -> Generator[Dict[str, Any], None, None]:
     """Mock file operations for deterministic testing."""
-    mocked_files = {}
+    mocked_files: Dict[str, str] = {}
 
-    def mock_read_file(path):
+    def mock_read_file(path: str) -> str:
         """Mock file reading."""
         if path in mocked_files:
             return mocked_files[path]
         raise FileNotFoundError(f"Mocked file not found: {path}")
 
-    def mock_write_file(path, content):
+    def mock_write_file(path: str, content: str) -> str:
         """Mock file writing."""
         mocked_files[path] = content
         return path
 
-    def mock_exists(path):
+    def mock_exists(path: str) -> bool:
         """Mock path existence check."""
         return path in mocked_files
 
@@ -250,7 +238,7 @@ def reset_module_state():
     ]
 
     # Store original module state
-    original_states = {}
+    original_states: Dict[str, Dict[str, Any]] = {}
     for module_name in modules_to_reset:
         if module_name in sys.modules:
             module = sys.modules[module_name]
@@ -282,7 +270,7 @@ def reset_module_state():
 class TestCleanupProtocols:
     """Test the cleanup protocols themselves."""
 
-    def test_temp_directory_cleanup(self, isolated_temp_dir):
+    def test_temp_directory_cleanup(self, isolated_temp_dir: str) -> None:
         """Test that temporary directories are properly cleaned up."""
         # Create files in temp directory
         test_file = Path(isolated_temp_dir) / "test_file.txt"
@@ -299,7 +287,7 @@ class TestCleanupProtocols:
 
         # Cleanup is automatic when fixture scope ends
 
-    def test_mock_isolation(self, mock_gemini_isolated):
+    def test_mock_isolation(self, mock_gemini_isolated: Any) -> None:
         """Test that mocks are properly isolated between tests."""
         # Use the mock
         mock_gemini_isolated.generate_content("test prompt")
@@ -309,13 +297,13 @@ class TestCleanupProtocols:
 
         # Mock state should reset for next test
 
-    def test_process_monitoring(self, process_monitor):
+    def test_process_monitoring(self, process_monitor: Any) -> None:
         """Test process monitoring functionality."""
         process_monitor.start_monitoring()
 
         # Simulate some work
         large_data = list(range(10000))
-        processed = [x * 2 for x in large_data]
+        _ = [x * 2 for x in large_data]  # Process data to consume memory
 
         process_monitor.update_peak()
         stats = process_monitor.get_stats()
@@ -326,7 +314,7 @@ class TestCleanupProtocols:
         assert "current_memory" in stats
         assert isinstance(stats["memory_delta"], (int, float))
 
-    def test_thread_isolation(self, thread_isolation):
+    def test_thread_isolation(self, thread_isolation: Callable[[threading.Thread], threading.Thread]) -> None:
         """Test thread isolation and cleanup."""
         import threading
         import time
@@ -350,7 +338,7 @@ class TestCleanupProtocols:
 
         # Thread cleanup is automatic
 
-    def test_deterministic_timestamps(self, deterministic_timestamps):
+    def test_deterministic_timestamps(self, deterministic_timestamps: str) -> None:
         """Test that timestamps are deterministic."""
         import time
 
@@ -387,7 +375,7 @@ class TestIsolationValidation:
 
         assert globals().get("test_isolation_marker") == test_value
 
-    def test_file_system_isolation(self, isolated_temp_dir):
+    def test_file_system_isolation(self, isolated_temp_dir: str) -> None:
         """Test file system isolation between tests."""
         # Create a file
         test_file = Path(isolated_temp_dir) / "isolation_test.txt"
@@ -398,7 +386,7 @@ class TestIsolationValidation:
 
         # File should be cleaned up automatically
 
-    def test_mock_state_isolation(self, mock_gemini_isolated):
+    def test_mock_state_isolation(self, mock_gemini_isolated: Any) -> None:
         """Test that mock state is isolated."""
         # First interaction
         mock_gemini_isolated.generate_content("first call")
@@ -412,8 +400,8 @@ class TestResourceManagement:
     """Test resource management and cleanup."""
 
     def test_memory_cleanup_after_large_operations(
-        self, process_monitor, isolated_temp_dir
-    ):
+        self, process_monitor: Any, isolated_temp_dir: str
+    ) -> None:
         """Test memory cleanup after large operations."""
         process_monitor.start_monitoring()
 
@@ -438,13 +426,13 @@ class TestResourceManagement:
             stats["peak_memory_delta"] < 200
         ), f"Memory usage too high: {stats['peak_memory_delta']:.1f}MB"
 
-    def test_file_handle_cleanup(self, isolated_temp_dir):
+    def test_file_handle_cleanup(self, isolated_temp_dir: str) -> None:
         """Test that file handles are properly cleaned up."""
         import resource
 
         # Get initial file descriptor count
         try:
-            initial_fds = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
+            _ = resource.getrlimit(resource.RLIMIT_NOFILE)[0]  # Check we can get fd limit
         except:
             pytest.skip("Cannot get file descriptor limit on this system")
 
@@ -462,9 +450,9 @@ class TestResourceManagement:
         # File handles should be cleaned up automatically
         # (Python's context managers handle this)
 
-    def test_exception_safety_cleanup(self, isolated_temp_dir):
+    def test_exception_safety_cleanup(self, isolated_temp_dir: str) -> None:
         """Test cleanup happens even when exceptions occur."""
-        created_files = []
+        created_files: List[Path] = []
 
         try:
             # Create files before exception
@@ -489,7 +477,7 @@ class TestResourceManagement:
 
 
 # Pytest configuration for better test isolation
-def pytest_configure(config):
+def pytest_configure(config: Any) -> None:
     """Configure pytest for better test isolation."""
     # Add custom markers
     config.addinivalue_line("markers", "slow: marks tests as slow")
@@ -497,13 +485,13 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "performance: marks tests as performance tests")
 
 
-def pytest_runtest_setup(item):
+def pytest_runtest_setup(item: Any) -> None:
     """Setup for each test run."""
     # Force garbage collection before each test
     gc.collect()
 
 
-def pytest_runtest_teardown(item, nextitem):
+def pytest_runtest_teardown(item: Any, nextitem: Optional[Any]) -> None:
     """Teardown after each test run."""
     # Force garbage collection after each test
     gc.collect()
@@ -513,7 +501,7 @@ def pytest_runtest_teardown(item, nextitem):
 
 
 # Custom assertion helpers for test isolation
-def assert_no_file_leaks(temp_dir_path):
+def assert_no_file_leaks(temp_dir_path: str) -> int:
     """Assert that no files leaked outside the temp directory."""
     temp_path = Path(temp_dir_path)
     if temp_path.exists():
@@ -524,16 +512,16 @@ def assert_no_file_leaks(temp_dir_path):
     return 0
 
 
-def assert_memory_reasonable(process_monitor, max_mb=100):
+def assert_memory_reasonable(process_monitor: Any, max_mb: int = 100) -> None:
     """Assert that memory usage is reasonable."""
-    stats = process_monitor.get_stats()
-    memory_delta = stats.get("memory_delta", 0)
+    stats: Dict[str, float] = process_monitor.get_stats()
+    memory_delta: float = stats.get("memory_delta", 0)
     assert (
         memory_delta < max_mb
     ), f"Memory usage too high: {memory_delta:.1f}MB > {max_mb}MB"
 
 
-def assert_no_thread_leaks(initial_count):
+def assert_no_thread_leaks(initial_count: int) -> None:
     """Assert that no threads leaked."""
     current_count = threading.active_count()
     assert (

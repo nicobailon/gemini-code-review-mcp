@@ -115,25 +115,11 @@ def _discover_project_configurations_uncached(project_path: str) -> Dict[str, An
 
     try:
         # Import configuration modules (relative imports for same package)
-        try:
-            # Try importing from same directory first
-            import os
-            import sys
-
-            current_dir = os.path.dirname(__file__)
-            if current_dir not in sys.path:
-                sys.path.insert(0, current_dir)
-
-            from async_configuration_discovery import discover_all_configurations
-            from claude_memory_parser import parse_claude_memory_with_imports
-            from configuration_context import ClaudeMemoryFile, CursorRule
-            from cursor_rules_parser import parse_cursor_rules_directory
-        except ImportError:
-            # Fallback: try absolute imports
-            from src.async_configuration_discovery import discover_all_configurations
-            from src.claude_memory_parser import parse_claude_memory_with_imports
-            from src.configuration_context import ClaudeMemoryFile, CursorRule
-            from src.cursor_rules_parser import parse_cursor_rules_directory
+        # Use relative imports since we're in the same package
+        from .async_configuration_discovery import discover_all_configurations
+        from .claude_memory_parser import parse_claude_memory_with_imports
+        from .configuration_context import ClaudeMemoryFile, CursorRule
+        from .cursor_rules_parser import parse_cursor_rules_directory
 
         claude_memory_files: List[Any] = []
         cursor_rules: List[Any] = []
@@ -395,26 +381,13 @@ def discover_project_configurations_with_flags(
         }
 
         # Import configuration modules
-        try:
-            from claude_memory_parser import parse_claude_memory_with_imports
-            from configuration_context import ClaudeMemoryFile, CursorRule
-            from configuration_discovery import (
-                discover_all_claude_md_files,
-                discover_all_cursor_rules,
-            )
-            from cursor_rules_parser import parse_cursor_rules_directory
-        except ImportError:
-            try:
-                from src.claude_memory_parser import parse_claude_memory_with_imports
-                from src.configuration_context import ClaudeMemoryFile, CursorRule
-                from src.configuration_discovery import (
-                    discover_all_claude_md_files,
-                    discover_all_cursor_rules,
-                )
-                from src.cursor_rules_parser import parse_cursor_rules_directory
-            except ImportError as e:
-                logger.warning(f"Failed to import configuration modules: {e}")
-                return result
+        from .claude_memory_parser import parse_claude_memory_with_imports
+        from .configuration_context import ClaudeMemoryFile, CursorRule
+        from .configuration_discovery import (
+            discover_all_claude_md_files,
+            discover_all_cursor_rules,
+        )
+        from .cursor_rules_parser import parse_cursor_rules_directory
 
         # Discover Claude memory files if enabled
         if include_claude_memory:
@@ -548,10 +521,7 @@ def merge_configurations_into_context(
         Enhanced context dictionary with configuration content
     """
     try:
-        try:
-            from configuration_context import create_configuration_context
-        except ImportError:
-            from src.configuration_context import create_configuration_context
+        from .configuration_context import create_configuration_context
 
         # Create configuration context
         config_context = create_configuration_context(claude_memory_files, cursor_rules)
@@ -602,16 +572,10 @@ def format_configuration_context_for_ai(
         Formatted configuration content string
     """
     try:
-        try:
-            from configuration_context import (
-                merge_claude_memory_content,
-                merge_cursor_rules_content,
-            )
-        except ImportError:
-            from src.configuration_context import (
-                merge_claude_memory_content,
-                merge_cursor_rules_content,
-            )
+        from .configuration_context import (
+            merge_claude_memory_content,
+            merge_cursor_rules_content,
+        )
 
         # Format Claude memory content
         claude_content = merge_claude_memory_content(claude_memory_files)
@@ -655,10 +619,7 @@ def get_applicable_rules_for_files(
         file patterns if performance becomes an issue.
     """
     try:
-        try:
-            from configuration_context import get_all_cursor_rules
-        except ImportError:
-            from src.configuration_context import get_all_cursor_rules
+        from .configuration_context import get_all_cursor_rules
 
         # Return all cursor rules - file filtering not implemented yet
         # as rules often apply project-wide regardless of specific files
