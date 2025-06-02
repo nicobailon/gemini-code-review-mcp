@@ -9,9 +9,8 @@ DO NOT create mock implementations.
 
 import os
 import sys
-import tempfile
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -96,7 +95,7 @@ class TestGitHubPRUrlParsing:
             parse_github_pr_url("")
 
         with pytest.raises(ValueError, match="URL cannot be empty"):
-            parse_github_pr_url(None)
+            parse_github_pr_url(None)  # type: ignore
 
 
 class TestGitHubAPIIntegration:
@@ -595,7 +594,7 @@ class TestIntegrationScenarios:
         # Step 2: Fetch PR data
         with patch("requests.get") as mock_get:
 
-            def mock_response_side_effect(url, **kwargs):
+            def mock_response_side_effect(url: str, **kwargs: Any) -> MagicMock:
                 mock_response = MagicMock()
                 mock_response.status_code = 200
 

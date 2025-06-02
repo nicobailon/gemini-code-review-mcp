@@ -5,6 +5,7 @@ Tests core functionality without external dependencies (no API calls)
 
 import os
 import sys
+from typing import Any
 from unittest.mock import patch
 
 # Add src to path
@@ -15,14 +16,14 @@ def test_package_imports():
     """Test that all main modules can be imported"""
     # Import modules to verify they load without errors
     try:
-        import src.generate_code_review_context
-        import src.server
+        import src.generate_code_review_context  # type: ignore
+        import src.server  # type: ignore
 
         # Verify the modules have expected attributes to satisfy linter
-        assert hasattr(src.server, "mcp")
-        assert hasattr(
-            src.generate_code_review_context, "generate_code_review_context_main"
-        )
+        server_module: Any = src.server
+        context_module: Any = src.generate_code_review_context
+        assert hasattr(server_module, "mcp")
+        assert hasattr(context_module, "generate_code_review_context_main")
     except ImportError as e:
         assert False, f"Failed to import module: {e}"
     # model_config is a JSON file, not a Python module
@@ -31,9 +32,9 @@ def test_package_imports():
 
 def test_model_config_loading():
     """Test model configuration loading works"""
-    from src.model_config_manager import load_model_config
+    from src.model_config_manager import load_model_config  # type: ignore
 
-    config = load_model_config()
+    config: dict[str, Any] = load_model_config()
     assert isinstance(config, dict)
     assert "model_aliases" in config
     assert "defaults" in config
@@ -65,16 +66,16 @@ def test_entry_points_defined():
 @patch("src.gemini_api_client.GEMINI_AVAILABLE", False)
 def test_graceful_fallback_no_gemini():
     """Test that the system works without Gemini API available"""
-    from src.gemini_api_client import send_to_gemini_for_review
+    from src.gemini_api_client import send_to_gemini_for_review  # type: ignore
 
-    result = send_to_gemini_for_review("test content", "/tmp", 0.5)
+    result: Any = send_to_gemini_for_review("test content", "/tmp", 0.5)
     assert result is None  # Should gracefully return None without Gemini
 
 
 def test_cli_help_functions():
     """Test that CLI help functions work without crashes"""
     # Test that we can create argument parsers without errors
-    from src.cli_main import cli_main
+    from src.cli_main import cli_main  # type: ignore
 
     # These should not crash when imported
     assert callable(cli_main)
@@ -100,9 +101,9 @@ def test_environment_variable_handling():
 
 def test_model_alias_resolution():
     """Test that model aliases resolve correctly"""
-    from src.model_config_manager import load_model_config
+    from src.model_config_manager import load_model_config  # type: ignore
 
-    config = load_model_config()
+    config: dict[str, Any] = load_model_config()
     aliases = config.get("model_aliases", {})
 
     # Test that gemini-2.5-pro alias exists and resolves

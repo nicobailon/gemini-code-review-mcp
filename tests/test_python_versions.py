@@ -3,15 +3,11 @@ Python version compatibility tests for MCP server
 Tests compatibility across Python 3.8, 3.9, 3.10, 3.11, 3.12
 """
 
-import json
-import os
 import platform
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-
-import pytest
 
 
 class TestPythonVersionCompatibility:
@@ -713,7 +709,7 @@ print(f'Python {sys.version_info.major}.{sys.version_info.minor}: ✅ Compatible
         print(f"Python {self.current_version} compatibility report generated")
 
         # Store the report for documentation
-        report_lines = result.stdout.split("\n")
+        _ = result.stdout.split("\n")  # Verify output is parseable
 
         # Verify key compatibility indicators
         assert "Compatible" in result.stdout

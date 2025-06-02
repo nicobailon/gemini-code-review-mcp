@@ -3,6 +3,8 @@
   "pythonVersion": "3.13",
   "pythonPlatform": "Darwin",
   "reportMissingImports": "error",
+  "venvPath": ".",
+  "venv": "venv",
   "reportMissingTypeStubs": "information",
   "reportUndefinedVariable": "error",
   "reportAssertAlwaysTrue": "warning",
@@ -47,7 +49,26 @@
   "reportIndexIssue": "error",
   "reportReturnType": "error",
   "include": [
-    "src"
+    "src",
+    "tests",
+    "scripts"
+  ],
+  "executionEnvironments": [
+    {
+      "root": "src",
+      "pythonVersion": "3.13",
+      "extraPaths": []
+    },
+    {
+      "root": "tests",
+      "pythonVersion": "3.13",
+      "extraPaths": ["src"]
+    },
+    {
+      "root": "scripts",
+      "pythonVersion": "3.13",
+      "extraPaths": ["src"]
+    }
   ],
   "exclude": [
     "**/node_modules",

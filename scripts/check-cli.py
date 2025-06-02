@@ -5,23 +5,23 @@ CLI Discovery and Diagnostic Script
 Helps users identify which CLI commands are available and diagnose common issues.
 """
 
-import sys
 import subprocess
 import os
 from pathlib import Path
+from typing import Any, Tuple, List
 
-def check_command_availability():
+def check_command_availability() -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
     """Check which CLI commands are available."""
     print("🔍 Checking CLI Command Availability...\n")
     
-    commands = [
+    commands: List[Tuple[str, str]] = [
         ("gemini-code-review-mcp", "Main CLI (installed package)"),
         ("generate-code-review", "Context generation CLI (installed package)"),
         ("generate-meta-prompt", "Meta-prompt CLI (installed package)")
     ]
     
-    available = []
-    unavailable = []
+    available: List[Tuple[str, str]] = []
+    unavailable: List[Tuple[str, str]] = []
     
     for cmd, description in commands:
         try:
@@ -39,7 +39,7 @@ def check_command_availability():
     
     return available, unavailable
 
-def check_development_mode():
+def check_development_mode() -> None:
     """Check if development mode commands work."""
     print("\n🔧 Checking Development Mode Commands...\n")
     
@@ -61,11 +61,12 @@ def check_development_mode():
         except Exception as e:
             print(f"❌ {description} (error: {e})")
 
-def check_package_version():
+def check_package_version() -> None:
     """Check installed package version vs local version."""
     print("\n📦 Checking Package Versions...\n")
     
     # Check local pyproject.toml version
+    local_version: str = "unknown"
     try:
         # Handle tomllib import for different Python versions
         try:
@@ -77,8 +78,8 @@ def check_package_version():
                 raise ImportError("Neither tomllib nor tomli available for TOML parsing")
         
         with open("pyproject.toml", "rb") as f:
-            data = tomllib.load(f)
-            local_version = data["project"]["version"]
+            data: dict[str, Any] = tomllib.load(f)
+            local_version: str = data["project"]["version"]
             print(f"📁 Local version (pyproject.toml): {local_version}")
     except Exception as e:
         print(f"❌ Could not read local version: {e}")
