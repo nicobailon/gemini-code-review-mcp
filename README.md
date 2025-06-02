@@ -51,9 +51,8 @@ The command above creates or updates a `.mcp.json` file to the project root with
   "mcpServers": {
     "gemini-code-review": {
       "command": "/path/to/server",
-      "args": ["@modelcontextprotocol/server-gemini-code-review"],
-      "env": {"GEMINI_API_KEY":"your_key_here","GIT
-HUB_TOKEN":"your_key_here"}
+      "args": ["gemini-code-review"],
+      "env": {"GEMINI_API_KEY":"your_key_here","GITHUB_TOKEN":"your_key_here"}
     }
   }
 }
