@@ -261,6 +261,14 @@ generate-code-review . \
 
 # Meta-prompt only
 generate-meta-prompt --project-path . --stream
+
+# Ask questions with file context
+ask-gemini "How can I optimize this function?" \
+  --files src/slow_module.py:45-90 \
+  --instructions "Focus on algorithmic improvements"
+
+# Quick questions without files
+ask-gemini-direct "What are Python decorators?"
 ```
 
 ### Supported File Formats
