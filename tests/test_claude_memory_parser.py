@@ -12,6 +12,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import List
 
 # Add src to path for imports
 src_path = Path(__file__).parent.parent / "src"
@@ -272,7 +273,7 @@ class TestImportRecursionProtection(unittest.TestCase):
         from claude_memory_parser import resolve_imports_with_recursion_protection
 
         # Create chain of imports: file1 -> file2 -> file3 -> file4 -> file5 -> file6
-        files = []
+        files: List[str] = []
         for i in range(1, 7):
             file_path = os.path.join(self.project_root, f"file{i}.md")
             files.append(file_path)

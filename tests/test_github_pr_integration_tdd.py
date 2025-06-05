@@ -10,7 +10,7 @@ DO NOT create mock implementations.
 import os
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, List, Dict
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -502,7 +502,7 @@ class TestErrorHandlingAndEdgeCases:
         from github_pr_integration import get_pr_file_changes
 
         # Mock large PR with 100+ files
-        mock_files = []
+        mock_files: List[Dict[str, Any]] = []
         for i in range(150):
             mock_files.append(
                 {

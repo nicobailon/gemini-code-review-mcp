@@ -319,7 +319,7 @@ class TestCleanupProtocols:
         import threading
         import time
 
-        results = []
+        results: List[str] = []
 
         def worker():
             time.sleep(0.1)

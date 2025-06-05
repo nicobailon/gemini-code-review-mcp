@@ -12,6 +12,7 @@ Tests cover:
 import json
 import os
 import sys
+from typing import Dict, List, Union
 from unittest.mock import mock_open, patch
 
 import pytest
@@ -185,7 +186,7 @@ class TestModelAliasResolution:
 
     def test_custom_aliases_override_defaults(self):
         """Test that custom config can override default aliases."""
-        custom_config = {
+        custom_config: Dict[str, Union[Dict[str, str], Dict[str, List[str]]]] = {
             "model_aliases": {
                 "gemini-2.5-pro": "custom-gemini-model-v2",
                 "my-custom-alias": "gemini-experimental",
@@ -543,7 +544,7 @@ class TestConfigurationValidation:
 
     def test_malformed_model_aliases_handling(self):
         """Test handling of malformed model aliases section."""
-        malformed_config = {
+        malformed_config: Dict[str, Union[str, Dict[str, List[str]], Dict[str, str]]] = {
             "model_aliases": "this should be a dict, not a string",
             "model_capabilities": {
                 "url_context_supported": [],
