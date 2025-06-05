@@ -22,19 +22,17 @@ def load_model_config() -> Dict[str, Any]:
     # Default configuration as fallback
     default_config = {
         "model_aliases": {
-            "gemini-2.5-pro": "gemini-2.5-pro-preview-05-06",
+            "gemini-2.5-pro": "gemini-2.5-flash-preview-05-20",
             "gemini-2.5-flash": "gemini-2.5-flash-preview-05-20",
         },
         "model_capabilities": {
             "url_context_supported": [
-                "gemini-2.5-pro-preview-05-06",
                 "gemini-2.5-flash-preview-05-20",
                 "gemini-2.0-flash",
                 "gemini-2.0-flash-live-001",
                 "gemini-2.5-flash",
             ],
             "thinking_mode_supported": [
-                "gemini-2.5-pro-preview-05-06",
                 "gemini-2.5-flash-preview-05-20",
             ],
         },
