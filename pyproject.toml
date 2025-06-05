@@ -82,6 +82,7 @@ gemini-code-review-mcp = "src.server:main"
 # CLI Tools
 generate-code-review = "src.cli_main:main"
 generate-meta-prompt = "src.meta_prompt_generator:main"
+generate-file-context = "src.file_context_cli:main"
 ask-gemini = "src.ask_gemini_cli:main"
 ask-gemini-direct = "src.ask_gemini_cli:direct_main"
 # Semantic shortcuts (when installed)
