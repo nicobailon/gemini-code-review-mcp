@@ -1458,6 +1458,77 @@ def generate_file_context(
         return f"ERROR: {str(e)}"
 
 
+@mcp.tool()
+def ask_gemini(
+    question: str,
+    file_selections: Optional[List[Dict[str, Any]]] = None,
+    project_path: Optional[str] = None,
+    user_instructions: Optional[str] = None,
+    temperature: float = 0.5,
+    include_claude_memory: bool = True,
+    include_cursor_rules: bool = False,
+    text_output: bool = True,
+    output_path: Optional[str] = None,
+    model: Optional[str] = None,
+) -> str:
+    """Ask Gemini a question with optional file context.
+    
+    This tool provides a direct interface to Gemini AI for answering questions,
+    optionally including specific files as context. Perfect for debugging,
+    code explanation, or getting implementation guidance.
+    
+    Args:
+        question: The question to ask Gemini (required)
+        file_selections: Optional list of files to include as context:
+            - path: str (required) - File path
+            - line_ranges: Optional[List[Tuple[int, int]]] - Line ranges
+        project_path: Optional project root for relative paths
+        user_instructions: Additional context or instructions
+        temperature: Model temperature (0.0-2.0, default: 0.5)
+        include_claude_memory: Include CLAUDE.md files (default: true)
+        include_cursor_rules: Include cursor rules (default: false)
+        text_output: Return response directly (default: true)
+        output_path: Custom output path when text_output=false
+        model: Optional Gemini model override
+        
+    Returns:
+        If text_output=True: Gemini's response as text
+        If text_output=False: Success message with file path
+        
+    Examples:
+        # Simple question without context
+        ask_gemini(question="What are Python decorators?")
+        
+        # Question with file context
+        ask_gemini(
+            question="How can I optimize this function?",
+            file_selections=[{"path": "src/utils.py", "line_ranges": [(10, 50)]}]
+        )
+    """
+    try:
+        # Import the ask_gemini function
+        from .ask_gemini import ask_gemini as ask_gemini_impl
+        
+        # Call the implementation
+        return ask_gemini_impl(
+            question=question,
+            file_selections=file_selections,
+            project_path=project_path,
+            user_instructions=user_instructions,
+            temperature=temperature,
+            include_claude_memory=include_claude_memory,
+            include_cursor_rules=include_cursor_rules,
+            text_output=text_output,
+            output_path=output_path,
+            model=model,
+        )
+    
+    except ValueError as e:
+        return f"ERROR: {str(e)}"
+    except Exception as e:
+        return f"ERROR: Failed to process question: {str(e)}"
+
+
 def get_mcp_tools():
     """Get list of available MCP tools for testing."""
     return [
@@ -1466,6 +1537,7 @@ def get_mcp_tools():
         "generate_pr_review",
         "generate_meta_prompt",
         "generate_file_context",
+        "ask_gemini",
     ]
 
 

@@ -87,6 +87,7 @@ If the MCP tools aren't working:
 | **`generate_code_review_context`** | Build review context | `project_path`, `scope`, `enable_gemini_review` |
 | **`generate_meta_prompt`** | Create contextual prompts | `project_path`, `text_output` |
 | **`generate_file_context`** | Generate context from specific files | `file_selections`, `user_instructions` |
+| **`ask_gemini`** | Ask questions with optional file context | `question`, `file_selections`, `user_instructions` |
 
 <details>
 <summary>📖 Detailed Tool Examples</summary>
@@ -130,6 +131,29 @@ If the MCP tools aren't working:
 }
 ```
 
+### Ask Gemini (Direct Q&A)
+```javascript
+// Simple question without file context
+{
+  tool_name: "ask_gemini",
+  arguments: {
+    question: "What are Python decorators and when should I use them?"
+  }
+}
+
+// Question with file context
+{
+  tool_name: "ask_gemini",
+  arguments: {
+    question: "How can I optimize this function for better performance?",
+    file_selections: [
+      { path: "src/slow_module.py", line_ranges: [[45, 90]] }
+    ],
+    user_instructions: "Focus on algorithmic improvements and caching strategies"
+  }
+}
+```
+
 </details>
 
 ### Common Workflows
@@ -150,6 +174,15 @@ Human: Review this PR: https://github.com/owner/repo/pull/123
 Claude: I'll fetch the PR and analyze the changes.
 
 [Uses generate_pr_review with github_pr_url]
+```
+
+#### Direct Q&A with Code Context
+```
+Human: Why is my authentication function running slowly?
+
+Claude: I'll analyze your authentication code to identify performance issues.
+
+[Uses ask_gemini with file_selections pointing to auth module]
 ```
 
 #### Custom Model Review
