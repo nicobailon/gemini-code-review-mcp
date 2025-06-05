@@ -11,38 +11,37 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Check if runner failure
-        id: check
+      - name: Check and retry if runner failure
         uses: actions/github-script@v7
         with:
           script: |
             const run = context.payload.workflow_run;
+            
+            // Get jobs for the failed workflow
             const jobs = await github.rest.actions.listJobsForWorkflowRun({
               owner: context.repo.owner,
               repo: context.repo.repo,
               run_id: run.id
             });
             
+            // Check if any job failed due to runner issues
             const runnerFailure = jobs.data.jobs.some(job => 
               job.conclusion === 'failure' && 
-              job.steps.some(step => 
+              job.steps && job.steps.some(step => 
                 step.conclusion === 'failure' && 
-                step.name === 'Set up job' || 
-                (step.output && step.output.includes('Runner'))
+                (step.name === 'Set up job' || 
+                 (step.name && step.name.includes('Runner')))
               )
             );
             
-            core.setOutput('should_retry', runnerFailure);
-            return runnerFailure;
-
-      - name: Trigger retry
-        if: steps.check.outputs.should_retry == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.actions.reRunWorkflow({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: context.payload.workflow_run.id
-            });
-            console.log('Workflow retry triggered due to runner failure');
+            if (runnerFailure) {
+              console.log('Detected runner failure, triggering retry...');
+              await github.rest.actions.reRunWorkflow({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: run.id
+              });
+              console.log('Workflow retry triggered');
+            } else {
+              console.log('Failure was not due to runner issues, not retrying');
+            }
