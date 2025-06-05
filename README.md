@@ -41,8 +41,7 @@ claude mcp add-json gemini-code-review -s user '{"command":"uvx","args":["gemini
 
 **Option B:** Install the MCP server to Claude Code as project-scoped MCP server:
 ```
-claude mcp add-json gemini-code-review -s project /path/to/server '{"type":"stdio","comm
-and":"npx","args":["gemini-code-review"], "env":{"GEMINI_API_KEY":"your_key_here","GITHUB_TOKEN":"your_key_here"}}'
+claude mcp add-json gemini-code-review -s project /path/to/server '{"type":"stdio","command":"npx","args":["gemini-code-review"],"env":{"GEMINI_API_KEY":"your_key_here","GITHUB_TOKEN":"your_key_here"}}'
 ```
 
 The command above creates or updates a `.mcp.json` file to the project root with the following structure:
