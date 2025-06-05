@@ -39,8 +39,10 @@ class TestCoreImports:
     def test_ai_code_review_imports(self):
         """Test ai_code_review functionality is available in server"""
         from server import generate_ai_code_review
-
+        
+        # When imported directly, it's a function (MCP tool decorator is applied at runtime)
         assert callable(generate_ai_code_review)
+        assert generate_ai_code_review.__name__ == 'generate_ai_code_review'
 
 
 class TestPackageStructure:
