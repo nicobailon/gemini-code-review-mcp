@@ -30,15 +30,15 @@ class TestModelConfigurationLoading:
         """Test loading a valid model configuration file."""
         mock_config = {
             "model_aliases": {
-                "gemini-2.5-pro": "gemini-2.5-flash-preview-05-20",
+                "gemini-2.5-pro": "gemini-2.5-pro-preview-06-05",
                 "gemini-2.5-flash": "gemini-2.5-flash-preview-05-20",
             },
             "model_capabilities": {
                 "url_context_supported": [
-                    "gemini-2.5-flash-preview-05-20",
+                    "gemini-2.5-pro-preview-06-05",
                     "gemini-2.5-flash-preview-05-20",
                 ],
-                "thinking_mode_supported": ["gemini-2.5-flash-preview-05-20"],
+                "thinking_mode_supported": ["gemini-2.5-pro-preview-06-05", "gemini-2.5-flash-preview-05-20"],
             },
             "defaults": {
                 "model": "gemini-2.0-flash",
@@ -157,7 +157,7 @@ class TestModelAliasResolution:
 
         # Test default aliases
         assert "gemini-2.5-pro" in model_aliases
-        assert model_aliases["gemini-2.5-pro"] == "gemini-2.5-flash-preview-05-20"
+        assert model_aliases["gemini-2.5-pro"] == "gemini-2.5-pro-preview-06-05"
 
     def test_resolve_gemini_flash_alias(self):
         """Test that gemini-2.5-flash resolves to correct model name."""
@@ -176,7 +176,7 @@ class TestModelAliasResolution:
         test_model = "gemini-2.5-pro"
         resolved_model = config["model_aliases"].get(test_model, test_model)
 
-        assert resolved_model == "gemini-2.5-flash-preview-05-20"
+        assert resolved_model == "gemini-2.5-pro-preview-06-05"
 
         # Test non-alias model passes through unchanged
         test_model = "gemini-2.0-flash"
@@ -222,7 +222,7 @@ class TestModelCapabilities:
         url_supported = config["model_capabilities"]["url_context_supported"]
 
         # Test models that should support URL context
-        assert "gemini-2.5-flash-preview-05-20" in url_supported
+        assert "gemini-2.5-pro-preview-06-05" in url_supported
         assert "gemini-2.5-flash-preview-05-20" in url_supported
         assert "gemini-2.0-flash" in url_supported
 
@@ -243,7 +243,7 @@ class TestModelCapabilities:
         thinking_supported = config["model_capabilities"]["thinking_mode_supported"]
 
         # Test models that should support thinking mode
-        assert "gemini-2.5-flash-preview-05-20" in thinking_supported
+        assert "gemini-2.5-pro-preview-06-05" in thinking_supported
         assert "gemini-2.5-flash-preview-05-20" in thinking_supported
 
         # Test capability check logic
@@ -279,11 +279,21 @@ class TestModelCapabilities:
         """Test various combinations of model capabilities."""
         config = load_model_config()
 
-        # gemini-2.5-flash-preview-05-20: Should support all features
-        model = "gemini-2.5-flash-preview-05-20"
+        # gemini-2.5-pro-preview-06-05: Should support all features
+        model = "gemini-2.5-pro-preview-06-05"
         url_supported = config["model_capabilities"]["url_context_supported"]
         thinking_supported = config["model_capabilities"]["thinking_mode_supported"]
 
+        supports_url = model in url_supported
+        supports_thinking = model in thinking_supported
+        supports_grounding = "gemini-2.5" in model
+
+        assert supports_url is True
+        assert supports_thinking is True
+        assert supports_grounding is True
+
+        # gemini-2.5-flash-preview-05-20: Should support all features
+        model = "gemini-2.5-flash-preview-05-20"
         supports_url = model in url_supported
         supports_thinking = model in thinking_supported
         supports_grounding = "gemini-2.5" in model
@@ -441,7 +451,7 @@ class TestEnvironmentIntegration:
             resolved_model = config["model_aliases"].get(env_model, env_model)
 
             assert env_model == "gemini-2.5-pro"
-            assert resolved_model == "gemini-2.5-flash-preview-05-20"
+            assert resolved_model == "gemini-2.5-pro-preview-06-05"
 
         # Test environment variable without alias
         with patch.dict(os.environ, {"GEMINI_MODEL": "gemini-2.0-flash"}):
@@ -481,7 +491,7 @@ class TestModelConfigurationIntegration:
             )
 
             # Verify the complete flow
-            assert model_config == "gemini-2.5-flash-preview-05-20"
+            assert model_config == "gemini-2.5-pro-preview-06-05"
             assert supports_url is True
             assert supports_thinking is True
             assert supports_grounding is True
@@ -512,7 +522,7 @@ class TestModelConfigurationIntegration:
         # Test that the system handles new model versions gracefully
         test_cases = [
             # (model_name, expected_url, expected_thinking, expected_grounding)
-            ("gemini-2.5-flash-preview-05-20", True, True, True),
+            ("gemini-2.5-pro-preview-06-05", True, True, True),
             ("gemini-2.5-flash-preview-05-20", True, True, True),
             ("gemini-2.0-flash", True, False, True),
             ("gemini-1.5-pro", False, False, True),  # Not in default config
