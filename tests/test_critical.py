@@ -39,8 +39,18 @@ class TestCoreImports:
     def test_ai_code_review_imports(self):
         """Test ai_code_review functionality is available in server"""
         from server import generate_ai_code_review
-
-        assert callable(generate_ai_code_review)
+        
+        # The function might be wrapped in an MCP FunctionTool or be a plain function
+        # depending on how the module is loaded
+        if hasattr(generate_ai_code_review, 'fn'):
+            # It's wrapped in FunctionTool
+            assert hasattr(generate_ai_code_review, 'name')
+            assert generate_ai_code_review.name == 'generate_ai_code_review'
+            assert callable(generate_ai_code_review.fn)
+        else:
+            # It's a plain function
+            assert callable(generate_ai_code_review)
+            assert generate_ai_code_review.__name__ == 'generate_ai_code_review'
 
 
 class TestPackageStructure:

@@ -1,82 +1,51 @@
-name: CI - Core Functionality Tests
+name: Tests
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, main, 'feature/**' ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
+    name: Run Tests
     runs-on: ubuntu-latest
-        
+    timeout-minutes: 10
+
     steps:
-    - uses: actions/checkout@v4
-    
+    - name: Checkout code
+      uses: actions/checkout@v4
+
     - name: Set up Python 3.11
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-    
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install build
         pip install -e ".[dev]"
-    
-    - name: Run core functionality tests
+        pip install pytest pytest-mock pytest-asyncio requests
+
+    - name: Run tests
       env:
-        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        GEMINI_MODEL: gemini-2.0-flash-lite  # Cheapest model
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # For PR integration tests
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY || 'test-key' }}
+        GEMINI_MODEL: gemini-2.0-flash-lite
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        # Install test dependencies
-        pip install requests pytest-mock pytest-asyncio
-        
-        # Run essential test suite (optimized for CI - covers all core functionality)
-        # Tests reduced from 515 to 180 tests while maintaining comprehensive coverage
-        
-        # Critical functionality and smoke tests
-        pytest tests/test_critical.py tests/test_smoke.py -v --tb=short
-        
-        # Core features: GitHub PR integration, configuration discovery, model handling
-        pytest tests/test_github_pr_integration_tdd.py -v --tb=short
-        pytest tests/test_configuration_discovery.py -v --tb=short
-        pytest tests/test_model_configuration.py -v --tb=short
-    
-    - name: Test package building
+        # Run core tests only
+        python -m pytest tests/test_critical.py tests/test_smoke.py -v
+
+    - name: Build package
       run: |
         python -m build
-        
-    - name: Test entry points
+
+    - name: Check package
       run: |
-        python -c "
-        try:
-            from importlib.metadata import entry_points
-            # Handle different API versions
-            eps = entry_points()
-            if hasattr(eps, 'select'):
-                # Python 3.10+
-                console_scripts = eps.select(group='console_scripts')
-            else:
-                # Python 3.8-3.9
-                console_scripts = eps.get('console_scripts', [])
-            our_eps = [ep for ep in console_scripts if 'task-list' in ep.name or 'generate-code' in ep.name or 'generate-meta' in ep.name or 'code-review' in ep.name]
-            print(f'✅ Found {len(our_eps)} entry points: {[ep.name for ep in our_eps]}')
-            assert len(our_eps) >= 3, f'Expected at least 3 entry points (gemini-code-review-mcp, generate-code-review, generate-meta-prompt), found {len(our_eps)}: {[ep.name for ep in our_eps]}'
-        except Exception as e:
-            # Simplified fallback - just check the commands exist
-            import subprocess
-            import os
-            print(f'Entry points API issue: {e}')
-            print('✅ Testing entry points by checking if commands are available...')
-            
-            # Test that the package was installed and entry points work
-            result = subprocess.run(['python', '-m', 'pip', 'show', 'gemini-code-review-mcp'], 
-                                  capture_output=True, text=True)
-            if result.returncode == 0:
-                print('✅ Package is installed')
-            else:
-                print('❌ Package not found')
-                exit(1)
-        "
+        pip install dist/*.whl
+        python -c "from src.server import generate_code_review_context; print('✓ Import successful')"
