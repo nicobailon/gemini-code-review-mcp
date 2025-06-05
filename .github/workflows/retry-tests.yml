@@ -10,8 +10,6 @@ jobs:
   retry-on-runner-failure:
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     runs-on: ubuntu-latest
-    outputs:
-      should_retry: ${{ steps.check.outputs.should_retry }}
     steps:
       - name: Check if runner failure
         id: check

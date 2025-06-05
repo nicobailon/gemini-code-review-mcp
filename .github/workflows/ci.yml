@@ -65,7 +65,7 @@ jobs:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY || 'dummy-key-for-tests' }}
         GEMINI_MODEL: gemini-2.0-flash-lite
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        PYTHONPATH: ${{ github.workspace }}
+        PYTHONPATH: ${{ github.workspace }}/src:${{ github.workspace }}
       run: |
         # Run critical tests first
         pytest tests/test_critical.py tests/test_smoke.py -v --tb=short
@@ -81,7 +81,7 @@ jobs:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY || 'dummy-key-for-tests' }}
         GEMINI_MODEL: gemini-2.0-flash-lite
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        PYTHONPATH: ${{ github.workspace }}
+        PYTHONPATH: ${{ github.workspace }}/src:${{ github.workspace }}
       run: |
         pytest -v --tb=short
 
