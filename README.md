@@ -86,6 +86,7 @@ If the MCP tools aren't working:
 | **`generate_pr_review`** | GitHub PR analysis | `github_pr_url`, `project_path` |
 | **`generate_code_review_context`** | Build review context | `project_path`, `scope`, `enable_gemini_review` |
 | **`generate_meta_prompt`** | Create contextual prompts | `project_path`, `text_output` |
+| **`generate_file_context`** | Generate context from specific files | `file_selections`, `user_instructions` |
 
 <details>
 <summary>📖 Detailed Tool Examples</summary>
@@ -109,6 +110,22 @@ If the MCP tools aren't working:
   tool_name: "generate_pr_review",
   arguments: {
     github_pr_url: "https://github.com/owner/repo/pull/123"
+  }
+}
+```
+
+### File-Based Context Generation
+```javascript
+// Generate context from specific files
+{
+  tool_name: "generate_file_context",
+  arguments: {
+    file_selections: [
+      { path: "src/main.py" },
+      { path: "src/utils.py", line_ranges: [[10, 50], [100, 150]] }
+    ],
+    project_path: "/path/to/project",
+    user_instructions: "Review for security vulnerabilities"
   }
 }
 ```
@@ -142,6 +159,15 @@ Human: Generate a detailed review using Gemini 2.5 Pro
 Claude: I'll use Gemini 2.5 Pro for a more detailed analysis.
 
 [Uses generate_ai_code_review with model="gemini-2.5-pro"]
+```
+
+#### File-Specific Review
+```
+Human: Review these specific files for security issues: auth.py, database.py lines 50-100
+
+Claude: I'll generate context from those specific files and line ranges.
+
+[Uses generate_file_context with file_selections and security-focused instructions]
 ```
 
 ## ⚙️ Configuration
@@ -194,6 +220,11 @@ generate-code-review /path/to/project
 generate-code-review . \
   --scope full_project \
   --model gemini-2.5-pro
+
+# File-based context generation
+generate-code-review . \
+  --files src/main.py src/utils.py:10-50 \
+  --file-instructions "Review for performance issues"
 
 # Meta-prompt only
 generate-meta-prompt --project-path . --stream
