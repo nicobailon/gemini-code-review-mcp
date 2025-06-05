@@ -8,7 +8,6 @@ context content in memory without ANY file system operations.
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, Callable
 
 import pytest
 

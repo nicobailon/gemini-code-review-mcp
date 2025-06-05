@@ -6,8 +6,6 @@ import os
 import sys
 from typing import Any, Callable, Dict, List, Optional, Protocol, Union, cast
 
-print("🚨 DEBUG: server.py module is being loaded!")
-
 # Add current directory to path for imports
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -1376,6 +1374,90 @@ async def generate_meta_prompt(
         raise
 
 
+@mcp.tool()
+def generate_file_context(
+    file_selections: List[Dict[str, Any]],
+    project_path: Optional[str] = None,
+    user_instructions: Optional[str] = None,
+    include_claude_memory: bool = True,
+    include_cursor_rules: bool = False,
+    auto_meta_prompt: bool = True,
+    temperature: float = 0.5,
+    text_output: bool = True,
+    output_path: Optional[str] = None,
+) -> str:
+    """Generate context from specific files with optional line ranges.
+    
+    Args:
+        file_selections: List of file selection dictionaries, each containing:
+            - path: str (required) - File path (absolute or relative to project_path)
+            - line_ranges: Optional[List[Tuple[int, int]]] - List of (start, end) tuples
+            - include_full: bool (default True) - Include full file if no ranges specified
+        project_path: Optional project root for relative paths and config discovery
+        user_instructions: Custom instructions for the context
+        include_claude_memory: Include CLAUDE.md files in context
+        include_cursor_rules: Include Cursor rules files in context  
+        auto_meta_prompt: Generate context-aware meta-prompt
+        temperature: AI temperature for meta-prompt generation
+        text_output: Return content directly (True) or save to file (False)
+        output_path: Custom output path when text_output=False
+        
+    Returns:
+        If text_output=True: Context content as string
+        If text_output=False: Success message with file path
+    """
+    try:
+        # Import required modules
+        from file_context_generator import generate_file_context_data, save_file_context
+        from file_context_types import FileContextConfig, FileSelection
+        
+        # Validate input
+        if not file_selections:
+            return "ERROR: file_selections cannot be empty"
+        
+        # Convert file_selections to proper FileSelection objects
+        normalized_selections: List[FileSelection] = []
+        for selection in file_selections:
+            if "path" not in selection:
+                return "ERROR: Each file selection must have a 'path' field"
+            
+            # Create FileSelection with proper types
+            normalized_selection = FileSelection(
+                path=selection["path"],
+                line_ranges=selection.get("line_ranges"),
+                include_full=selection.get("include_full", True)
+            )
+            normalized_selections.append(normalized_selection)
+        
+        # Create configuration
+        config = FileContextConfig(
+            file_selections=normalized_selections,
+            project_path=project_path,
+            user_instructions=user_instructions,
+            include_claude_memory=include_claude_memory,
+            include_cursor_rules=include_cursor_rules,
+            auto_meta_prompt=auto_meta_prompt,
+            temperature=temperature,
+            text_output=text_output,
+            output_path=output_path
+        )
+        
+        # Generate context
+        result = generate_file_context_data(config)
+        
+        # Handle output based on text_output mode
+        if text_output:
+            # Return content directly
+            return result.content
+        else:
+            # Save to file and return success message
+            saved_path = save_file_context(result, output_path, project_path)
+            return f"File context generated successfully: {os.path.basename(saved_path)}"
+    
+    except Exception as e:
+        return f"ERROR: {str(e)}"
+
+
 def get_mcp_tools():
     """Get list of available MCP tools for testing."""
     return [
@@ -1383,6 +1465,7 @@ def get_mcp_tools():
         "generate_ai_code_review",
         "generate_pr_review",
         "generate_meta_prompt",
+        "generate_file_context",
     ]
 
 

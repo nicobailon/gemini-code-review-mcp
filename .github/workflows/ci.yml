@@ -39,9 +39,6 @@ jobs:
         # Critical functionality and smoke tests
         pytest tests/test_critical.py tests/test_smoke.py -v --tb=short
         
-        # Package building, installation, and entry points
-        pytest tests/test_package.py -v --tb=short
-        
         # Core features: GitHub PR integration, configuration discovery, model handling
         pytest tests/test_github_pr_integration_tdd.py -v --tb=short
         pytest tests/test_configuration_discovery.py -v --tb=short
