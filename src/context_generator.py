@@ -910,18 +910,16 @@ Working examples:
     )
     
     # Process URL context if provided
+    # According to Gemini API docs, URLs should be included in the prompt text
+    # The URL context tool will automatically fetch and analyze them
     url_context_content = None
     if config.url_context:
-        try:
-            from .url_context_handler import process_url_context
-            url_context_content = process_url_context(config.url_context)
-        except ImportError:
-            try:
-                from url_context_handler import process_url_context
-                url_context_content = process_url_context(config.url_context)
-            except ImportError:
-                # Fallback if module not available
-                url_context_content = f"\n## URL Context\n\nURL context requested but handler not available: {config.url_context}\n"
+        urls = config.url_context if isinstance(config.url_context, list) else [config.url_context]
+        if urls:
+            url_context_content = "\n## Additional Context URLs\n\n"
+            url_context_content += "Please analyze the following URLs for additional context:\n"
+            for url in urls:
+                url_context_content += f"- {url}\n"
 
     # Prepare template data with enhanced configuration support
     template_data: Dict[str, Any] = {

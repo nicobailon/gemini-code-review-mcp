@@ -111,7 +111,7 @@ If the MCP tools aren't working:
   arguments: {
     github_pr_url: "https://github.com/owner/repo/pull/123",
     thinking_budget: 20000,    // Optional: thinking tokens
-    url_context: ["https://docs.api.com/v2"]  // Optional: additional context
+    url_context: ["https://docs.api.com/v2"]  // Optional: URLs for Gemini to analyze
   }
 }
 ```
@@ -198,6 +198,7 @@ The tool automatically discovers and includes:
 - ⚡ **Model Selection** - Choose between Gemini 2.0 Flash (speed) or 2.5 Pro (depth)
 - 🔄 **GitHub Integration** - Direct PR analysis with full context
 - 📊 **Progress Aware** - Understands development phases and task completion
+- 🔗 **URL Context** - Include URLs in prompts for Gemini to automatically fetch and analyze
 
 ## 🖥️ CLI Usage
 
@@ -229,7 +230,7 @@ generate-code-review . \
   --thinking-budget 20000 \
   --temperature 0.7
 
-# With URL context (foundation ready, handlers pending)
+# With URL context (URLs are analyzed by Gemini automatically)
 generate-code-review . \
   --url-context https://docs.python.org/3/library/asyncio.html \
   --url-context https://example.com/api-docs
