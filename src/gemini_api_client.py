@@ -136,6 +136,7 @@ def send_to_gemini_for_review(
     model: Optional[str] = None,
     return_text: bool = False,
     include_formatting: bool = True,
+    thinking_budget: Optional[int] = None,
 ) -> Optional[str]:
     """
     Send review context to Gemini for comprehensive code review with advanced features.
@@ -152,6 +153,7 @@ def send_to_gemini_for_review(
         model: Optional model override (default: uses GEMINI_MODEL env var or config default)
         return_text: If True, return generated text directly; if False, save to file and return file path
         include_formatting: If True, include headers and metadata; if False, return raw response (default: True)
+        thinking_budget: Optional token budget for thinking mode (if supported by model)
 
     Returns:
         Generated text (if return_text=True) or path to saved file (if return_text=False), or None if failed
@@ -219,10 +221,10 @@ def send_to_gemini_for_review(
         if actual_capabilities:
             print(f"✨ Enhanced features enabled: {', '.join(actual_capabilities)}")
             if thinking_enabled:
-                thinking_budget = os.getenv("THINKING_BUDGET")
+                thinking_budget_str = os.getenv("THINKING_BUDGET")
                 budget_info = (
-                    f" (budget: {thinking_budget} tokens)"
-                    if thinking_budget
+                    f" (budget: {thinking_budget_str} tokens)"
+                    if thinking_budget_str
                     else " (auto-budget)"
                 )
                 print(f"   💭 Thinking mode: Deep reasoning{budget_info}")
@@ -267,9 +269,14 @@ def send_to_gemini_for_review(
 
         # Configure thinking mode - enabled by default for supported models
         thinking_config = None
-        thinking_budget = os.getenv(
-            "THINKING_BUDGET"
-        )  # Let model auto-adjust if not specified
+        # Use parameter thinking_budget if provided, otherwise check env var
+        if thinking_budget is None:
+            thinking_budget_str = os.getenv("THINKING_BUDGET")
+            if thinking_budget_str and thinking_budget_str.strip():
+                try:
+                    thinking_budget = int(thinking_budget_str)
+                except (ValueError, TypeError):
+                    thinking_budget = None
         include_thoughts = os.getenv("INCLUDE_THOUGHTS", "true").lower() == "true"
 
         if thinking_enabled:
@@ -277,18 +284,10 @@ def send_to_gemini_for_review(
                 if "gemini-2.5-flash" in model_config:
                     # Full thinking support with optional budget control
                     config_params = {"include_thoughts": include_thoughts}
-                    if thinking_budget and thinking_budget.strip():
-                        try:
-                            # budget_val = int(thinking_budget)  # Not used currently
-                            # Note: thinking_budget parameter not supported in current API
-                            # budget_msg = f"budget: {min(budget_val, 24576)}"  # Not used currently
-                            pass
-                        except (ValueError, TypeError):
-                            # Invalid budget value, use auto-adjust
-                            # budget_msg = "budget: auto-adjust"  # Not used currently
-                            pass
-                    else:
-                        # budget_msg = "budget: auto-adjust"  # Not used currently
+                    if thinking_budget is not None:
+                        # Note: thinking_budget parameter not supported in current API
+                        # When API supports it, we'll add:
+                        # config_params["thinking_budget"] = min(thinking_budget, 24576)
                         pass
                     thinking_config = (
                         types.ThinkingConfig(**config_params)

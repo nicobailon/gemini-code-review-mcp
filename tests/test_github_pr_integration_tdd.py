@@ -645,5 +645,26 @@ class TestIntegrationScenarios:
 # Import subprocess for use in tests
 import subprocess
 
+
+class TestThinkingBudgetIntegration:
+    """Test thinking budget parameter integration with GitHub PR context."""
+    
+    def test_pr_context_with_thinking_budget_param(self):
+        """Test that PR context generation can accept thinking_budget parameter."""
+        from src.config_types import CodeReviewConfig
+        
+        # Create config with thinking_budget
+        config = CodeReviewConfig(
+            project_path="/tmp/test",
+            github_pr_url="https://github.com/owner/repo/pull/123",
+            thinking_budget=15000,
+            temperature=0.7,
+        )
+        
+        # Verify config accepts thinking_budget
+        assert config.thinking_budget == 15000
+        assert hasattr(config, 'url_context')
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

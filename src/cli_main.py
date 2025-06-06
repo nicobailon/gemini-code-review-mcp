@@ -317,6 +317,18 @@ def create_argument_parser():
         type=str,
         help="Custom instructions for file-based context generation",
     )
+    
+    # Thinking budget and URL context parameters
+    parser.add_argument(
+        "--thinking-budget",
+        type=int,
+        help="Token budget for thinking mode (if supported by model)",
+    )
+    parser.add_argument(
+        "--url-context",
+        action="append",
+        help="URL(s) to include in context (can be repeated for multiple URLs)",
+    )
 
     return parser
 
@@ -747,6 +759,8 @@ Working examples:
             github_pr_url=getattr(args, "github_pr_url"),
             include_claude_memory=not args.no_claude_memory,
             include_cursor_rules=args.include_cursor_rules,
+            thinking_budget=getattr(args, "thinking_budget", None),
+            url_context=getattr(args, "url_context", None),
         )
 
         print("\n🎉 Code review process completed!")

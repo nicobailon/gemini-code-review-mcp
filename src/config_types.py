@@ -6,7 +6,7 @@ This module defines shared configuration types used across the codebase.
 """
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union, List
 
 
 @dataclass
@@ -30,3 +30,5 @@ class CodeReviewConfig:
     include_cursor_rules: bool = False
     raw_context_only: bool = False
     auto_prompt_content: Optional[str] = None
+    thinking_budget: Optional[int] = None
+    url_context: Optional[Union[str, List[str]]] = None

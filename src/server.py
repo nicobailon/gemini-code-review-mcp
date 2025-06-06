@@ -301,6 +301,8 @@ async def generate_pr_review(
     create_context_file: bool = False,
     raw_context_only: bool = False,
     text_output: bool = False,
+    thinking_budget: Optional[int] = None,
+    url_context: Optional[Union[str, List[str]]] = None,
 ) -> str:
     """Generate code review for a GitHub Pull Request with configuration discovery.
 
@@ -316,6 +318,8 @@ async def generate_pr_review(
         create_context_file: Save context to file and return context content (default: false)
         raw_context_only: Return raw context content without AI processing (default: false)
         text_output: Return content directly without saving (default: false - saves to timestamped .md file)
+        thinking_budget: Optional token budget for thinking mode (if supported by model)
+        url_context: Optional URL(s) to include in context - can be string or list of strings
 
     Returns:
         Default: Saves review to pr-review-feedback-[timestamp].md file and returns success message
@@ -364,6 +368,7 @@ async def generate_pr_review(
                         project_path=project_path,
                         scope="recent_phase",  # Default scope for PR reviews
                         temperature=temperature,
+                        thinking_budget=thinking_budget,
                     )
                     auto_prompt_content = meta_prompt_result.get("generated_prompt")
                     if not auto_prompt_content:
@@ -515,6 +520,7 @@ Provide specific, actionable feedback with examples where appropriate."""
 {context_content}""",
                     temperature=temperature,
                     return_text=True,  # Return text directly instead of saving to file
+                    thinking_budget=thinking_budget,
                 )
 
                 # Handle return based on text_output setting
@@ -564,6 +570,8 @@ def generate_code_review_context(
     raw_context_only: bool = False,
     text_output: bool = True,
     auto_meta_prompt: bool = True,
+    thinking_budget: Optional[int] = None,
+    url_context: Optional[Union[str, List[str]]] = None,
 ) -> str:
     """Prepare analysis data and context for code review (does not generate the actual review).
 
@@ -581,6 +589,8 @@ def generate_code_review_context(
         raw_context_only: Exclude default AI review instructions (default: false)
         text_output: Return context directly as text (default: true - for AI agent chaining)
         auto_meta_prompt: Automatically generate and embed meta prompt in user_instructions (default: true)
+        thinking_budget: Optional token budget for thinking mode (if supported by model)
+        url_context: Optional URL(s) to include in context - can be string or list of strings
 
     Returns:
         Default (text_output=True): Generated context content as text string for AI agent chaining
@@ -648,7 +658,8 @@ def generate_code_review_context(
                 from meta_prompt_analyzer import generate_optimized_meta_prompt
 
                 meta_prompt_result = generate_optimized_meta_prompt(
-                    project_path=project_path, scope=scope
+                    project_path=project_path, scope=scope,
+                    thinking_budget=thinking_budget,
                 )
                 auto_prompt_content = meta_prompt_result.get("generated_prompt")
                 if not auto_prompt_content:
@@ -756,6 +767,8 @@ def generate_ai_code_review(
     auto_meta_prompt: bool = True,
     include_claude_memory: bool = True,
     include_cursor_rules: bool = False,
+    thinking_budget: Optional[int] = None,
+    url_context: Optional[Union[str, List[str]]] = None,
 ) -> str:
     """Generate AI-powered code review from context file, content, or project analysis.
 
@@ -774,6 +787,8 @@ def generate_ai_code_review(
         auto_meta_prompt: Automatically generate and embed meta prompt (default: true)
         include_claude_memory: Include CLAUDE.md files in context (default: true)
         include_cursor_rules: Include Cursor rules files in context (default: false)
+        thinking_budget: Optional token budget for thinking mode (if supported by model)
+        url_context: Optional URL(s) to include in context - can be string or list of strings
 
     Returns:
         Default (text_output=True): Generated AI review content as text string for AI agent chaining
@@ -869,6 +884,7 @@ Provide specific, actionable feedback with code examples where appropriate."""
                     temperature=temperature,
                     model=model,
                     return_text=True,  # Return text directly instead of saving to file
+                    thinking_budget=thinking_budget,
                 )
 
                 if not ai_review_content:
@@ -925,6 +941,7 @@ Provide specific, actionable feedback with code examples where appropriate."""
                     temperature=temperature,
                     model=model,
                     return_text=True,  # Return text directly instead of saving to file
+                    thinking_budget=thinking_budget,
                 )
 
                 if not ai_review_content:
@@ -971,6 +988,7 @@ Provide specific, actionable feedback with code examples where appropriate."""
                             project_path=project_path,
                             scope=scope,
                             temperature=temperature,
+                            thinking_budget=thinking_budget,
                         )
                         auto_prompt_content = meta_prompt_result.get("generated_prompt")
                     else:
@@ -1036,6 +1054,7 @@ Provide specific, actionable feedback with code examples where appropriate."""
                         temperature=temperature,
                         model=model,
                         return_text=True,  # Return text directly instead of saving to file
+                        thinking_budget=thinking_budget,
                     )
 
                     if not ai_review_content:
@@ -1107,6 +1126,8 @@ async def generate_meta_prompt(
     custom_template: Optional[str] = None,
     output_path: Optional[str] = None,
     text_output: bool = False,
+    thinking_budget: Optional[int] = None,
+    url_context: Optional[Union[str, List[str]]] = None,
 ) -> Union[Dict[str, Any], str]:
     """Generate meta-prompt for AI code review based on completed work analysis.
 
@@ -1140,6 +1161,8 @@ async def generate_meta_prompt(
         custom_template: Custom meta-prompt template string (overrides environment and default)
         output_path: Optional path to save the meta-prompt as a file
         text_output: If True, return just the prompt text; if False, return full metadata dict
+        thinking_budget: Optional token budget for thinking mode (if supported by model)
+        url_context: Optional URL(s) to include in context - can be string or list of strings
 
     Returns:
         If text_output=True: Just the generated meta-prompt text
@@ -1306,6 +1329,7 @@ async def generate_meta_prompt(
                 temperature=0.3,  # Lower temperature for more consistent meta-prompt generation
                 return_text=True,  # Return text directly instead of saving to file
                 include_formatting=False,  # Return raw response without headers/footers for auto-prompt
+                thinking_budget=thinking_budget,
             )
 
             if not generated_prompt:
@@ -1385,6 +1409,8 @@ def generate_file_context(
     temperature: float = 0.5,
     text_output: bool = True,
     output_path: Optional[str] = None,
+    thinking_budget: Optional[int] = None,
+    url_context: Optional[Union[str, List[str]]] = None,
 ) -> str:
     """Generate context from specific files with optional line ranges.
     
@@ -1401,6 +1427,8 @@ def generate_file_context(
         temperature: AI temperature for meta-prompt generation
         text_output: Return content directly (True) or save to file (False)
         output_path: Custom output path when text_output=False
+        thinking_budget: Optional token budget for thinking mode (if supported by model)
+        url_context: Optional URL(s) to include in context - can be string or list of strings
         
     Returns:
         If text_output=True: Context content as string

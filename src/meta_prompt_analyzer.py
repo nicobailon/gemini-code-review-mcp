@@ -235,6 +235,7 @@ def generate_meta_prompt_from_analysis(
     project_data: Dict[str, Any],
     custom_template: Optional[str] = None,
     temperature: float = 0.5,
+    thinking_budget: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     Generate meta prompt from project analysis data.
@@ -243,6 +244,7 @@ def generate_meta_prompt_from_analysis(
         project_data: Project analysis data from analyze_project_for_meta_prompt
         custom_template: Optional custom template string
         temperature: Temperature for AI model (default: 0.5, range: 0.0-2.0)
+        thinking_budget: Optional token budget for thinking mode (if supported by model)
 
     Returns:
         Dict containing generated_prompt and metadata
@@ -308,6 +310,7 @@ Scope: {project_data['scope']}
                 temperature=temperature,
                 return_text=True,  # Return text directly instead of saving to file
                 include_formatting=False,  # Return raw response without headers/footers
+                thinking_budget=thinking_budget,
             )
 
             if not generated_prompt:
@@ -333,6 +336,7 @@ def generate_optimized_meta_prompt(
     scope: str = "recent_phase",
     custom_template: Optional[str] = None,
     temperature: float = 0.5,
+    thinking_budget: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     Generate meta prompt with optimized single-pass analysis.
@@ -345,6 +349,7 @@ def generate_optimized_meta_prompt(
         scope: Analysis scope
         custom_template: Optional custom template string
         temperature: Temperature for AI model (default: 0.5, range: 0.0-2.0)
+        thinking_budget: Optional token budget for thinking mode (if supported by model)
 
     Returns:
         Dict containing generated_prompt and metadata
@@ -358,7 +363,7 @@ def generate_optimized_meta_prompt(
 
         # Step 2: Generate meta prompt from analysis
         meta_prompt_result = generate_meta_prompt_from_analysis(
-            project_data, custom_template, temperature
+            project_data, custom_template, temperature, thinking_budget
         )
 
         return meta_prompt_result
