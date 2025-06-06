@@ -221,12 +221,10 @@ def send_to_gemini_for_review(
         if actual_capabilities:
             print(f"✨ Enhanced features enabled: {', '.join(actual_capabilities)}")
             if thinking_enabled:
-                thinking_budget_str = os.getenv("THINKING_BUDGET")
-                budget_info = (
-                    f" (budget: {thinking_budget_str} tokens)"
-                    if thinking_budget_str
-                    else " (auto-budget)"
-                )
+                if thinking_budget is not None:
+                    budget_info = f" (budget: {thinking_budget} tokens)"
+                else:
+                    budget_info = " (auto-budget)"
                 print(f"   💭 Thinking mode: Deep reasoning{budget_info}")
             if grounding_enabled:
                 print("   🌐 Web grounding: Real-time information lookup")
@@ -281,27 +279,29 @@ def send_to_gemini_for_review(
 
         if thinking_enabled:
             try:
+                config_params = {"include_thoughts": include_thoughts}
+                
+                # Handle thinking budget based on model type
                 if "gemini-2.5-flash" in model_config:
-                    # Full thinking support with optional budget control
-                    config_params = {"include_thoughts": include_thoughts}
+                    # Flash model: 0-24,576 tokens (can disable with 0)
                     if thinking_budget is not None:
-                        # Note: thinking_budget parameter not supported in current API
-                        # When API supports it, we'll add:
-                        # config_params["thinking_budget"] = min(thinking_budget, 24576)
-                        pass
-                    thinking_config = (
-                        types.ThinkingConfig(**config_params)
-                        if types is not None
-                        else None
-                    )
+                        validated_budget = max(0, min(thinking_budget, 24576))
+                        config_params["thinking_budget"] = validated_budget
+                        if thinking_budget != validated_budget:
+                            logger.info(f"Thinking budget adjusted from {thinking_budget} to {validated_budget} (Flash limit: 0-24,576)")
                 elif "gemini-2.5-pro" in model_config:
-                    # Pro models support summaries only
-                    thinking_config = (
-                        types.ThinkingConfig(include_thoughts=include_thoughts)
-                        if types is not None
-                        else None
-                    )
-                    # budget_msg = "budget: N/A (Pro model)"  # Not used currently
+                    # Pro model: 128-32,768 tokens (cannot disable)
+                    if thinking_budget is not None:
+                        validated_budget = max(128, min(thinking_budget, 32768))
+                        config_params["thinking_budget"] = validated_budget
+                        if thinking_budget != validated_budget:
+                            logger.info(f"Thinking budget adjusted from {thinking_budget} to {validated_budget} (Pro limit: 128-32,768)")
+                
+                thinking_config = (
+                    types.ThinkingConfig(**config_params)
+                    if types is not None
+                    else None
+                )
             except (AttributeError, TypeError) as e:
                 logger.warning(f"Thinking configuration failed: {e}")
 

@@ -182,7 +182,7 @@ Claude: I'll generate context from those specific files and line ranges.
 | `GITHUB_TOKEN` | ⬜ | - | GitHub token for PR reviews ([create one](https://github.com/settings/tokens)) |
 | `GEMINI_MODEL` | ⬜ | `gemini-2.0-flash` | AI model selection |
 | `GEMINI_TEMPERATURE` | ⬜ | `0.5` | Creativity (0.0-2.0) |
-| `THINKING_BUDGET` | ⬜ | - | Token budget for thinking mode (when supported) |
+| `THINKING_BUDGET` | ⬜ | Auto | Thinking tokens (Pro: 128-32768, Flash: 0-24576) |
 
 ### Automatic Configuration Discovery
 
