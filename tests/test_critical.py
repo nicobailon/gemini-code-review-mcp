@@ -142,18 +142,29 @@ class TestThinkingBudgetIntegration:
             assert os.getenv('THINKING_BUDGET') == '25000'
             
     def test_url_context_parameter_works(self):
-        """Test that url_context parameter is properly handled."""
-        from server import generate_ai_code_review
+        """Test that url_context parameter is properly handled in generate_ai_code_review."""
+        # Import the actual function that's wrapped by the MCP tool
+        import sys
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
         
-        # Test that the function accepts url_context without errors
-        # The actual functionality will be implemented later
-        try:
-            # This should not raise an error
-            sig = generate_ai_code_review.__annotations__
-            # url_context should be in the function signature
-            assert any('url_context' in str(param) for param in str(sig).split(','))
-        except Exception:
-            # Fallback check using inspect
-            import inspect
-            sig = inspect.signature(generate_ai_code_review)
-            assert 'url_context' in sig.parameters
+        # Since generate_ai_code_review is defined inside server.py, we need to check
+        # if the function signature includes url_context parameter
+        # We'll check this by looking at the function definition in the source
+        server_path = os.path.join(os.path.dirname(__file__), '..', 'src', 'server.py')
+        with open(server_path, 'r') as f:
+            content = f.read()
+            
+        # Find the generate_ai_code_review function definition
+        import re
+        # Look for the function definition with url_context parameter
+        pattern = r'def generate_ai_code_review\([^)]*url_context[^)]*\)'
+        match = re.search(pattern, content, re.DOTALL)
+        
+        assert match is not None, "url_context parameter not found in generate_ai_code_review function"
+        
+        # Also verify the parameter type definition is correct (string, list of strings, or None)
+        # Look for the url_context parameter type annotation
+        param_pattern = r'url_context:\s*Optional\[Union\[str,\s*List\[str\]\]\]'
+        param_match = re.search(param_pattern, content)
+        assert param_match is not None, "url_context parameter type definition not found"
