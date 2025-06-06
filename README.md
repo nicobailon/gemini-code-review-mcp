@@ -97,7 +97,8 @@ If the MCP tools aren't working:
   tool_name: "generate_ai_code_review",
   arguments: {
     project_path: "/path/to/project",
-    model: "gemini-2.5-pro"  // Optional: use advanced model
+    model: "gemini-2.5-pro",  // Optional: use advanced model
+    thinking_budget: 15000    // Optional: thinking tokens (when supported)
   }
 }
 ```
@@ -108,7 +109,9 @@ If the MCP tools aren't working:
 {
   tool_name: "generate_pr_review",
   arguments: {
-    github_pr_url: "https://github.com/owner/repo/pull/123"
+    github_pr_url: "https://github.com/owner/repo/pull/123",
+    thinking_budget: 20000,    // Optional: thinking tokens
+    url_context: ["https://docs.api.com/v2"]  // Optional: URLs for Gemini to analyze
   }
 }
 ```
@@ -179,6 +182,7 @@ Claude: I'll generate context from those specific files and line ranges.
 | `GITHUB_TOKEN` | ⬜ | - | GitHub token for PR reviews ([create one](https://github.com/settings/tokens)) |
 | `GEMINI_MODEL` | ⬜ | `gemini-2.0-flash` | AI model selection |
 | `GEMINI_TEMPERATURE` | ⬜ | `0.5` | Creativity (0.0-2.0) |
+| `THINKING_BUDGET` | ⬜ | Auto | Thinking tokens (Pro: 128-32768, Flash: 0-24576) |
 
 ### Automatic Configuration Discovery
 
@@ -194,6 +198,7 @@ The tool automatically discovers and includes:
 - ⚡ **Model Selection** - Choose between Gemini 2.0 Flash (speed) or 2.5 Pro (depth)
 - 🔄 **GitHub Integration** - Direct PR analysis with full context
 - 📊 **Progress Aware** - Understands development phases and task completion
+- 🔗 **URL Context** - Include URLs in prompts for Gemini to automatically fetch and analyze
 
 ## 🖥️ CLI Usage
 
@@ -219,6 +224,16 @@ generate-code-review /path/to/project
 generate-code-review . \
   --scope full_project \
   --model gemini-2.5-pro
+
+# With thinking budget
+generate-code-review . \
+  --thinking-budget 20000 \
+  --temperature 0.7
+
+# With URL context (URLs are analyzed by Gemini automatically)
+generate-code-review . \
+  --url-context https://docs.python.org/3/library/asyncio.html \
+  --url-context https://example.com/api-docs
 
 # File-based context generation
 generate-code-review . \

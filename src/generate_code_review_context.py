@@ -14,7 +14,7 @@ consider importing directly from the specific modules:
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Union, List
 
 # Import only what's actually used in this module
 try:
@@ -150,6 +150,8 @@ def generate_code_review_context_main(
     include_cursor_rules: bool = False,
     raw_context_only: bool = False,
     auto_prompt_content: Optional[str] = None,
+    thinking_budget: Optional[int] = None,
+    url_context: Optional[Union[str, List[str]]] = None,
 ) -> tuple[str, Optional[str]]:
     """
     Generate code review context with enhanced configuration discovery.
@@ -198,6 +200,8 @@ def generate_code_review_context_main(
         include_cursor_rules=include_cursor_rules,
         raw_context_only=raw_context_only,
         auto_prompt_content=auto_prompt_content,
+        thinking_budget=thinking_budget,
+        url_context=url_context,
     )
 
     return _generate_code_review_context_impl(config)

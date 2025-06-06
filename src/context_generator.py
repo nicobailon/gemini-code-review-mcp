@@ -308,6 +308,10 @@ Based on the PRD, the completed phase, all subtasks that were finished in that p
 
         template += """
 </user_instructions>"""
+    
+    # Add URL context if available
+    if data.get("url_context_content"):
+        template += "\n\n" + data["url_context_content"] + "\n"
 
     return template
 
@@ -904,6 +908,18 @@ Working examples:
     configuration_content = format_configuration_context_for_ai(
         claude_memory_files, cursor_rules
     )
+    
+    # Process URL context if provided
+    # According to Gemini API docs, URLs should be included in the prompt text
+    # The URL context tool will automatically fetch and analyze them
+    url_context_content = None
+    if config.url_context:
+        urls = config.url_context if isinstance(config.url_context, list) else [config.url_context]
+        if urls:
+            url_context_content = "\n## Additional Context URLs\n\n"
+            url_context_content += "Please analyze the following URLs for additional context:\n"
+            for url in urls:
+                url_context_content += f"- {url}\n"
 
     # Prepare template data with enhanced configuration support
     template_data: Dict[str, Any] = {
@@ -934,6 +950,7 @@ Working examples:
         "configuration_errors": configurations["discovery_errors"],
         "raw_context_only": config.raw_context_only,
         "auto_prompt_content": config.auto_prompt_content,
+        "url_context_content": url_context_content,
     }
 
     return template_data
@@ -1014,7 +1031,8 @@ def process_and_output_review(
             config.project_path if config.project_path is not None else os.getcwd()
         )
         gemini_output = send_to_gemini_for_review(
-            review_context, project_path, config.temperature
+            review_context, project_path, config.temperature,
+            thinking_budget=config.thinking_budget
         )
         if gemini_output:
             print(f"✅ AI code review completed: {os.path.basename(gemini_output)}")
