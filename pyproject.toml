@@ -105,3 +105,8 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "integration: marks tests as integration tests that use real APIs (deselect with '-m \"not integration\"')",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+addopts = "-m 'not integration'"  # By default, skip integration tests
