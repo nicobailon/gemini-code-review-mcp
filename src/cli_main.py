@@ -352,11 +352,7 @@ def validate_cli_arguments(args: Any):
             "--context-only to generate raw context without AI review."
         )
 
-    # Validate project path
-    if args.project_path is None:
-        raise ValueError(
-            "project_path is required. Please specify a path to your project directory."
-        )
+    # Project path is optional - defaults to current directory in generate_code_review_context_main
 
     # Validate temperature range
     if args.temperature < 0.0 or args.temperature > 2.0:
@@ -652,7 +648,9 @@ Working examples:
 
                 # Execute auto-prompt workflow
                 # Convert project path to absolute path for meta prompt analyzer
-                absolute_project_path = os.path.abspath(args.project_path)
+                # Use current directory if not specified
+                project_path = args.project_path or os.getcwd()
+                absolute_project_path = os.path.abspath(project_path)
                 result = execute_auto_prompt_workflow(
                     project_path=absolute_project_path,
                     scope=args.scope,
