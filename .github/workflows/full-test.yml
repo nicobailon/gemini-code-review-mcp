@@ -1,9 +1,7 @@
-name: Full Test Suite (Manual/Weekly)
+name: Full Test Suite (Manual)
 
 on:
-  workflow_dispatch:  # Manual trigger
-  schedule:
-    - cron: '0 0 * * 0'  # Weekly on Sunday
+  workflow_dispatch:  # Manual trigger only
 
 jobs:
   comprehensive-test:
