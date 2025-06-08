@@ -92,12 +92,20 @@ If the MCP tools aren't working:
 
 ### AI Code Review
 ```javascript
-// Quick project review
+// Quick project review (uses default model: gemini-2.0-flash)
+{
+  tool_name: "generate_ai_code_review",
+  arguments: {
+    project_path: "/path/to/project"
+  }
+}
+
+// With advanced model
 {
   tool_name: "generate_ai_code_review",
   arguments: {
     project_path: "/path/to/project",
-    model: "gemini-2.5-pro",  // Optional: use advanced model
+    model: "gemini-2.5-pro",  // Uses alias for gemini-2.5-pro-preview-06-05
     thinking_budget: 15000    // Optional: thinking tokens (when supported)
   }
 }
@@ -110,8 +118,16 @@ If the MCP tools aren't working:
   tool_name: "generate_pr_review",
   arguments: {
     github_pr_url: "https://github.com/owner/repo/pull/123",
-    thinking_budget: 20000,    // Optional: thinking tokens
-    url_context: ["https://docs.api.com/v2"]  // Optional: URLs for Gemini to analyze
+    thinking_budget: 20000    // Optional: thinking tokens
+  }
+}
+
+// With reference documentation
+{
+  tool_name: "generate_pr_review",
+  arguments: {
+    github_pr_url: "https://github.com/owner/repo/pull/123",
+    url_context: ["https://docs.api.com/v2/guidelines"]  // Optional: Reference docs for the review
   }
 }
 ```
@@ -184,6 +200,53 @@ Claude: I'll generate context from those specific files and line ranges.
 | `GEMINI_TEMPERATURE` | ⬜ | `0.5` | Creativity (0.0-2.0) |
 | `THINKING_BUDGET` | ⬜ | Auto | Thinking tokens (Pro: 128-32768, Flash: 0-24576) |
 
+### Model Configuration
+
+#### Default Models
+- **Primary Model**: `gemini-2.0-flash` - Fast, efficient model for code reviews
+- **Summary Model**: `gemini-2.0-flash-lite` - Used internally for quick summaries
+
+#### Model Aliases
+For convenience, you can use these short aliases instead of full model names:
+
+| Alias | Full Model Name | Features |
+|:------|:----------------|:---------|
+| `gemini-2.5-pro` | `gemini-2.5-pro-preview-06-05` | Advanced reasoning, thinking mode, URL context |
+| `gemini-2.5-flash` | `gemini-2.5-flash-preview-05-20` | Fast, thinking mode, URL context |
+
+#### Available Models
+All models support code review, with varying capabilities:
+
+**With Thinking Mode + URL Context:**
+- `gemini-2.5-pro` (alias) / `gemini-2.5-pro-preview-06-05`
+- `gemini-2.5-flash` (alias) / `gemini-2.5-flash-preview-05-20`
+
+**With URL Context Only:**
+- `gemini-2.0-flash` (default)
+- `gemini-2.0-flash-live-001`
+
+**Basic Models:**
+- `gemini-1.5-pro`
+- `gemini-1.5-flash` (used for integration tests - cost-effective)
+
+#### Usage Examples
+```javascript
+// Using default model (gemini-2.0-flash)
+{ tool_name: "generate_ai_code_review", arguments: { project_path: "/path" } }
+
+// Using alias for advanced model
+{ tool_name: "generate_ai_code_review", arguments: { 
+  project_path: "/path",
+  model: "gemini-2.5-pro"  // Automatically resolves to gemini-2.5-pro-preview-06-05
+} }
+
+// Using full model name
+{ tool_name: "generate_ai_code_review", arguments: { 
+  project_path: "/path",
+  model: "gemini-2.5-pro-preview-06-05"
+} }
+```
+
 ### Automatic Configuration Discovery
 
 The tool automatically discovers and includes:
@@ -198,7 +261,7 @@ The tool automatically discovers and includes:
 - ⚡ **Model Selection** - Choose between Gemini 2.0 Flash (speed) or 2.5 Pro (depth)
 - 🔄 **GitHub Integration** - Direct PR analysis with full context
 - 📊 **Progress Aware** - Understands development phases and task completion
-- 🔗 **URL Context** - Include URLs in prompts for Gemini to automatically fetch and analyze
+- 🔗 **URL Context** - Gemini automatically fetches and analyzes URLs in prompts (or use `--url-context` flag)
 
 ## 🖥️ CLI Usage
 
@@ -217,7 +280,10 @@ pip install gemini-code-review-mcp
 ### Commands
 
 ```bash
-# Basic review
+# Basic review (current directory)
+generate-code-review
+
+# Review specific project
 generate-code-review /path/to/project
 
 # Advanced options
@@ -225,23 +291,21 @@ generate-code-review . \
   --scope full_project \
   --model gemini-2.5-pro
 
-# With thinking budget
-generate-code-review . \
-  --thinking-budget 20000 \
-  --temperature 0.7
+# With thinking budget (current directory)
+generate-code-review --thinking-budget 20000 --temperature 0.7
 
-# With URL context (URLs are analyzed by Gemini automatically)
-generate-code-review . \
-  --url-context https://docs.python.org/3/library/asyncio.html \
-  --url-context https://example.com/api-docs
+# With URL context for framework-specific review
+generate-code-review \
+  --file-instructions "Review my async implementation against the official docs" \
+  --url-context https://docs.python.org/3/library/asyncio.html
 
 # File-based context generation
-generate-code-review . \
+generate-code-review \
   --files src/main.py src/utils.py:10-50 \
   --file-instructions "Review for performance issues"
 
-# Meta-prompt only
-generate-meta-prompt --project-path . --stream
+# Meta-prompt only (current directory)
+generate-meta-prompt --stream
 ```
 
 ### Supported File Formats
@@ -269,6 +333,47 @@ python -m pytest tests/    # Run all tests in venv
 make lint                  # Check code style
 make test-cli             # Test CLI commands
 ```
+
+### Testing Configuration
+
+The test suite includes both mocked unit tests and real API integration tests:
+
+#### Unit Tests (Default)
+- **Fast execution**: Mock all external API calls
+- **No API key required**: Run without any setup
+- **Model configuration**: Tests use `gemini-2.0-flash` defaults
+- **Run with**: `pytest` or `python -m pytest tests/`
+
+#### Integration Tests (Optional)
+- **Real API calls**: Uses `gemini-1.5-flash` for cost-effective testing
+- **API key required**: Set `GEMINI_API_KEY` environment variable
+- **Limited features**: Tests only features supported by `gemini-1.5-flash` (no thinking mode/URL context)
+- **Run with**: `pytest -m integration` or `pytest tests/integration/`
+
+#### Running Tests
+```bash
+# Run only unit tests (default, fast)
+pytest
+
+# Run only integration tests (requires API key)
+export GEMINI_API_KEY=your_key_here
+pytest -m integration
+
+# Run all tests including integration
+pytest -m ""
+
+# Run specific integration test
+pytest tests/integration/test_gemini_real.py::TestGeminiRealAPI::test_basic_code_review_generation
+
+# Verbose output with integration tests
+pytest -v -m integration
+```
+
+#### Test Features
+- **Model verification**: Ensures `gemini-1.5-flash` is used for integration tests
+- **Capability testing**: Validates that unsupported features are properly handled
+- **Error handling**: Tests graceful degradation with invalid inputs
+- **Temperature testing**: Verifies model parameter effects
 
 ## 📏 License
 
