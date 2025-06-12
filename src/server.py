@@ -23,7 +23,7 @@ try:
         )
         from .model_config_manager import load_model_config
         from .file_context_generator import generate_file_context_data, save_file_context
-        from .file_context_types import FileContextConfig, FileSelection
+        from .file_context_types import FileContextConfig
         from .file_selector import normalize_file_selections_from_dicts
     except ImportError:
         # Fall back to absolute imports for testing
@@ -33,7 +33,7 @@ try:
         )
         from model_config_manager import load_model_config
         from file_context_generator import generate_file_context_data, save_file_context
-        from file_context_types import FileContextConfig, FileSelection
+        from file_context_types import FileContextConfig
         from file_selector import normalize_file_selections_from_dicts
 except ImportError as e:
     print(f"Required dependencies not available: {e}", file=sys.stderr)
@@ -567,14 +567,11 @@ Provide specific, actionable feedback with examples where appropriate."""
         except Exception as e:
             return f"ERROR: Failed to generate AI review from context: {str(e)}"
 
-        # If we get here, context generation failed
-        return f"ERROR: Failed to generate context from GitHub PR: {github_pr_url}"
-
     except Exception as e:
         return f"ERROR: Failed to generate GitHub PR review: {str(e)}"
 
 
-@mcp.tool()
+# Internal helper - not registered as an MCP tool
 def generate_code_review_context(
     project_path: str,
     scope: str = "recent_phase",
@@ -1136,7 +1133,7 @@ Provide specific, actionable feedback with code examples where appropriate."""
         return f"ERROR: Unexpected error: {str(e)}"
 
 
-@mcp.tool()
+# Internal helper - not registered as an MCP tool
 async def generate_meta_prompt(
     context_file_path: Optional[str] = None,
     context_content: Optional[str] = None,
@@ -1150,12 +1147,12 @@ async def generate_meta_prompt(
 ) -> Union[Dict[str, Any], str]:
     """Generate meta-prompt for AI code review based on completed work analysis.
 
-    This MCP tool analyzes completed development work and project guidelines to create
+    Internal helper that analyzes completed development work and project guidelines to create
     tailored meta-prompts that guide AI agents in providing contextually relevant code reviews.
 
     Template Priority (highest to lowest):
-    1. custom_template parameter - Direct template string via MCP tool call
-    2. META_PROMPT_TEMPLATE env var - Template via MCP client config (e.g., Claude Code/Cursor)
+    1. custom_template parameter - Direct template string via function call
+    2. META_PROMPT_TEMPLATE env var - Template via environment configuration
     3. Default template - From model_config.json
 
     MCP Client Environment Configuration Example:
@@ -1461,8 +1458,8 @@ def generate_file_context(
         stacklevel=2
     )
     
-    # This function now replicates the OLD behavior to avoid breaking changes.
-    # It DOES NOT call Gemini.
+    # This function provides context generation without calling Gemini.
+    # It remains as an MCP tool for backward compatibility but is deprecated.
     
     # Note: We keep returning ERROR strings for backward compatibility with existing tests.
     # The new ask_gemini tool uses exceptions instead, which is the preferred approach.
@@ -1592,35 +1589,19 @@ def ask_gemini(
 
 
 def get_mcp_tools():
-    """Get list of available MCP tools for testing."""
+    """Get list of available MCP tools for testing.
+    
+    Note: Keep this list in sync with tools decorated with @mcp.tool().
+    Consider adding a test to verify registry consistency.
+    """
     return [
-        "generate_code_review_context",
         "generate_ai_code_review",
         "generate_pr_review",
-        "generate_meta_prompt",
         "ask_gemini",
-        "generate_file_context",  # Keep for backward compatibility
+        "generate_file_context",  # legacy compatibility
     ]
 
 
-def get_mcp_tool_schema(tool_name: str):
-    """Get MCP tool schema for testing."""
-    if tool_name == "generate_meta_prompt":
-        return {
-            "parameters": {
-                "properties": {
-                    "context_file_path": {"type": "string"},
-                    "context_content": {"type": "string"},
-                    "project_path": {"type": "string"},
-                    "scope": {"type": "string", "default": "recent_phase"},
-                    "custom_template": {"type": "string"},
-                    "output_path": {"type": "string"},
-                    "text_output": {"type": "boolean", "default": False},
-                }
-            }
-        }
-    else:
-        raise ValueError(f"Unknown tool: {tool_name}")
 
 
 def main():
