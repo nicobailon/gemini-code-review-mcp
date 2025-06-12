@@ -12,22 +12,41 @@ import os
 from datetime import datetime
 from typing import List, Optional, Tuple
 
-from .context_builder import (
-    discover_project_configurations_with_flags,
-    format_configuration_context_for_ai,
-)
-from .file_context_types import (
-    FileContentData,
-    FileContextConfig,
-    FileContextResult,
-    FileSelection,
-)
-from .file_selector import (
-    read_file_with_line_ranges,
-    validate_file_paths,
-)
-from .meta_prompt_analyzer import generate_optimized_meta_prompt
-from .model_config_manager import load_model_config
+try:
+    from .context_builder import (
+        discover_project_configurations_with_flags,
+        format_configuration_context_for_ai,
+    )
+    from .file_context_types import (
+        FileContentData,
+        FileContextConfig,
+        FileContextResult,
+        FileSelection,
+    )
+    from .file_selector import (
+        read_file_with_line_ranges,
+        validate_file_paths,
+    )
+    from .meta_prompt_analyzer import generate_optimized_meta_prompt
+    from .model_config_manager import load_model_config
+except ImportError:
+    # Fall back to absolute imports for testing
+    from context_builder import (
+        discover_project_configurations_with_flags,
+        format_configuration_context_for_ai,
+    )
+    from file_context_types import (
+        FileContentData,
+        FileContextConfig,
+        FileContextResult,
+        FileSelection,
+    )
+    from file_selector import (
+        read_file_with_line_ranges,
+        validate_file_paths,
+    )
+    from meta_prompt_analyzer import generate_optimized_meta_prompt
+    from model_config_manager import load_model_config
 
 logger = logging.getLogger(__name__)
 

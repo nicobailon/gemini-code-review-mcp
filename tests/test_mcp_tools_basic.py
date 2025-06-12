@@ -57,7 +57,7 @@ class TestMCPToolsBasic:
     
     def test_thinking_budget_parameter_accepted(self):
         """Test that thinking_budget parameter is accepted by tools."""
-        from server import generate_pr_review, generate_ai_code_review, generate_code_review_context, generate_meta_prompt
+        from src.server import generate_pr_review, generate_ai_code_review, generate_code_review_context, generate_meta_prompt
         import inspect
         
         # Check generate_pr_review has thinking_budget parameter
@@ -78,7 +78,7 @@ class TestMCPToolsBasic:
         
     def test_url_context_parameter_accepted(self):
         """Test that url_context parameter is accepted by tools."""
-        from server import generate_pr_review, generate_ai_code_review, generate_code_review_context, generate_meta_prompt, generate_file_context
+        from src.server import generate_pr_review, generate_ai_code_review, generate_code_review_context, generate_meta_prompt, generate_file_context
         import inspect
         
         # Check generate_pr_review has url_context parameter
@@ -103,7 +103,7 @@ class TestMCPToolsBasic:
         
     def test_backward_compatibility_parameters(self):
         """Test that new parameters have defaults (backward compatibility)."""
-        from server import generate_ai_code_review
+        from src.server import generate_ai_code_review
         import inspect
         
         sig = inspect.signature(generate_ai_code_review)
@@ -113,3 +113,49 @@ class TestMCPToolsBasic:
         
         # Check url_context has default None  
         assert sig.parameters['url_context'].default is None
+    
+    def test_generate_file_context_deprecation_warning(self, temp_project_dir):
+        """Test that generate_file_context raises deprecation warning and does not call Gemini."""
+        from src.server import generate_file_context
+        import warnings
+        
+        # Create a test file
+        test_file = os.path.join(temp_project_dir, "test.py")
+        with open(test_file, 'w') as f:
+            f.write("print('test')")
+        
+        file_selections = [{"path": test_file}]
+        
+        # Capture warnings
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            
+            # Mock send_to_gemini_for_review to ensure it's NOT called
+            with patch('src.server.send_to_gemini_for_review') as mock_gemini:
+                # Call the deprecated function
+                result = generate_file_context(
+                    file_selections=file_selections,
+                    project_path=temp_project_dir,
+                    text_output=True
+                )
+                
+                # Verify deprecation warning was raised
+                assert len(w) == 1
+                assert issubclass(w[0].category, DeprecationWarning)
+                assert "generate_file_context" in str(w[0].message)
+                assert "ask_gemini" in str(w[0].message)
+                
+                # Verify it returns context content
+                assert isinstance(result, str)
+                assert "print('test')" in result
+                
+                # Verify Gemini was NOT called
+                mock_gemini.assert_not_called()
+    
+    def test_ask_gemini_tool_exists(self):
+        """Test that ask_gemini tool is available in MCP tools list."""
+        from src.server import get_mcp_tools
+        
+        tools = get_mcp_tools()
+        assert "ask_gemini" in tools
+        assert "generate_file_context" in tools  # Should still exist for backward compatibility

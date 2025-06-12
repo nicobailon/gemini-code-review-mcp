@@ -85,7 +85,8 @@ If the MCP tools aren't working:
 | **`generate_pr_review`** | GitHub PR analysis | `github_pr_url`, `project_path` |
 | **`generate_code_review_context`** | Build review context | `project_path`, `scope`, `enable_gemini_review` |
 | **`generate_meta_prompt`** | Create contextual prompts | `project_path`, `text_output` |
-| **`generate_file_context`** | Generate context from specific files | `file_selections`, `user_instructions` |
+| **`ask_gemini`** | Generate context and get AI response | `user_instructions`, `file_selections` |
+| **`generate_file_context`** (Deprecated) | Generate context without AI | `file_selections`, `user_instructions` |
 
 <details>
 <summary>📖 Detailed Tool Examples</summary>
@@ -132,9 +133,35 @@ If the MCP tools aren't working:
 }
 ```
 
-### File-Based Context Generation
+### Ask Gemini (NEW!)
 ```javascript
-// Generate context from specific files
+// Generate context from files and get AI response in one step
+{
+  tool_name: "ask_gemini",
+  arguments: {
+    user_instructions: "Review for security vulnerabilities and suggest fixes",
+    file_selections: [
+      { path: "src/auth.py" },
+      { path: "src/database.py", line_ranges: [[50, 100]] }
+    ],
+    project_path: "/path/to/project",
+    model: "gemini-2.5-pro"
+  }
+}
+
+// Simple query without files
+{
+  tool_name: "ask_gemini",
+  arguments: {
+    user_instructions: "Explain the security implications of the current authentication approach",
+    include_claude_memory: true  // Includes project guidelines
+  }
+}
+```
+
+### File-Based Context Generation (Deprecated)
+```javascript
+// DEPRECATED: Use ask_gemini instead for AI responses
 {
   tool_name: "generate_file_context",
   arguments: {
@@ -179,13 +206,22 @@ Claude: I'll use Gemini 2.5 Pro for a more detailed analysis.
 [Uses generate_ai_code_review with model="gemini-2.5-pro"]
 ```
 
-#### File-Specific Review
+#### File-Specific Review with AI
 ```
-Human: Review these specific files for security issues: auth.py, database.py lines 50-100
+Human: Review auth.py and database.py lines 50-100 for security issues
 
-Claude: I'll generate context from those specific files and line ranges.
+Claude: I'll analyze those specific files for security vulnerabilities.
 
-[Uses generate_file_context with file_selections and security-focused instructions]
+[Uses ask_gemini with file_selections and security-focused instructions]
+```
+
+#### Quick Code Question
+```
+Human: What are the performance implications of the current caching strategy?
+
+Claude: I'll analyze your caching implementation and provide insights.
+
+[Uses ask_gemini with user_instructions only, leveraging project context]
 ```
 
 ## ⚙️ Configuration
@@ -299,10 +335,10 @@ generate-code-review \
   --file-instructions "Review my async implementation against the official docs" \
   --url-context https://docs.python.org/3/library/asyncio.html
 
-# File-based context generation
-generate-code-review \
-  --files src/main.py src/utils.py:10-50 \
-  --file-instructions "Review for performance issues"
+# File-based context generation (for debugging - does not call AI)
+generate-file-context -f src/main.py -f src/utils.py:10-50 \
+  --user-instructions "Review for performance issues" \
+  -o context.md
 
 # Meta-prompt only (current directory)
 generate-meta-prompt --stream
