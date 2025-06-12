@@ -452,7 +452,7 @@ import sys
 sys.path.insert(0, 'src')
 
 try:
-    from server import generate_code_review_context
+    from generate_code_review_context import generate_code_review_context_main as generate_code_review_context
     print(f'Tool function on Python {{sys.version_info.major}}.{{sys.version_info.minor}}: Available')
     
     # Test function call (should handle errors gracefully)
