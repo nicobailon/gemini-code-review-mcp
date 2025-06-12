@@ -54,14 +54,11 @@ jobs:
 
     - name: Create GitHub Release
       if: steps.check_pypi.outputs.exists == 'false'
-      uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v${{ steps.get_version.outputs.current_version }}
-        release_name: Release v${{ steps.get_version.outputs.current_version }}
-        body: |
-          Changes in this release:
-          - See [commit history](https://github.com/${{ github.repository }}/compare/v${{ steps.get_version.outputs.previous_version }}...v${{ steps.get_version.outputs.current_version }})
-        draft: false
-        prerelease: false
+      run: |
+        gh release create v${{ steps.get_version.outputs.current_version }} \
+          --title "Release v${{ steps.get_version.outputs.current_version }}" \
+          --notes "Changes in this release:
+        - See [commit history](https://github.com/${{ github.repository }}/commits/v${{ steps.get_version.outputs.current_version }})" \
+          --target master
