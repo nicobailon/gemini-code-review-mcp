@@ -83,8 +83,6 @@ If the MCP tools aren't working:
 |------|---------|-------------|
 | **`generate_ai_code_review`** | Complete AI code review | `project_path`, `model`, `scope` |
 | **`generate_pr_review`** | GitHub PR analysis | `github_pr_url`, `project_path` |
-| **`generate_code_review_context`** | Build review context | `project_path`, `scope`, `enable_gemini_review` |
-| **`generate_meta_prompt`** | Create contextual prompts | `project_path`, `text_output` |
 | **`ask_gemini`** | Generate context and get AI response | `user_instructions`, `file_selections` |
 | **`generate_file_context`** (Deprecated) | Generate context without AI | `file_selections`, `user_instructions` |
 

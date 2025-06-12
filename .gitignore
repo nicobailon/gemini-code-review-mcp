@@ -21,6 +21,7 @@ code-review-*.md
 !README.md
 !CONTRIBUTING.md
 !CHANGELOG.md
+!WORKFLOW_DIAGRAMS.md
 /tasks/*.md
 /tasks/*.dist-info/
 .cursor/
