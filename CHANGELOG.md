@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] - 2025-01-06
+
+### Removed
+- **BREAKING**: Removed `generate_file_context` from MCP tool registry
+  - The function remains available for internal use and CLI command
+  - This reduces the public MCP tool count from 4 to 3
+  - Use `ask_gemini` MCP tool instead for file-based context with AI response
+- Removed deprecation warning test as the tool is no longer exposed
+
+### Changed
+- Updated documentation to reflect only 3 available MCP tools
+- CLI command `generate-file-context` remains available for debugging purposes
+
 ## [0.4.2] - 2025-01-06
 
 ### Changed

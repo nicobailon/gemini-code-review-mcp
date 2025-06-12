@@ -1414,7 +1414,7 @@ async def generate_meta_prompt(
         raise
 
 
-@mcp.tool()
+# Internal function - not exposed as MCP tool (CLI command still available)
 def generate_file_context(
     file_selections: List[Dict[str, Any]],
     project_path: Optional[str] = None,
@@ -1598,7 +1598,6 @@ def get_mcp_tools():
         "generate_ai_code_review",
         "generate_pr_review",
         "ask_gemini",
-        "generate_file_context",  # legacy compatibility
     ]
 
 

@@ -84,7 +84,6 @@ If the MCP tools aren't working:
 | **`generate_ai_code_review`** | Complete AI code review | `project_path`, `model`, `scope` |
 | **`generate_pr_review`** | GitHub PR analysis | `github_pr_url`, `project_path` |
 | **`ask_gemini`** | Generate context and get AI response | `user_instructions`, `file_selections` |
-| **`generate_file_context`** (Deprecated) | Generate context without AI | `file_selections`, `user_instructions` |
 
 <details>
 <summary>📖 Detailed Tool Examples</summary>
@@ -153,22 +152,6 @@ If the MCP tools aren't working:
   arguments: {
     user_instructions: "Explain the security implications of the current authentication approach",
     include_claude_memory: true  // Includes project guidelines
-  }
-}
-```
-
-### File-Based Context Generation (Deprecated)
-```javascript
-// DEPRECATED: Use ask_gemini instead for AI responses
-{
-  tool_name: "generate_file_context",
-  arguments: {
-    file_selections: [
-      { path: "src/main.py" },
-      { path: "src/utils.py", line_ranges: [[10, 50], [100, 150]] }
-    ],
-    project_path: "/path/to/project",
-    user_instructions: "Review for security vulnerabilities"
   }
 }
 ```

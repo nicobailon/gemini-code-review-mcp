@@ -126,44 +126,6 @@ class TestMCPToolsBasic:
         # Check url_context has default None  
         assert sig.parameters['url_context'].default is None
     
-    def test_generate_file_context_deprecation_warning(self, temp_project_dir):
-        """Test that generate_file_context raises deprecation warning and does not call Gemini."""
-        from src.server import generate_file_context
-        import warnings
-        
-        # Create a test file
-        test_file = os.path.join(temp_project_dir, "test.py")
-        with open(test_file, 'w') as f:
-            f.write("print('test')")
-        
-        file_selections = [{"path": test_file}]
-        
-        # Capture warnings
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            
-            # Mock send_to_gemini_for_review to ensure it's NOT called
-            with patch('src.server.send_to_gemini_for_review') as mock_gemini:
-                # Call the deprecated function
-                result = generate_file_context(
-                    file_selections=file_selections,
-                    project_path=temp_project_dir,
-                    text_output=True
-                )
-                
-                # Verify deprecation warning was raised
-                assert len(w) == 1
-                assert issubclass(w[0].category, DeprecationWarning)
-                assert "generate_file_context" in str(w[0].message)
-                assert "ask_gemini" in str(w[0].message)
-                
-                # Verify it returns context content
-                assert isinstance(result, str)
-                assert "print('test')" in result
-                
-                # Verify Gemini was NOT called
-                mock_gemini.assert_not_called()
-    
     def test_correct_mcp_tools_are_exposed(self):
         """Test that correct MCP tools are exposed."""
         from src.server import get_mcp_tools
@@ -172,8 +134,8 @@ class TestMCPToolsBasic:
         assert "generate_ai_code_review" in tools
         assert "generate_pr_review" in tools
         assert "ask_gemini" in tools
-        assert "generate_file_context" in tools
         # no longer exposed
+        assert "generate_file_context" not in tools
         assert "generate_code_review_context" not in tools
         assert "generate_meta_prompt" not in tools
     

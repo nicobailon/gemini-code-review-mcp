@@ -6,7 +6,7 @@ ASCII flow diagrams illustrating the data flow for each CLI command and MCP tool
 
 ### Key Implementation Enhancements:
 1. **Ask Gemini Tool**: NEW unified tool that combines file context generation with AI response in one step
-2. **File-Based Context Generation**: Enhanced with `ask_gemini` tool, deprecated `generate_file_context` MCP tool
+2. **File-Based Context Generation**: Enhanced with `ask_gemini` tool, removed deprecated `generate_file_context` MCP tool
 3. **Configuration Discovery**: Added import resolution for CLAUDE.md files (@import syntax)
 4. **Performance**: Async operations and caching mechanisms added but not shown in original diagrams
 5. **Default Behaviors**: 
@@ -14,12 +14,12 @@ ASCII flow diagrams illustrating the data flow for each CLI command and MCP tool
    - `auto_meta_prompt` defaults to `true` for enhanced experience
 6. **Deprecated Features**: 
    - Branch comparison removed, use GitHub PR integration instead
-   - `generate_file_context` MCP tool deprecated, use `ask_gemini` instead
+   - `generate_file_context` MCP tool removed, use `ask_gemini` instead
 
 ### Workflow Accuracy Status:
 - ✅ All main workflows updated to match current implementation (January 2025)
 - ✅ Updated `ask_gemini` as the primary tool for file-based context + AI response
-- ✅ Marked `generate_file_context` MCP tool as deprecated
+- ✅ Removed `generate_file_context` MCP tool (CLI command still available)
 - ✅ Added new ask_gemini Q&A workflows for both CLI and MCP tools
 - ✅ Added missing `raw_context_only` mode to `generate_pr_review` diagram
 - ✅ Added meta-prompt generation step to `generate_pr_review` diagram
@@ -169,7 +169,7 @@ ASCII flow diagrams illustrating the data flow for each CLI command and MCP tool
                        └──────────────────┘
 ```
 
-### MCP Tool: `generate_file_context` (DEPRECATED - Use `ask_gemini` instead)
+### CLI Command: `generate_file_context` (Use `ask_gemini` MCP tool for AI responses)
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
@@ -752,11 +752,10 @@ DEFAULT PATTERN (NEW)         INSPECTION PATTERN           NO-FILE PATTERN
 - `ask-gemini-direct` → `src.ask_gemini_cli:direct_main`
 
 ### MCP Tools Dependencies
-**Available MCP Tools (as of v0.4.2):**
+**Available MCP Tools (as of v0.4.3):**
 - `generate_ai_code_review` - Complete AI code review
 - `generate_pr_review` - GitHub PR analysis
 - `ask_gemini` - Generate context and get AI response
-- `generate_file_context` (Deprecated) - Generate context without AI
 
 **Internal Helpers (not exposed as MCP tools):**
 - `generate_code_review_context` - Build review context
