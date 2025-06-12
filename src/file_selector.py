@@ -4,21 +4,42 @@ File selection utilities for file-based context generation.
 
 This module provides functions for parsing file selections, validating paths,
 extracting line ranges, and formatting file content with line numbers.
+
+Main functions:
+- parse_file_selection: Parse string format like "file.py:10-50" 
+- parse_file_selections: Parse multiple selections from various formats
+- normalize_file_selections_from_dicts: Convert dict selections to FileSelection objects
+- validate_file_paths: Check file existence and readability
+- extract_line_ranges: Read specific line ranges from files
+- format_file_content: Format content with line numbers
+- read_file_with_line_ranges: Read file with metadata
 """
 
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from .file_context_types import (
-    FileContentData,
-    FileNotFoundError,
-    FileSelection,
-    FileSelectionInput,
-    InvalidLineRangeError,
-    LineRange,
-    normalize_file_selection,
-)
+try:
+    from .file_context_types import (
+        FileContentData,
+        FileNotFoundError,
+        FileSelection,
+        FileSelectionInput,
+        InvalidLineRangeError,
+        LineRange,
+        normalize_file_selection,
+    )
+except ImportError:
+    # Fall back to absolute imports for testing
+    from file_context_types import (
+        FileContentData,
+        FileNotFoundError,
+        FileSelection,
+        FileSelectionInput,
+        InvalidLineRangeError,
+        LineRange,
+        normalize_file_selection,
+    )
 
 
 def parse_file_selection(selection_str: str) -> FileSelection:
@@ -94,6 +115,41 @@ def parse_file_selections(
             result.append(normalize_file_selection(selection))
     
     return result
+
+
+def normalize_file_selections_from_dicts(
+    selections: Optional[List[Dict[str, Any]]]
+) -> List[FileSelection]:
+    """
+    Normalize a list of file selection dictionaries to FileSelection objects.
+    
+    This is a convenience function for MCP tools that accept file selections
+    as dictionaries and need to convert them to the proper TypedDict format.
+    
+    Args:
+        selections: Optional list of file selection dictionaries
+        
+    Returns:
+        List of normalized FileSelection objects (empty list if selections is None)
+        
+    Raises:
+        ValueError: If any selection is missing the required 'path' field
+    """
+    if not selections:
+        return []
+    
+    normalized: List[FileSelection] = []
+    for selection in selections:
+        if "path" not in selection:
+            raise ValueError("Each file selection must have a 'path' field")
+        
+        normalized.append(FileSelection(
+            path=selection["path"],
+            line_ranges=selection.get("line_ranges"),
+            include_full=selection.get("include_full", True)
+        ))
+    
+    return normalized
 
 
 def validate_file_paths(
