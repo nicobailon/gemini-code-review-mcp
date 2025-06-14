@@ -99,7 +99,9 @@ class TestMCPToolsBasic:
         assert "thinking_budget" in sig.parameters
 
         # Check generate_meta_prompt has thinking_budget parameter
-        sig = inspect.signature(generate_meta_prompt)
+        # generate_meta_prompt might also be a FunctionTool
+        meta_prompt_func = generate_meta_prompt.func if hasattr(generate_meta_prompt, 'func') else generate_meta_prompt
+        sig = inspect.signature(meta_prompt_func)
         assert "thinking_budget" in sig.parameters
 
     def test_url_context_parameter_accepted(self):
@@ -119,6 +121,10 @@ class TestMCPToolsBasic:
         ai_review_func = generate_ai_code_review.func if hasattr(generate_ai_code_review, 'func') else generate_ai_code_review
         context_func = generate_code_review_context.func if hasattr(generate_code_review_context, 'func') else generate_code_review_context
 
+        # Get the actual function from FunctionTool objects
+        meta_prompt_func = generate_meta_prompt.func if hasattr(generate_meta_prompt, 'func') else generate_meta_prompt
+        file_context_func = generate_file_context.func if hasattr(generate_file_context, 'func') else generate_file_context
+
         # Check generate_pr_review has url_context parameter
         sig = inspect.signature(pr_review_func)
         assert "url_context" in sig.parameters
@@ -129,15 +135,14 @@ class TestMCPToolsBasic:
 
         # Check generate_code_review_context has url_context parameter
         sig = inspect.signature(context_func)
-        sig = inspect.signature(generate_code_review_context)
         assert "url_context" in sig.parameters
 
         # Check generate_meta_prompt has url_context parameter
-        sig = inspect.signature(generate_meta_prompt)
+        sig = inspect.signature(meta_prompt_func)
         assert "url_context" in sig.parameters
 
         # Check generate_file_context has url_context parameter
-        sig = inspect.signature(generate_file_context)
+        sig = inspect.signature(file_context_func)
         assert "url_context" in sig.parameters
 
     def test_backward_compatibility_parameters(self):

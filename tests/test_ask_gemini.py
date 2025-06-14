@@ -23,11 +23,14 @@ except ImportError:
     import server
 
 # Access the actual function from the FunctionTool
-if hasattr(server, 'ask_gemini') and hasattr(server.ask_gemini, 'func'):
-    ask_gemini = server.ask_gemini.func
+if hasattr(server, 'ask_gemini'):
+    if hasattr(server.ask_gemini, 'func'):
+        ask_gemini = server.ask_gemini.func
+    else:
+        # Direct access if not a FunctionTool
+        ask_gemini = server.ask_gemini
 else:
-    # For older versions or different setups
-    ask_gemini = server.ask_gemini
+    raise ImportError("ask_gemini not found in server module")
 
 
 class TestAskGeminiTool:
