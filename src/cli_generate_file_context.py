@@ -70,16 +70,20 @@ EXAMPLES:
         "--user-instructions",
         help="Custom instructions to embed in the context"
     )
-    parser.add_argument(
+    
+    # Use mutual exclusion group for claude memory flags
+    claude_memory_group = parser.add_mutually_exclusive_group()
+    claude_memory_group.add_argument(
         "--include-claude-memory",
         action="store_true",
         help="Include CLAUDE.md files in context (optional - off by default)"
     )
-    parser.add_argument(
+    claude_memory_group.add_argument(
         "--no-claude-memory",
         action="store_true",
         help="[DEPRECATED] Use --include-claude-memory instead. This flag will be removed in a future version."
     )
+    
     parser.add_argument(
         "--include-cursor-rules",
         action="store_true",
@@ -116,16 +120,6 @@ def main():
             "--no-claude-memory is deprecated and will be removed in a future version. "
             "Use --include-claude-memory to opt-in to CLAUDE.md inclusion.",
             DeprecationWarning,
-            stacklevel=2
-        )
-    
-    # Check for conflicting flags
-    if args.include_claude_memory and args.no_claude_memory:
-        import warnings
-        warnings.warn(
-            "Both --include-claude-memory and --no-claude-memory specified. "
-            "--include-claude-memory takes precedence.",
-            UserWarning,
             stacklevel=2
         )
     

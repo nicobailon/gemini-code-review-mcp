@@ -12,6 +12,11 @@ import logging
 import os
 from typing import Any, Dict, List, Optional, TypedDict
 
+try:
+    from .config_types import DEFAULT_INCLUDE_CLAUDE_MEMORY, DEFAULT_INCLUDE_CURSOR_RULES
+except ImportError:
+    from config_types import DEFAULT_INCLUDE_CLAUDE_MEMORY, DEFAULT_INCLUDE_CURSOR_RULES
+
 logger = logging.getLogger(__name__)
 
 
@@ -34,10 +39,19 @@ class ConfigurationCache:
     def get_configurations(
         self,
         project_path: str,
-        include_claude_memory: bool = False,
-        include_cursor_rules: bool = True,
+        include_claude_memory: bool = DEFAULT_INCLUDE_CLAUDE_MEMORY,
+        include_cursor_rules: bool = DEFAULT_INCLUDE_CURSOR_RULES,
     ) -> Optional[Dict[str, Any]]:
-        """Get cached configurations if they exist and are up to date, otherwise discover and cache."""
+        """Get cached configurations if they exist and are up to date, otherwise discover and cache.
+    
+    Args:
+        project_path: Project directory path
+        include_claude_memory: Whether to discover CLAUDE.md files (default: False)
+        include_cursor_rules: Whether to discover Cursor rules (default: False)
+    
+    Returns:
+        Dictionary with discovered configurations or None if failed
+    """
         # Create cache key based on path and flags
         cache_key = f"{project_path}:{include_claude_memory}:{include_cursor_rules}"
         
@@ -114,8 +128,8 @@ _config_cache = ConfigurationCache()
 
 def _discover_project_configurations_uncached(
     project_path: str,
-    include_claude_memory: bool = False,
-    include_cursor_rules: bool = True,
+    include_claude_memory: bool = DEFAULT_INCLUDE_CLAUDE_MEMORY,
+    include_cursor_rules: bool = DEFAULT_INCLUDE_CURSOR_RULES,
 ) -> Dict[str, Any]:
     """
     High-performance discovery of Claude memory files and Cursor rules from project.
@@ -124,8 +138,8 @@ def _discover_project_configurations_uncached(
 
     Args:
         project_path: Path to project root
-        include_claude_memory: Whether to discover CLAUDE.md files
-        include_cursor_rules: Whether to discover Cursor rules
+        include_claude_memory: Whether to discover CLAUDE.md files (default: False)
+        include_cursor_rules: Whether to discover Cursor rules (default: False)
 
     Returns:
         Dictionary with discovered configurations, performance stats, and any errors
@@ -327,16 +341,16 @@ def _discover_project_configurations_uncached(
 
 def discover_project_configurations(
     project_path: str,
-    include_claude_memory: bool = False,
-    include_cursor_rules: bool = False,
+    include_claude_memory: bool = DEFAULT_INCLUDE_CLAUDE_MEMORY,
+    include_cursor_rules: bool = DEFAULT_INCLUDE_CURSOR_RULES,
 ) -> Dict[str, Any]:
     """
     Discover Claude memory files and Cursor rules from project (cached version).
 
     Args:
         project_path: Path to project root
-        include_claude_memory: Whether to discover CLAUDE.md files (optional - off by default)
-        include_cursor_rules: Whether to discover Cursor rules (optional - off by default)
+        include_claude_memory: Whether to discover CLAUDE.md files (default: False)
+        include_cursor_rules: Whether to discover Cursor rules (default: False)
 
     Returns:
         Dictionary with discovered configurations and any errors
@@ -362,16 +376,16 @@ def discover_project_configurations(
 
 def discover_project_configurations_with_fallback(
     project_path: str,
-    include_claude_memory: bool = False,
-    include_cursor_rules: bool = False,
+    include_claude_memory: bool = DEFAULT_INCLUDE_CLAUDE_MEMORY,
+    include_cursor_rules: bool = DEFAULT_INCLUDE_CURSOR_RULES,
 ) -> Dict[str, Any]:
     """
     Discover configurations with comprehensive error handling and fallback.
 
     Args:
         project_path: Path to project root
-        include_claude_memory: Whether to discover CLAUDE.md files (optional - off by default)
-        include_cursor_rules: Whether to discover Cursor rules (optional - off by default)
+        include_claude_memory: Whether to discover CLAUDE.md files (default: False)
+        include_cursor_rules: Whether to discover Cursor rules (default: False)
 
     Returns:
         Dictionary with discovered configurations, always includes empty lists on failure
@@ -393,16 +407,16 @@ def discover_project_configurations_with_fallback(
 
 def discover_project_configurations_with_flags(
     project_path: str,
-    include_claude_memory: bool = False,
-    include_cursor_rules: bool = False,
+    include_claude_memory: bool = DEFAULT_INCLUDE_CLAUDE_MEMORY,
+    include_cursor_rules: bool = DEFAULT_INCLUDE_CURSOR_RULES,
 ) -> DiscoveredConfigurations:
     """
     Discover configurations with flag-based inclusion control.
 
     Args:
         project_path: Path to project root
-        include_claude_memory: Whether to include CLAUDE.md files
-        include_cursor_rules: Whether to include Cursor rules files
+        include_claude_memory: Whether to include CLAUDE.md files (default: False)
+        include_cursor_rules: Whether to include Cursor rules files (default: False)
 
     Returns:
         Dictionary with discovered configurations based on flags
@@ -414,19 +428,19 @@ def discover_project_configurations_with_flags(
     
     if configurations is None:
         # Fallback if cache returns None
-        return {
-            "claude_memory_files": [],
-            "cursor_rules": [],
-            "discovery_errors": [
+        return DiscoveredConfigurations(
+            claude_memory_files=[],
+            cursor_rules=[],
+            discovery_errors=[
                 {
                     "error_type": "cache_error",
                     "error_message": "Failed to get configurations from cache",
                 }
             ],
-            "performance_stats": {},
-        }
+            performance_stats={},
+        )
     
-    return configurations
+    return DiscoveredConfigurations(**configurations)
 def merge_configurations_into_context(
     existing_context: Dict[str, Any],
     claude_memory_files: List[Any],
@@ -557,6 +571,8 @@ def generate_enhanced_review_context(
     project_path: str,
     scope: str = "recent_phase",
     changed_files: Optional[List[str]] = None,
+    include_claude_memory: bool = DEFAULT_INCLUDE_CLAUDE_MEMORY,
+    include_cursor_rules: bool = DEFAULT_INCLUDE_CURSOR_RULES,
 ) -> Dict[str, Any]:
     """
     Generate enhanced review context with configuration discovery.
@@ -565,6 +581,8 @@ def generate_enhanced_review_context(
         project_path: Path to project root
         scope: Review scope
         changed_files: Optional list of changed file paths
+        include_claude_memory: Whether to include CLAUDE.md files
+        include_cursor_rules: Whether to include Cursor rules files
 
     Returns:
         Enhanced context dictionary with configuration data
@@ -576,7 +594,9 @@ def generate_enhanced_review_context(
         from git_utils import get_changed_files
 
     # Discover configurations
-    configurations = discover_project_configurations_with_fallback(project_path)
+    configurations = discover_project_configurations_with_fallback(
+        project_path, include_claude_memory, include_cursor_rules
+    )
 
     # Get changed files if not provided
     if changed_files is None:

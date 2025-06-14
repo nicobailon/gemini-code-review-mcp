@@ -19,6 +19,11 @@ import platform
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional, Tuple
 
+try:
+    from .config_types import DEFAULT_INCLUDE_CLAUDE_MEMORY, DEFAULT_INCLUDE_CURSOR_RULES
+except ImportError:
+    from config_types import DEFAULT_INCLUDE_CLAUDE_MEMORY, DEFAULT_INCLUDE_CURSOR_RULES
+
 logger = logging.getLogger(__name__)
 
 # Try to import yaml, fallback if not available
@@ -243,8 +248,8 @@ async def async_discover_modern_cursor_rules(project_path: str) -> List[Dict[str
 
 async def async_discover_all_configurations(
     project_path: str,
-    include_claude_memory: bool = False,
-    include_cursor_rules: bool = False,
+    include_claude_memory: bool = DEFAULT_INCLUDE_CLAUDE_MEMORY,
+    include_cursor_rules: bool = DEFAULT_INCLUDE_CURSOR_RULES,
     max_workers: int = 10,
 ) -> Dict[str, Any]:
     """
@@ -252,8 +257,8 @@ async def async_discover_all_configurations(
 
     Args:
         project_path: Project directory to search
-        include_claude_memory: Whether to discover CLAUDE.md files
-        include_cursor_rules: Whether to discover Cursor rules
+        include_claude_memory: Whether to discover CLAUDE.md files (default: False)
+        include_cursor_rules: Whether to discover Cursor rules (default: False)
         max_workers: Maximum concurrent workers for file operations
 
     Returns:
@@ -440,8 +445,8 @@ def _get_enterprise_directories() -> List[str]:
 # Default high-performance discovery function
 def discover_all_configurations(
     project_path: str,
-    include_claude_memory: bool = False,
-    include_cursor_rules: bool = False,
+    include_claude_memory: bool = DEFAULT_INCLUDE_CLAUDE_MEMORY,
+    include_cursor_rules: bool = DEFAULT_INCLUDE_CURSOR_RULES,
 ) -> Dict[str, Any]:
     """
     High-performance configuration discovery with bulletproof fallbacks.
@@ -451,8 +456,8 @@ def discover_all_configurations(
 
     Args:
         project_path: Project directory to search
-        include_claude_memory: Whether to discover CLAUDE.md files
-        include_cursor_rules: Whether to discover Cursor rules
+        include_claude_memory: Whether to discover CLAUDE.md files (default: False)
+        include_cursor_rules: Whether to discover Cursor rules (default: False)
 
     Returns:
         Dictionary containing all discovered configurations with performance stats

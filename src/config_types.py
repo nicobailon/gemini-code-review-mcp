@@ -8,6 +8,10 @@ This module defines shared configuration types used across the codebase.
 from dataclasses import dataclass
 from typing import Optional, Union, List
 
+# Central configuration defaults
+DEFAULT_INCLUDE_CLAUDE_MEMORY = False
+DEFAULT_INCLUDE_CURSOR_RULES = False
+
 
 @dataclass
 class CodeReviewConfig:
@@ -26,8 +30,8 @@ class CodeReviewConfig:
     compare_branch: Optional[str] = None
     target_branch: Optional[str] = None
     github_pr_url: Optional[str] = None
-    include_claude_memory: bool = False
-    include_cursor_rules: bool = False
+    include_claude_memory: bool = DEFAULT_INCLUDE_CLAUDE_MEMORY
+    include_cursor_rules: bool = DEFAULT_INCLUDE_CURSOR_RULES
     raw_context_only: bool = False
     auto_prompt_content: Optional[str] = None
     thinking_budget: Optional[int] = None

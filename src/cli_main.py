@@ -14,10 +14,6 @@ import sys
 import warnings
 from typing import Any, Dict, List, Optional
 
-# Default values
-DEFAULT_INCLUDE_CLAUDE_MEMORY = False
-DEFAULT_INCLUDE_CURSOR_RULES = False
-
 # Import the main generation function from the old module
 try:
     from .generate_code_review_context import generate_code_review_context_main
