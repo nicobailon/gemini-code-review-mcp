@@ -33,7 +33,7 @@ exclude = [
 
 [project]
 name = "gemini-code-review-mcp"
-version = "0.4.4"
+version = "0.5.0"
 description = "MCP server for AI-powered code reviews using Google Gemini with contextual awareness"
 authors = [
     {name = "Nico Bailon", email = "nico604@pm.me"},
