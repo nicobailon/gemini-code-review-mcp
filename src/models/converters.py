@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from .review_context import ReviewContext
 from .review_mode import ReviewMode
@@ -37,14 +37,15 @@ def dict_to_review_context(data: Dict[str, Any]) -> ReviewContext:
         )
 
     # Extract changed files
-    changed_files_data = data.get("changed_files", [])
+    changed_files_data: Union[List[Union[str, Dict[str, Any]]], Any] = data.get("changed_files", [])
     changed_files: List[str] = []
     if isinstance(changed_files_data, list):
         # Could be list of dicts or list of strings
+        item: Union[str, Dict[str, Any]]
         for item in changed_files_data:
             if isinstance(item, dict) and "file_path" in item:
-                file_path = item.get("file_path")
-                if file_path is not None:
+                file_path: Optional[Any] = item.get("file_path")
+                if file_path is not None and isinstance(file_path, (str, int, float)):
                     changed_files.append(str(file_path))
             elif isinstance(item, str):
                 changed_files.append(item)

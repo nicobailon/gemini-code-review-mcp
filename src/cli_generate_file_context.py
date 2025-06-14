@@ -8,7 +8,6 @@ This is a standalone utility for debugging context generation.
 import argparse
 import os
 import sys
-from typing import Any
 
 # Add current directory to path for imports
 sys.path.insert(0, os.path.dirname(__file__))
@@ -16,13 +15,13 @@ sys.path.insert(0, os.path.dirname(__file__))
 try:
     # Try relative imports first (when run as module)
     from .file_context_generator import generate_file_context_data, save_file_context
-    from .file_context_types import FileContextConfig, FileSelection
+    from .file_context_types import FileContextConfig
     from .file_selector import parse_file_selections
 except ImportError:
     try:
         # Fall back to absolute imports for testing or direct execution
         from file_context_generator import generate_file_context_data, save_file_context
-        from file_context_types import FileContextConfig, FileSelection
+        from file_context_types import FileContextConfig
         from file_selector import parse_file_selections
     except ImportError as e:
         print(f"Required dependencies not available: {e}", file=sys.stderr)

@@ -11,7 +11,7 @@ This module implements configuration loading with the following precedence:
 import os
 import warnings
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Dict, List, Optional, Union
 
 try:
     import tomllib
@@ -22,15 +22,27 @@ except ImportError:
 from ..config_types import CodeReviewConfig
 from ..errors import ConfigurationError
 
-# Built-in defaults
-DEFAULTS = {
-    "temperature": 0.5,
-    "default_prompt": "Conduct a comprehensive code review focusing on code quality, best practices, security, performance, and testing coverage.",
-    "default_model": "gemini-1.5-flash",
-    "include_claude_memory": True,
-    "include_cursor_rules": False,
-    "enable_cache": True,
-    "cache_ttl_seconds": 900,
+# Type for configuration values
+ConfigValue = Union[str, int, float, bool, None]
+
+# Built-in defaults with specific types
+DEFAULT_TEMPERATURE: float = 0.5
+DEFAULT_PROMPT: str = "Conduct a comprehensive code review focusing on code quality, best practices, security, performance, and testing coverage."
+DEFAULT_MODEL: str = "gemini-1.5-flash"
+DEFAULT_INCLUDE_CLAUDE_MEMORY: bool = True
+DEFAULT_INCLUDE_CURSOR_RULES: bool = False
+DEFAULT_ENABLE_CACHE: bool = True
+DEFAULT_CACHE_TTL_SECONDS: int = 900
+
+# Defaults dictionary for lookup
+DEFAULTS: Dict[str, ConfigValue] = {
+    "temperature": DEFAULT_TEMPERATURE,
+    "default_prompt": DEFAULT_PROMPT,
+    "default_model": DEFAULT_MODEL,
+    "include_claude_memory": DEFAULT_INCLUDE_CLAUDE_MEMORY,
+    "include_cursor_rules": DEFAULT_INCLUDE_CURSOR_RULES,
+    "enable_cache": DEFAULT_ENABLE_CACHE,
+    "cache_ttl_seconds": DEFAULT_CACHE_TTL_SECONDS,
 }
 
 # Environment variable mappings
@@ -56,10 +68,10 @@ class ConfigurationLoader:
             project_path: Path to the project root. If None, uses current directory.
         """
         self.project_path = Path(project_path) if project_path else Path.cwd()
-        self._pyproject_config: Optional[Dict[str, Any]] = None
+        self._pyproject_config: Optional[Dict[str, ConfigValue]] = None
         self._model_config_warned = False
 
-    def load_pyproject_config(self) -> Dict[str, Any]:
+    def load_pyproject_config(self) -> Dict[str, ConfigValue]:
         """Load configuration from pyproject.toml."""
         if self._pyproject_config is not None:
             return self._pyproject_config
@@ -72,10 +84,22 @@ class ConfigurationLoader:
         try:
             with open(pyproject_path, "rb") as f:
                 data = tomllib.load(f)
-                tool_section = data.get("tool") if isinstance(data, dict) else None
-                if tool_section and isinstance(tool_section, dict):
-                    gemini_section = tool_section.get("gemini")
-                    self._pyproject_config = gemini_section if isinstance(gemini_section, dict) else {}
+                if not isinstance(data, dict):
+                    self._pyproject_config = {}
+                    return self._pyproject_config
+                    
+                tool_section = data.get("tool", {})
+                if isinstance(tool_section, dict):
+                    gemini_section = tool_section.get("gemini", {})
+                    if isinstance(gemini_section, dict):
+                        # Validate and convert values to our ConfigValue type
+                        validated_config: Dict[str, ConfigValue] = {}
+                        for k, v in gemini_section.items():
+                            if isinstance(k, str) and (isinstance(v, (str, int, float, bool)) or v is None):
+                                validated_config[k] = v
+                        self._pyproject_config = validated_config
+                    else:
+                        self._pyproject_config = {}
                 else:
                     self._pyproject_config = {}
                 return self._pyproject_config
@@ -97,7 +121,7 @@ class ConfigurationLoader:
             )
             self._model_config_warned = True
 
-    def get_value(self, key: str, cli_value: Optional[Any] = None) -> Any:
+    def get_value(self, key: str, cli_value: Optional[ConfigValue] = None) -> Optional[ConfigValue]:
         """
         Get a configuration value with proper precedence.
 
@@ -142,7 +166,7 @@ class ConfigurationLoader:
         # 4. Built-in defaults (lowest priority)
         return DEFAULTS.get(key)
 
-    def load_config(self, **cli_args: Any) -> Dict[str, Any]:
+    def load_config(self, **cli_args: Union[str, int, float, bool, None]) -> Dict[str, ConfigValue]:
         """
         Load complete configuration with precedence handling.
 
@@ -156,7 +180,7 @@ class ConfigurationLoader:
         self.check_deprecated_config()
 
         # Build config dict
-        config = {}
+        config: Dict[str, ConfigValue] = {}
 
         # Get all possible keys
         all_keys = set(DEFAULTS.keys())
@@ -175,7 +199,7 @@ class ConfigurationLoader:
 
         return config
 
-    def create_code_review_config(self, **cli_args: Any) -> CodeReviewConfig:
+    def create_code_review_config(self, **cli_args: Union[str, int, float, bool, None]) -> CodeReviewConfig:
         """
         Create a CodeReviewConfig instance with loaded configuration.
 
@@ -187,34 +211,69 @@ class ConfigurationLoader:
         """
         config_dict = self.load_config(**cli_args)
 
-        # Map to CodeReviewConfig fields
+        # Helper function to safely get string values
+        def get_str(key: str, default: Optional[str] = None) -> Optional[str]:
+            val = config_dict.get(key, default)
+            return str(val) if val is not None and val != default else default
+            
+        # Helper function to safely get bool values
+        def get_bool(key: str, default: bool) -> bool:
+            val = config_dict.get(key, default)
+            return bool(val) if isinstance(val, bool) else default
+            
+        # Helper function to safely get float values
+        def get_float(key: str, default: float) -> float:
+            val = config_dict.get(key, default)
+            if isinstance(val, (int, float)):
+                return float(val)
+            return default
+            
+        # Helper function to safely get int values
+        def get_int(key: str, default: Optional[int] = None) -> Optional[int]:
+            val = config_dict.get(key, default)
+            if val is not None and isinstance(val, (int, float)):
+                return int(val)
+            return default
+
+        # Map to CodeReviewConfig fields with proper type conversion
         return CodeReviewConfig(
-            project_path=config_dict.get("project_path"),
-            phase=config_dict.get("phase"),
-            output=config_dict.get("output"),
-            enable_gemini_review=config_dict.get("enable_gemini_review", True),
-            scope=config_dict.get("scope", "recent_phase"),
-            phase_number=config_dict.get("phase_number"),
-            task_number=config_dict.get("task_number"),
-            temperature=config_dict.get("temperature", DEFAULTS["temperature"]),
-            task_list=config_dict.get("task_list"),
-            default_prompt=config_dict.get(
-                "default_prompt", DEFAULTS["default_prompt"]
+            project_path=get_str("project_path"),
+            phase=get_str("phase"),
+            output=get_str("output"),
+            enable_gemini_review=get_bool("enable_gemini_review", True),
+            scope=get_str("scope", "recent_phase") or "recent_phase",
+            phase_number=get_str("phase_number"),
+            task_number=get_str("task_number"),
+            temperature=get_float("temperature", DEFAULT_TEMPERATURE),
+            task_list=get_str("task_list"),
+            default_prompt=get_str(
+                "default_prompt", DEFAULT_PROMPT
             ),
-            compare_branch=config_dict.get("compare_branch"),
-            target_branch=config_dict.get("target_branch"),
-            github_pr_url=config_dict.get("github_pr_url"),
-            include_claude_memory=config_dict.get(
-                "include_claude_memory", DEFAULTS["include_claude_memory"]
+            compare_branch=get_str("compare_branch"),
+            target_branch=get_str("target_branch"),
+            github_pr_url=get_str("github_pr_url"),
+            include_claude_memory=get_bool(
+                "include_claude_memory", DEFAULT_INCLUDE_CLAUDE_MEMORY
             ),
-            include_cursor_rules=config_dict.get(
-                "include_cursor_rules", DEFAULTS["include_cursor_rules"]
+            include_cursor_rules=get_bool(
+                "include_cursor_rules", DEFAULT_INCLUDE_CURSOR_RULES
             ),
-            raw_context_only=config_dict.get("raw_context_only", False),
-            auto_prompt_content=config_dict.get("auto_prompt_content"),
-            thinking_budget=config_dict.get("thinking_budget"),
-            url_context=config_dict.get("url_context"),
+            raw_context_only=get_bool("raw_context_only", False),
+            auto_prompt_content=get_str("auto_prompt_content"),
+            thinking_budget=get_int("thinking_budget"),
+            url_context=self._get_url_context(config_dict),
         )
+
+    def _get_url_context(self, config_dict: Dict[str, ConfigValue]) -> Optional[Union[str, List[str]]]:
+        """Get url_context which can be string or list of strings."""
+        val = config_dict.get("url_context")
+        if val is None:
+            return None
+        if isinstance(val, str):
+            return val
+        if isinstance(val, list) and all(isinstance(item, str) for item in val):
+            return [str(item) for item in val]
+        return None
 
 
 # Global instance
