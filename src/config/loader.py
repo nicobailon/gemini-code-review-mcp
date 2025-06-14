@@ -20,7 +20,7 @@ except ImportError:
     import tomli as tomllib  # type: ignore
 
 from ..config_types import CodeReviewConfig
-from ..errors import ConfigurationError, DependencyError
+from ..errors import ConfigurationError
 
 # Built-in defaults
 DEFAULTS = {
@@ -142,7 +142,7 @@ class ConfigurationLoader:
         # 4. Built-in defaults (lowest priority)
         return DEFAULTS.get(key)
 
-    def load_config(self, **cli_args) -> Dict[str, Any]:
+    def load_config(self, **cli_args: Any) -> Dict[str, Any]:
         """
         Load complete configuration with precedence handling.
 
@@ -175,7 +175,7 @@ class ConfigurationLoader:
 
         return config
 
-    def create_code_review_config(self, **cli_args) -> CodeReviewConfig:
+    def create_code_review_config(self, **cli_args: Any) -> CodeReviewConfig:
         """
         Create a CodeReviewConfig instance with loaded configuration.
 

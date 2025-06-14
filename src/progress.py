@@ -8,7 +8,7 @@ for operations like Git analysis and file processing.
 import sys
 import time
 from contextlib import contextmanager
-from typing import Optional
+from typing import Any, Callable, Optional
 
 
 class ProgressIndicator:
@@ -105,7 +105,7 @@ def progress(message: str = "Processing", show_spinner: bool = True):
         indicator.stop()
 
 
-def progress_callback(message: str = "Processing"):
+def progress_callback(message: str = "Processing") -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     Decorator for functions that need progress indication.
 
@@ -116,8 +116,8 @@ def progress_callback(message: str = "Processing"):
             pass
     """
 
-    def decorator(func):
-        def wrapper(*args, **kwargs):
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             with progress(message):
                 return func(*args, **kwargs)
 

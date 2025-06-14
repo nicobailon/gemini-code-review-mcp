@@ -13,7 +13,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Lock
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from ..errors import CacheError
 
@@ -224,7 +224,7 @@ class CacheManager:
             with self._get_connection() as conn:
                 # First, get all entries to check expiration
                 cursor = conn.execute("SELECT key, timestamp, ttl FROM cache")
-                expired_keys = []
+                expired_keys: List[str] = []
 
                 for row in cursor:
                     entry_age = current_time - row["timestamp"]

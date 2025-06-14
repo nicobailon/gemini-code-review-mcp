@@ -1,7 +1,7 @@
 """Cached Git client implementation that wraps another Git client."""
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 from ..cache import CacheManager, get_cache_manager
 from .git_client import GitClient, GitCommit, GitFileChange

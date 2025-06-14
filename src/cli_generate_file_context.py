@@ -8,7 +8,7 @@ This is a standalone utility for debugging context generation.
 import argparse
 import os
 import sys
-from typing import List, Optional
+from typing import Any
 
 # Add current directory to path for imports
 sys.path.insert(0, os.path.dirname(__file__))

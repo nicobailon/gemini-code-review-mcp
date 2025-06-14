@@ -8,14 +8,19 @@ both development (human-readable) and production/MCP (JSON) formats.
 import logging
 import os
 import sys
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 # Try to import structlog for structured logging
-try:
+
+if TYPE_CHECKING:
     import structlog
-    HAS_STRUCTLOG = True
-except ImportError:
-    HAS_STRUCTLOG = False
+else:
+    try:
+        import structlog
+        HAS_STRUCTLOG = True
+    except ImportError:
+        structlog = None
+        HAS_STRUCTLOG = False
 
 
 def configure_logging(
@@ -40,7 +45,7 @@ def configure_logging(
     # Determine format based on settings
     use_json = format_type == "json" or (format_type == "auto" and is_mcp_context)
     
-    if HAS_STRUCTLOG and use_json:
+    if HAS_STRUCTLOG and use_json and structlog is not None:
         # Configure structlog with JSON renderer for MCP/production
         structlog.configure(
             processors=[
@@ -97,7 +102,7 @@ def get_logger(name: str) -> Any:
     Returns:
         Logger instance (structlog or standard logging)
     """
-    if HAS_STRUCTLOG and _is_structlog_configured():
+    if HAS_STRUCTLOG and _is_structlog_configured() and structlog is not None:
         return structlog.get_logger(name)
     else:
         return logging.getLogger(name)
@@ -105,13 +110,15 @@ def get_logger(name: str) -> Any:
 
 def _is_structlog_configured() -> bool:
     """Check if structlog is configured."""
-    if not HAS_STRUCTLOG:
+    if not HAS_STRUCTLOG or structlog is None:
         return False
     
     try:
         # Try to get the current configuration
-        import structlog._config
-        return structlog._config._CONFIG is not None
+        if structlog and hasattr(structlog, '_config'):
+            config_module = getattr(structlog, '_config')
+            return hasattr(config_module, '_CONFIG') and config_module._CONFIG is not None
+        return False
     except (ImportError, AttributeError):
         return False
 

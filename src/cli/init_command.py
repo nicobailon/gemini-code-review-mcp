@@ -7,10 +7,9 @@ set up their project with the recommended directory structure and configuration.
 """
 
 import argparse
-import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 # Default templates for generated files
 GITIGNORE_TEMPLATE = """# Gemini Code Review files

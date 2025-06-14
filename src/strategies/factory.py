@@ -4,7 +4,7 @@ Factory for creating strategy instances with proper dependencies.
 
 from typing import Optional
 
-from ..dependencies import Dependencies, DependencyContainer, get_production_container
+from ..dependencies import DependencyContainer, get_production_container
 from ..errors import ConfigurationError
 from ..models import ReviewMode
 from .base import ReviewStrategy

@@ -4,7 +4,6 @@ This module defines the protocol for cache managers, enabling easy swapping
 between SQLite-based and in-memory implementations for testing.
 """
 
-from pathlib import Path
 from typing import Any, Dict, Optional, Protocol, runtime_checkable
 
 

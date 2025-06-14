@@ -5,6 +5,8 @@ This module defines all custom exceptions used throughout the codebase,
 with appropriate exit codes for CLI usage.
 """
 
+from typing import Any
+
 
 class GeminiError(Exception):
     """Base exception for all Gemini code review errors."""
@@ -156,7 +158,7 @@ ERROR_MESSAGES = {
 }
 
 
-def format_error_message(error_key: str, **kwargs) -> str:
+def format_error_message(error_key: str, **kwargs: Any) -> str:
     """
     Format an error message with the given parameters.
 
