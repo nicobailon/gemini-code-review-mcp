@@ -11,7 +11,7 @@ import asyncio
 import os
 import sys
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 
 def validate_prompt(prompt: Dict[str, Any]) -> Dict[str, Any]:
@@ -86,7 +86,7 @@ def _get_generate_meta_prompt() -> Any:
 
                 async def generate_meta_prompt(
                     *args: Any, **kwargs: Any
-                ) -> Dict[str, Any]:
+                ) -> Union[Dict[str, Any], str]:
                     """Generate meta-prompt directly without server dependency."""
                     # Get project context first
                     project_path: Optional[str] = kwargs.get("project_path")
