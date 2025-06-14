@@ -39,18 +39,18 @@ class TestCoreImports:
     def test_ai_code_review_imports(self):
         """Test ai_code_review functionality is available in server"""
         from server import generate_ai_code_review
-        
+
         # The function might be wrapped in an MCP FunctionTool or be a plain function
         # depending on how the module is loaded
-        if hasattr(generate_ai_code_review, 'fn'):
+        if hasattr(generate_ai_code_review, "fn"):
             # It's wrapped in FunctionTool
-            assert hasattr(generate_ai_code_review, 'name')
-            assert generate_ai_code_review.name == 'generate_ai_code_review'
+            assert hasattr(generate_ai_code_review, "name")
+            assert generate_ai_code_review.name == "generate_ai_code_review"
             assert callable(generate_ai_code_review.fn)
         else:
             # It's a plain function
             assert callable(generate_ai_code_review)
-            assert generate_ai_code_review.__name__ == 'generate_ai_code_review'
+            assert generate_ai_code_review.__name__ == "generate_ai_code_review"
 
 
 class TestPackageStructure:
@@ -129,42 +129,48 @@ class TestModelConfiguration:
 
 class TestThinkingBudgetIntegration:
     """Test thinking budget environment variable integration."""
-    
+
     def test_thinking_budget_env_var_works(self):
         """Test that THINKING_BUDGET environment variable is read properly."""
         import os
         from unittest.mock import patch
-        
+
         # Test setting thinking budget via environment variable
-        with patch.dict(os.environ, {'THINKING_BUDGET': '25000'}):
+        with patch.dict(os.environ, {"THINKING_BUDGET": "25000"}):
             # The function should read the env var when thinking_budget param is None
             # This tests that the env var integration works
-            assert os.getenv('THINKING_BUDGET') == '25000'
-            
+            assert os.getenv("THINKING_BUDGET") == "25000"
+
     def test_url_context_parameter_works(self):
         """Test that url_context parameter is properly handled in generate_ai_code_review."""
         # Import the actual function that's wrapped by the MCP tool
-        import sys
         import os
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-        
+        import sys
+
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+
         # Since generate_ai_code_review is defined inside server.py, we need to check
         # if the function signature includes url_context parameter
         # We'll check this by looking at the function definition in the source
-        server_path = os.path.join(os.path.dirname(__file__), '..', 'src', 'server.py')
-        with open(server_path, 'r') as f:
+        server_path = os.path.join(os.path.dirname(__file__), "..", "src", "server.py")
+        with open(server_path, "r") as f:
             content = f.read()
-            
+
         # Find the generate_ai_code_review function definition
         import re
+
         # Look for the function definition with url_context parameter
-        pattern = r'def generate_ai_code_review\([^)]*url_context[^)]*\)'
+        pattern = r"def generate_ai_code_review\([^)]*url_context[^)]*\)"
         match = re.search(pattern, content, re.DOTALL)
-        
-        assert match is not None, "url_context parameter not found in generate_ai_code_review function"
-        
+
+        assert (
+            match is not None
+        ), "url_context parameter not found in generate_ai_code_review function"
+
         # Also verify the parameter type definition is correct (string, list of strings, or None)
         # Look for the url_context parameter type annotation
-        param_pattern = r'url_context:\s*Optional\[Union\[str,\s*List\[str\]\]\]'
+        param_pattern = r"url_context:\s*Optional\[Union\[str,\s*List\[str\]\]\]"
         param_match = re.search(param_pattern, content)
-        assert param_match is not None, "url_context parameter type definition not found"
+        assert (
+            param_match is not None
+        ), "url_context parameter type definition not found"

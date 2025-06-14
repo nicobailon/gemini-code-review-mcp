@@ -12,6 +12,8 @@ import os
 import subprocess
 from typing import Dict, List, Optional
 
+from .progress import progress
+
 logger = logging.getLogger(__name__)
 
 
@@ -105,49 +107,51 @@ def get_changed_files(project_path: str) -> List[Dict[str, str]]:
                 all_files[line].append("untracked")
 
         # Process all collected files
-        for file_path, statuses in all_files.items():
-            absolute_path = os.path.abspath(os.path.join(project_path, file_path))
+        with progress("Reading file contents") as p:
+            for file_path, statuses in all_files.items():
+                p.update(f"Processing {file_path}")
+                absolute_path = os.path.abspath(os.path.join(project_path, file_path))
 
-            # Check if this is a deleted file
-            is_deleted = any("D" in status for status in statuses)
+                # Check if this is a deleted file
+                is_deleted = any("D" in status for status in statuses)
 
-            if is_deleted:
-                content = "[File deleted]"
-            else:
-                # Get file content from working directory
-                try:
-                    if os.path.exists(absolute_path):
-                        # Check file size to avoid memory issues with very large files
-                        file_size = os.path.getsize(absolute_path)
-                        max_file_size = (
-                            int(os.getenv("MAX_FILE_SIZE_MB", "10")) * 1024 * 1024
-                        )  # Default 10MB
+                if is_deleted:
+                    content = "[File deleted]"
+                else:
+                    # Get file content from working directory
+                    try:
+                        if os.path.exists(absolute_path):
+                            # Check file size to avoid memory issues with very large files
+                            file_size = os.path.getsize(absolute_path)
+                            max_file_size = (
+                                int(os.getenv("MAX_FILE_SIZE_MB", "10")) * 1024 * 1024
+                            )  # Default 10MB
 
-                        if file_size > max_file_size:
-                            content = f"[File too large: {file_size / (1024 * 1024):.1f}MB, limit is {max_file_size / (1024 * 1024)}MB]"
-                        else:
-                            with open(absolute_path, "r", encoding="utf-8") as f:
-                                content_lines = f.readlines()
-
-                            if len(content_lines) > max_lines:
-                                content = "".join(content_lines[:max_lines])
-                                content += f"\n... (truncated, showing first {max_lines} lines)"
+                            if file_size > max_file_size:
+                                content = f"[File too large: {file_size / (1024 * 1024):.1f}MB, limit is {max_file_size / (1024 * 1024)}MB]"
                             else:
-                                content = "".join(content_lines).rstrip("\n")
-                    else:
-                        content = "[File not found in working directory]"
+                                with open(absolute_path, "r", encoding="utf-8") as f:
+                                    content_lines = f.readlines()
 
-                except (UnicodeDecodeError, PermissionError, OSError):
-                    # Handle binary files or other errors
-                    content = "[Binary file or content not available]"
+                                if len(content_lines) > max_lines:
+                                    content = "".join(content_lines[:max_lines])
+                                    content += f"\n... (truncated, showing first {max_lines} lines)"
+                                else:
+                                    content = "".join(content_lines).rstrip("\n")
+                        else:
+                            content = "[File not found in working directory]"
 
-            changed_files.append(
-                {
-                    "path": absolute_path,
-                    "status": ", ".join(statuses),
-                    "content": content,
-                }
-            )
+                    except (UnicodeDecodeError, PermissionError, OSError):
+                        # Handle binary files or other errors
+                        content = "[Binary file or content not available]"
+
+                changed_files.append(
+                    {
+                        "path": absolute_path,
+                        "status": ", ".join(statuses),
+                        "content": content,
+                    }
+                )
 
         return changed_files
 

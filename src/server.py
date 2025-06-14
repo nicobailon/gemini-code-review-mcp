@@ -2,9 +2,9 @@
 FastMCP server for generating code review context from PRDs and git changes
 """
 
+import logging
 import os
 import sys
-import logging
 import warnings
 from typing import Any, Callable, Dict, List, Optional, Protocol, Union, cast
 
@@ -17,24 +17,27 @@ try:
 
     # Try relative imports first, fall back to absolute
     try:
+        from .file_context_generator import (
+            generate_file_context_data,
+            save_file_context,
+        )
+        from .file_context_types import FileContextConfig
+        from .file_selector import normalize_file_selections_from_dicts
         from .gemini_api_client import send_to_gemini_for_review
         from .generate_code_review_context import (
             generate_code_review_context_main as generate_review_context,
         )
         from .model_config_manager import load_model_config
-        from .file_context_generator import generate_file_context_data, save_file_context
-        from .file_context_types import FileContextConfig
-        from .file_selector import normalize_file_selections_from_dicts
     except ImportError:
         # Fall back to absolute imports for testing
+        from file_context_generator import generate_file_context_data, save_file_context
+        from file_context_types import FileContextConfig
+        from file_selector import normalize_file_selections_from_dicts
         from gemini_api_client import send_to_gemini_for_review
         from generate_code_review_context import (
             generate_code_review_context_main as generate_review_context,
         )
         from model_config_manager import load_model_config
-        from file_context_generator import generate_file_context_data, save_file_context
-        from file_context_types import FileContextConfig
-        from file_selector import normalize_file_selections_from_dicts
 except ImportError as e:
     print(f"Required dependencies not available: {e}", file=sys.stderr)
     sys.exit(1)
@@ -674,7 +677,8 @@ def generate_code_review_context(
                 from meta_prompt_analyzer import generate_optimized_meta_prompt
 
                 meta_prompt_result = generate_optimized_meta_prompt(
-                    project_path=project_path, scope=scope,
+                    project_path=project_path,
+                    scope=scope,
                     thinking_budget=thinking_budget,
                 )
                 auto_prompt_content = meta_prompt_result.get("generated_prompt")
@@ -775,6 +779,8 @@ def generate_ai_code_review(
     scope: str = "recent_phase",
     phase_number: Optional[str] = None,
     task_number: Optional[str] = None,
+    task_list: Optional[str] = None,
+    default_prompt: Optional[str] = None,
     output_path: Optional[str] = None,
     model: Optional[str] = None,
     temperature: float = 0.5,
@@ -795,6 +801,8 @@ def generate_ai_code_review(
         scope: Review scope when using project_path - 'recent_phase', 'full_project', 'specific_phase', 'specific_task'
         phase_number: Phase number for specific_phase scope
         task_number: Task number for specific_task scope
+        task_list: Specific task list file to use (overrides automatic discovery)
+        default_prompt: Custom default prompt when no task list exists
         output_path: Custom output file path for AI review. If not provided, uses default timestamped path
         model: Optional Gemini model name (e.g., 'gemini-2.0-flash-exp', 'gemini-1.5-pro')
         temperature: Temperature for AI model (default: 0.5, range: 0.0-2.0)
@@ -1022,6 +1030,8 @@ Provide specific, actionable feedback with code examples where appropriate."""
                         scope=scope,
                         phase_number=phase_number,
                         task_number=task_number,
+                        task_list=task_list,
+                        default_prompt=default_prompt,
                         output=temp_context_file,
                         enable_gemini_review=False,  # We'll generate AI review ourselves
                         include_claude_memory=include_claude_memory,
@@ -1431,7 +1441,7 @@ def generate_file_context(
     """
     DEPRECATED: Generates context from files but does not call Gemini.
     Use the 'ask_gemini' tool for AI responses or the 'generate-file-context' CLI for debugging.
-    
+
     Args:
         file_selections: List of file selection dictionaries, each containing:
             - path: str (required) - File path (absolute or relative to project_path)
@@ -1440,14 +1450,14 @@ def generate_file_context(
         project_path: Optional project root for relative paths and config discovery
         user_instructions: Custom instructions for the context
         include_claude_memory: Include CLAUDE.md files in context
-        include_cursor_rules: Include Cursor rules files in context  
+        include_cursor_rules: Include Cursor rules files in context
         auto_meta_prompt: Generate context-aware meta-prompt
         temperature: AI temperature for meta-prompt generation
         text_output: Return content directly (True) or save to file (False)
         output_path: Custom output path when text_output=False (IGNORED - kept for compatibility)
         thinking_budget: IGNORED - kept for compatibility
         url_context: IGNORED - kept for compatibility
-        
+
     Returns:
         If text_output=True: Context content as string
         If text_output=False: Success message with file path
@@ -1455,28 +1465,30 @@ def generate_file_context(
     warnings.warn(
         "'generate_file_context' is deprecated. Use 'ask_gemini' for AI review or the new 'generate-file-context' CLI command for debugging.",
         DeprecationWarning,
-        stacklevel=2
+        stacklevel=2,
     )
-    
+
     # This function provides context generation without calling Gemini.
     # It remains as an MCP tool for backward compatibility but is deprecated.
-    
+
     # Note: We keep returning ERROR strings for backward compatibility with existing tests.
     # The new ask_gemini tool uses exceptions instead, which is the preferred approach.
-    
+
     try:
         # Already imported at module level, no need to re-import
-        
+
         # Validate input
         if not file_selections:
             return "ERROR: file_selections cannot be empty"
-        
+
         # Convert file_selections to proper FileSelection objects
         try:
-            normalized_selections = normalize_file_selections_from_dicts(file_selections)
+            normalized_selections = normalize_file_selections_from_dicts(
+                file_selections
+            )
         except ValueError as e:
             return f"ERROR: {str(e)}"
-        
+
         # Create configuration (ignoring output_path parameter)
         config = FileContextConfig(
             file_selections=normalized_selections,
@@ -1487,12 +1499,12 @@ def generate_file_context(
             auto_meta_prompt=auto_meta_prompt,
             temperature=temperature,
             text_output=text_output,
-            output_path=None  # Always None - output_path is handled separately
+            output_path=None,  # Always None - output_path is handled separately
         )
-        
+
         # Generate context
         result = generate_file_context_data(config)
-        
+
         # Handle output based on text_output mode
         if text_output:
             # Return content directly
@@ -1500,8 +1512,10 @@ def generate_file_context(
         else:
             # Save to file and return success message
             saved_path = save_file_context(result, output_path, project_path)
-            return f"File context generated successfully: {os.path.basename(saved_path)}"
-    
+            return (
+                f"File context generated successfully: {os.path.basename(saved_path)}"
+            )
+
     except Exception as e:
         return f"ERROR: {str(e)}"
 
@@ -1535,22 +1549,24 @@ def ask_gemini(
         model: Specific Gemini model to use.
         thinking_budget: Optional token budget for thinking mode.
         text_output: If True, return the response as a string. If False, save it to a file.
-        
+
     Returns:
         The response from Gemini as a string or a success message with the file path.
     """
     try:
         # Step 1: Normalize file selections (handle empty case)
         normalized_selections = normalize_file_selections_from_dicts(file_selections)
-        
+
         # Log if no files selected
         if not normalized_selections:
             logger.info("No files selected; context will contain only instructions")
-        
+
         # Optional: Validate that we have something to work with
         if not normalized_selections and not user_instructions:
-            raise ValueError("Either file_selections or user_instructions must be provided")
-        
+            raise ValueError(
+                "Either file_selections or user_instructions must be provided"
+            )
+
         # Step 2: Create the context generation configuration
         config = FileContextConfig(
             file_selections=normalized_selections,
@@ -1565,7 +1581,7 @@ def ask_gemini(
         # Step 3: Generate the context content string
         context_result = generate_file_context_data(config)
         context_content = context_result.content
-        
+
         # Step 4: Send the generated context to Gemini
         gemini_response = send_to_gemini_for_review(
             context_content=context_content,
@@ -1577,7 +1593,9 @@ def ask_gemini(
         )
 
         if gemini_response is None:
-            raise RuntimeError("Failed to get a response from Gemini. Check API key and logs.")
+            raise RuntimeError(
+                "Failed to get a response from Gemini. Check API key and logs."
+            )
 
         return gemini_response
 
@@ -1590,7 +1608,7 @@ def ask_gemini(
 
 def get_mcp_tools():
     """Get list of available MCP tools for testing.
-    
+
     Note: Keep this list in sync with tools decorated with @mcp.tool().
     Consider adding a test to verify registry consistency.
     """
@@ -1601,10 +1619,16 @@ def get_mcp_tools():
     ]
 
 
-
-
 def main():
     """Entry point for uvx execution"""
+    # Configure logging for MCP context
+    try:
+        from .logging_config import setup_mcp_logging
+    except ImportError:
+        from logging_config import setup_mcp_logging
+    
+    setup_mcp_logging()
+    
     # FastMCP handles all the server setup, protocol, and routing
     # Default transport is stdio (best for local tools and command-line scripts)
     mcp.run()

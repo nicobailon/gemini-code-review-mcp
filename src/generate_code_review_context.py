@@ -14,7 +14,7 @@ consider importing directly from the specific modules:
 """
 
 import logging
-from typing import Any, Optional, Union, List
+from typing import Any, List, Optional, Union
 
 # Import only what's actually used in this module
 try:

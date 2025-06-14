@@ -83,6 +83,7 @@ gemini-code-review-mcp = "src.server:main"
 generate-code-review = "src.cli_main:main"
 generate-meta-prompt = "src.meta_prompt_generator:main"
 generate-file-context = "src.cli_generate_file_context:main"
+gemini-code-review-init = "src.cli.init_command:main"
 # Semantic shortcuts (when installed)
 code-review = "src.cli_main:main"
 
@@ -111,3 +112,15 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
 addopts = "-m 'not integration'"  # By default, skip integration tests
+
+[tool.gemini]
+# Default configuration for Gemini Code Review
+temperature = 0.5
+default_prompt = "Conduct a comprehensive code review focusing on code quality, best practices, security, performance, and testing coverage."
+default_model = "gemini-1.5-flash"
+include_claude_memory = true
+include_cursor_rules = false
+
+# Performance settings
+enable_cache = true
+cache_ttl_seconds = 900  # 15 minutes

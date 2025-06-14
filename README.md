@@ -271,14 +271,34 @@ The tool automatically discovers and includes:
 - 📝 **Cursor rules** (`.cursorrules`, `.cursor/rules/*.mdc`)
 - 🔗 **Import syntax** (`@path/to/file.md`) for modular configs
 
+### Configuration in pyproject.toml
+
+You can set default values in your `pyproject.toml`:
+
+```toml
+[tool.gemini]
+temperature = 0.5
+default_prompt = "Your custom review prompt"
+default_model = "gemini-1.5-flash"
+include_claude_memory = true
+include_cursor_rules = false
+enable_cache = true
+cache_ttl_seconds = 900  # 15 minutes
+```
+
+Configuration precedence: CLI flags > Environment variables > pyproject.toml > Built-in defaults
+
 ## ✨ Key Features
 
-- 🤖 **Smart Context** - Automatically includes CLAUDE.md, task lists, and project structure
+- 🤖 **Smart Context** - Includes CLAUDE.md (default: on), task lists, and project structure
 - 🎯 **Flexible Scopes** - Review PRs, recent changes, or entire projects
 - ⚡ **Model Selection** - Choose between Gemini 2.0 Flash (speed) or 2.5 Pro (depth)
 - 🔄 **GitHub Integration** - Direct PR analysis with full context
 - 📊 **Progress Aware** - Understands development phases and task completion
 - 🔗 **URL Context** - Gemini automatically fetches and analyzes URLs in prompts (or use `--url-context` flag)
+- 🏗️ **Project Scaffolding** - Initialize projects with recommended structure via `gemini-code-review-init`
+- 🚀 **Performance Optimized** - Built-in caching layer for faster repeated operations
+- 🎨 **Clear Mode Indication** - Explicit feedback about Task-Driven vs General Review modes
 
 ## 🖥️ CLI Usage
 
@@ -297,6 +317,9 @@ pip install gemini-code-review-mcp
 ### Commands
 
 ```bash
+# Initialize a new project with recommended structure
+gemini-code-review-init
+
 # Basic review (current directory)
 generate-code-review
 
@@ -307,6 +330,12 @@ generate-code-review /path/to/project
 generate-code-review . \
   --scope full_project \
   --model gemini-2.5-pro
+
+# Use specific task list (overrides auto-discovery)
+generate-code-review \
+  --task-list tasks/tasks-feature-x.md \
+  --scope specific_phase \
+  --phase-number 2.0
 
 # With thinking budget (current directory)
 generate-code-review --thinking-budget 20000 --temperature 0.7
@@ -324,6 +353,25 @@ generate-file-context -f src/main.py -f src/utils.py:10-50 \
 # Meta-prompt only (current directory)
 generate-meta-prompt --stream
 ```
+
+### Review Modes
+
+The tool operates in one of three modes, automatically detected based on your configuration:
+
+1. **📝 Task-Driven Mode**: When task lists are found in `/tasks/tasks-*.md`
+   - Contextualizes review based on your current development phase
+   - Tracks progress against planned tasks
+   - Best for: Active development with defined milestones
+
+2. **🔍 General Review Mode**: When no task lists are present
+   - Comprehensive code quality analysis
+   - Focuses on best practices and improvements
+   - Best for: Maintenance, refactoring, or exploratory reviews
+
+3. **🐙 GitHub PR Mode**: When `--github-pr-url` is provided
+   - Analyzes specific pull request changes
+   - Includes PR context and discussions
+   - Best for: Code review workflows
 
 ### Supported File Formats
 

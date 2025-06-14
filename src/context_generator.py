@@ -16,6 +16,11 @@ from typing import Any, Dict, List, Optional, Tuple
 # Import necessary modules
 try:
     from .config_types import CodeReviewConfig
+    from .errors import ConfigurationError
+    from .models.review_context import ReviewContext
+    from .models.review_mode import ReviewMode
+    from .models.task_info import TaskInfo
+    from .models.converters import review_context_to_dict
     from .configuration_context import ClaudeMemoryFile, CursorRule
     from .context_builder import (
         DiscoveredConfigurations,
@@ -23,6 +28,7 @@ try:
         format_configuration_context_for_ai,
         get_applicable_rules_for_files,
     )
+    from .dependencies import get_production_container
     from .gemini_api_client import send_to_gemini_for_review
     from .git_utils import generate_file_tree, get_changed_files
     from .model_config_manager import load_model_config
@@ -36,6 +42,11 @@ try:
 except ImportError:
     # Fallback for absolute imports
     from config_types import CodeReviewConfig
+    from errors import ConfigurationError
+    from models.review_context import ReviewContext
+    from models.review_mode import ReviewMode
+    from models.task_info import TaskInfo
+    from models.converters import review_context_to_dict
     from configuration_context import ClaudeMemoryFile, CursorRule
     from context_builder import (
         DiscoveredConfigurations,
@@ -43,6 +54,7 @@ except ImportError:
         format_configuration_context_for_ai,
         get_applicable_rules_for_files,
     )
+    from dependencies import get_production_container
     from gemini_api_client import send_to_gemini_for_review
     from git_utils import generate_file_tree, get_changed_files
     from model_config_manager import load_model_config
@@ -96,16 +108,62 @@ def extract_clean_prompt_content(auto_prompt_content: str) -> str:
     return content
 
 
-def format_review_template(data: Dict[str, Any]) -> str:
+def format_review_template(data: Dict[str, Any], use_cache: bool = True) -> str:
     """
     Format the final review template.
 
     Args:
         data: Dictionary containing all template data
+        use_cache: Whether to use caching for template rendering
 
     Returns:
         Formatted markdown template
     """
+    # Initialize cache variables
+    cache = None
+    cache_key = None
+    
+    # Try to get from cache first if enabled
+    if use_cache:
+        try:
+            from .cache import get_cache_manager
+            import hashlib
+            import json
+            
+            cache = get_cache_manager()
+            
+            # Create a cache key from relevant template data
+            # We'll hash the data to create a stable key
+            
+            # Add template version hash to invalidate cache when template changes
+            # Hash the function code itself to detect changes
+            import inspect
+            template_code = inspect.getsource(format_review_template)
+            template_hash = hashlib.md5(template_code.encode()).hexdigest()[:8]
+            
+            cache_data = {
+                "template_version": template_hash,  # Invalidate when template changes
+                "review_mode": data.get("review_mode"),
+                "scope": data.get("scope"),
+                "phase_number": data.get("phase_number"),
+                "task_number": data.get("task_number"),
+                "prd_summary": data.get("prd_summary", "")[:100],  # First 100 chars
+                "total_phases": data.get("total_phases"),
+                "has_config": bool(data.get("configuration_content")),
+                "has_url_context": bool(data.get("url_context_content")),
+                "changed_files_count": len(data.get("changed_files", [])),
+                "file_tree_hash": hashlib.md5(data.get("file_tree", "").encode()).hexdigest()[:8],
+            }
+            cache_key = hashlib.md5(json.dumps(cache_data, sort_keys=True).encode()).hexdigest()
+            
+            cached_result = cache.get("template_render", {"key": cache_key})
+            if cached_result is not None:
+                logger.debug(f"Using cached template render for key: {cache_key}")
+                return cached_result
+        except Exception as e:
+            logger.debug(f"Cache not available for template rendering: {e}")
+            cache = None
+            cache_key = None
     # Add scope information to header
     review_mode = data.get("review_mode", "task_list_based")
     if review_mode == "github_pr":
@@ -121,8 +179,8 @@ def format_review_template(data: Dict[str, Any]) -> str:
 """
 
     # Check if we have task list data (total_phases > 0 indicates a task list exists)
-    has_task_list = data.get('total_phases', 0) > 0
-    
+    has_task_list = data.get("total_phases", 0) > 0
+
     if has_task_list:
         # Include PRD/task list related tags only when task list exists
         template += f"""
@@ -164,7 +222,7 @@ def format_review_template(data: Dict[str, Any]) -> str:
 </subtasks_completed>"""
     else:
         # For projects without task lists, just include the summary/prompt
-        if data.get('prd_summary'):
+        if data.get("prd_summary"):
             template += f"""
 <project_context>
 {data['prd_summary']}
@@ -308,18 +366,31 @@ Based on the PRD, the completed phase, all subtasks that were finished in that p
 
         template += """
 </user_instructions>"""
-    
+
     # Add URL context if available
     if data.get("url_context_content"):
         template += "\n\n" + data["url_context_content"] + "\n"
 
+    # Cache the result if caching is enabled
+    if use_cache and cache is not None and cache_key is not None:
+        try:
+            # Cache for 30 minutes since templates don't change often
+            cache.set("template_render", {"key": cache_key}, template, ttl=1800)
+            logger.debug(f"Cached template render for key: {cache_key}")
+        except Exception as e:
+            logger.debug(f"Failed to cache template render: {e}")
+
     return template
 
 
+# Legacy function - kept for backward compatibility but marked as deprecated
 def find_project_files(
     project_path: str, task_list_name: Optional[str] = None
 ) -> tuple[Optional[str], Optional[str]]:
     """
+    DEPRECATED: Use FileFinder service instead.
+    Legacy function kept for backward compatibility.
+
     Find PRD and task list files in the project. PRD files are now optional.
 
     Args:
@@ -329,81 +400,21 @@ def find_project_files(
     Returns:
         Tuple of (prd_file_path, task_list_path). prd_file_path may be None.
     """
-    import glob
+    logger.warning("find_project_files is deprecated. Use FileFinder service instead.")
 
-    tasks_dir = os.path.join(project_path, "tasks")
+    # Use FileFinder service for implementation
+    from pathlib import Path
 
-    # Create tasks directory if it doesn't exist (for new projects)
-    if not os.path.exists(tasks_dir):
-        logger.info(
-            f"Tasks directory not found: {tasks_dir}. This is OK - the tool can work without task lists."
-        )
-        return None, None
+    container = get_production_container()
+    file_finder = container.file_finder
 
-    # Find PRD files (optional)
-    prd_file = None
-    prd_files = glob.glob(os.path.join(tasks_dir, "prd-*.md"))
-    if not prd_files:
-        # Also check root directory
-        prd_files = glob.glob(os.path.join(project_path, "prd.md"))
+    project_files = file_finder.find_project_files(Path(project_path), task_list_name)
 
-    if prd_files:
-        # Use most recently modified if multiple
-        prd_file = max(prd_files, key=os.path.getmtime)
-        logger.info(f"Found PRD file: {os.path.basename(prd_file)}")
-    else:
-        print(
-            "ℹ️  No PRD files found - using task list or default prompt for context generation"
-        )
-
-    # Find task list files
-    task_file = None
-
-    if task_list_name:
-        # User specified exact task list file
-        if not task_list_name.endswith(".md"):
-            task_list_name += ".md"
-
-        specified_path = os.path.join(tasks_dir, task_list_name)
-        if os.path.exists(specified_path):
-            task_file = specified_path
-            logger.info(f"Using specified task list: {task_list_name}")
-        else:
-            # Try to find similar files
-            available_files = [
-                f
-                for f in os.listdir(tasks_dir)
-                if f.startswith("tasks-") and f.endswith(".md")
-            ]
-            error_msg = f"""Specified task list not found: {task_list_name}
-
-Available task lists in {tasks_dir}:
-{chr(10).join(f'  - {f}' for f in available_files) if available_files else '  (no task list files found)'}
-
-Working examples:
-  # Use specific task list
-  generate-code-review . --task-list tasks-feature-auth.md
-  
-  # Let tool auto-select most recent task list
-  generate-code-review ."""
-            raise FileNotFoundError(error_msg)
-    else:
-        # Auto-discover task list files
-        task_files = glob.glob(os.path.join(tasks_dir, "tasks-*.md"))
-
-        if task_files:
-            # Use most recently modified if multiple
-            task_file = max(task_files, key=os.path.getmtime)
-            if len(task_files) > 1:
-                available_files = [os.path.basename(f) for f in task_files]
-                logger.info(f"Multiple task lists found: {', '.join(available_files)}")
-                logger.info(f"Auto-selected most recent: {os.path.basename(task_file)}")
-            else:
-                logger.info(f"Found task list: {os.path.basename(task_file)}")
-        else:
-            logger.info(
-                "No task list files found. Will use default prompt for code review."
-            )
+    # Convert back to legacy format
+    prd_file = str(project_files.prd_file) if project_files.prd_file else None
+    task_file = (
+        str(project_files.task_list_file) if project_files.task_list_file else None
+    )
 
     return prd_file, task_file
 
@@ -448,12 +459,12 @@ Working examples:
   
   # NOT valid - conflicting modes
   generate-code-review . --compare-branch feature/auth --github-pr-url https://github.com/owner/repo/pull/123"""
-        raise ValueError(error_msg)
+        raise ConfigurationError(error_msg)
 
     # Validate scope parameter
     valid_scopes = ["recent_phase", "full_project", "specific_phase", "specific_task"]
     if config.scope not in valid_scopes:
-        raise ValueError(
+        raise ConfigurationError(
             f"Invalid scope '{config.scope}'. Must be one of: {', '.join(valid_scopes)}"
         )
 
@@ -471,7 +482,7 @@ Working examples:
   
   # Use environment variable for API key
   GEMINI_API_KEY=your_key generate-code-review . --scope specific_phase --phase-number 3.0"""
-            raise ValueError(error_msg)
+            raise ConfigurationError(error_msg)
         if not re.match(r"^\d+\.0$", config.phase_number):
             error_msg = f"""Invalid phase_number format '{config.phase_number}'. Must be in format 'X.0'
 
@@ -485,7 +496,7 @@ Working examples:
   --phase-number 1    ❌ (missing .0)
   --phase-number 1.1  ❌ (phases end in .0)
   --phase-number v1.0 ❌ (no prefix allowed)"""
-            raise ValueError(error_msg)
+            raise ConfigurationError(error_msg)
 
     if config.scope == "specific_task":
         if not config.task_number:
@@ -500,7 +511,7 @@ Working examples:
   
   # Use with custom temperature
   generate-code-review . --scope specific_task --task-number 3.4 --temperature 0.3"""
-            raise ValueError(error_msg)
+            raise ConfigurationError(error_msg)
         if not re.match(
             r"^\d+\.\d+$", config.task_number
         ) or config.task_number.endswith(".0"):
@@ -516,7 +527,7 @@ Working examples:
   --task-number 1     ❌ (missing subtask number)
   --task-number 1.0   ❌ (use specific_phase for X.0)
   --task-number 1.a   ❌ (must be numeric)"""
-            raise ValueError(error_msg)
+            raise ConfigurationError(error_msg)
 
     # Validate GitHub PR URL if provided
     if config.github_pr_url:
@@ -539,7 +550,7 @@ Working examples:
   
   # With additional parameters
   generate-code-review --github-pr-url https://github.com/owner/repo/pull/789 --temperature 0.3"""
-            raise ValueError(error_msg)
+            raise ConfigurationError(error_msg)
 
     # Initial user feedback
     print(
@@ -560,8 +571,21 @@ Working examples:
     # Load model config for default prompt
     model_config = load_model_config()
 
-    # Find project files (PRD is now optional)
-    prd_file, task_file = find_project_files(config.project_path, config.task_list)
+    # Use FileFinder service to find project files
+    from pathlib import Path
+
+    container = get_production_container()
+    file_finder = container.file_finder
+
+    project_files = file_finder.find_project_files(
+        Path(config.project_path), config.task_list
+    )
+
+    # Extract file paths
+    prd_file = str(project_files.prd_file) if project_files.prd_file else None
+    task_file = (
+        str(project_files.task_list_file) if project_files.task_list_file else None
+    )
 
     # Handle different scenarios
     prd_summary = None
@@ -718,7 +742,7 @@ Working examples:
   
   # Use default scope (most recent incomplete phase)
   generate-code-review ."""
-            raise ValueError(error_msg)
+            raise ConfigurationError(error_msg)
 
         i, p = target_phase
         # Find previous completed phase
@@ -781,7 +805,7 @@ Working examples:
   
   # Use default scope (most recent incomplete phase)
   generate-code-review ."""
-            raise ValueError(error_msg)
+            raise ConfigurationError(error_msg)
 
         # Type guard: At this point we know target_phase is not None and is a tuple
         assert (
@@ -908,40 +932,61 @@ Working examples:
     configuration_content = format_configuration_context_for_ai(
         claude_memory_files, cursor_rules
     )
-    
+
     # Process URL context if provided
     # According to Gemini API docs, URLs should be included in the prompt text
     # The URL context tool will automatically fetch and analyze them
     url_context_content = None
     if config.url_context:
-        urls = config.url_context if isinstance(config.url_context, list) else [config.url_context]
+        urls = (
+            config.url_context
+            if isinstance(config.url_context, list)
+            else [config.url_context]
+        )
         if urls:
             url_context_content = "\n## Additional Context URLs\n\n"
-            url_context_content += "Please analyze the following URLs for additional context:\n"
+            url_context_content += (
+                "Please analyze the following URLs for additional context:\n"
+            )
             for url in urls:
                 url_context_content += f"- {url}\n"
 
     # Prepare template data with enhanced configuration support
-    template_data: Dict[str, Any] = {
-        "prd_summary": prd_summary,
+    # Create ReviewContext object for type safety
+    review_mode = ReviewMode.GITHUB_PR if current_mode == "github_pr" else ReviewMode.TASK_DRIVEN
+    
+    # Create TaskInfo if we have task data
+    task_info = None
+    if task_data.get("current_phase_number") and task_data.get("current_phase_description"):
+        task_info = TaskInfo(
+            phase_number=str(task_data["current_phase_number"]),
+            task_number=str(config.task_number) if config.task_number else None,
+            description=task_data["current_phase_description"],
+        )
+    
+    # Extract file paths from changed_files for ReviewContext
+    changed_file_paths = [f["file_path"] for f in changed_files if "file_path" in f]
+    
+    # Create ReviewContext
+    review_context = ReviewContext(
+        mode=review_mode,
+        default_prompt=config.auto_prompt_content or "",
+        prd_summary=prd_summary,
+        task_info=task_info,
+        changed_files=changed_file_paths,
+    )
+    
+    # Convert to dict with extra data for template compatibility
+    extra_template_data = {
         "total_phases": task_data["total_phases"],
-        "current_phase_number": task_data["current_phase_number"],
         "previous_phase_completed": task_data["previous_phase_completed"],
         "next_phase": task_data["next_phase"],
-        "current_phase_description": task_data["current_phase_description"],
         "subtasks_completed": task_data["subtasks_completed"],
         "project_path": config.project_path,
         "file_tree": file_tree,
-        "changed_files": changed_files,
+        "changed_files": changed_files,  # Keep original format for template
         "scope": effective_scope,  # Use effective scope to reflect auto-expansion
-        "phase_number": (
-            config.phase_number if config.scope == "specific_phase" else None
-        ),
-        "task_number": (
-            config.task_number if config.scope == "specific_task" else None
-        ),
         "branch_comparison_data": pr_data,
-        "review_mode": current_mode,
         # Enhanced configuration data
         "configuration_content": configuration_content,
         "claude_memory_files": configurations["claude_memory_files"],
@@ -949,10 +994,12 @@ Working examples:
         "applicable_rules": applicable_rules,
         "configuration_errors": configurations["discovery_errors"],
         "raw_context_only": config.raw_context_only,
-        "auto_prompt_content": config.auto_prompt_content,
         "url_context_content": url_context_content,
     }
-
+    
+    # Use converter to create template data with proper typing
+    template_data = review_context_to_dict(review_context, extra_template_data)
+    
     return template_data
 
 
@@ -1031,8 +1078,10 @@ def process_and_output_review(
             config.project_path if config.project_path is not None else os.getcwd()
         )
         gemini_output = send_to_gemini_for_review(
-            review_context, project_path, config.temperature,
-            thinking_budget=config.thinking_budget
+            review_context,
+            project_path,
+            config.temperature,
+            thinking_budget=config.thinking_budget,
         )
         if gemini_output:
             print(f"✅ AI code review completed: {os.path.basename(gemini_output)}")
