@@ -977,7 +977,7 @@ Working examples:
     )
     
     # Convert to dict with extra data for template compatibility
-    extra_template_data = {
+    extra_template_data: Dict[str, object] = {
         "total_phases": task_data["total_phases"],
         "previous_phase_completed": task_data["previous_phase_completed"],
         "next_phase": task_data["next_phase"],

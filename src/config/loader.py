@@ -13,17 +13,13 @@ import warnings
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
-try:
-    import tomllib
-except ImportError:
-    # Python < 3.11
-    import tomli as tomllib  # type: ignore[import-not-found,no-redef]
+from .toml_parser import parse_pyproject_toml
 
 from ..config_types import CodeReviewConfig
-from ..errors import ConfigurationError
 
 # Type for configuration values
 ConfigValue = Union[str, int, float, bool, None]
+ConfigListValue = Union[ConfigValue, List[ConfigValue]]
 
 # Built-in defaults with specific types
 DEFAULT_TEMPERATURE: float = 0.5
@@ -81,30 +77,12 @@ class ConfigurationLoader:
             self._pyproject_config = {}
             return self._pyproject_config
 
-        try:
-            with open(pyproject_path, "rb") as f:
-                data = tomllib.load(f)
-                if not isinstance(data, dict):
-                    self._pyproject_config = {}
-                    return self._pyproject_config
-                    
-                tool_section = data.get("tool", {})
-                if isinstance(tool_section, dict):
-                    gemini_section = tool_section.get("gemini", {})
-                    if isinstance(gemini_section, dict):
-                        # Validate and convert values to our ConfigValue type
-                        validated_config: Dict[str, ConfigValue] = {}
-                        for k, v in gemini_section.items():
-                            if isinstance(k, str) and (isinstance(v, (str, int, float, bool)) or v is None):
-                                validated_config[k] = v
-                        self._pyproject_config = validated_config
-                    else:
-                        self._pyproject_config = {}
-                else:
-                    self._pyproject_config = {}
-                return self._pyproject_config
-        except Exception as e:
-            raise ConfigurationError(f"Failed to load pyproject.toml: {e}")
+        config = parse_pyproject_toml(pyproject_path)
+        if config is None:
+            self._pyproject_config = {}
+        else:
+            self._pyproject_config = config
+        return self._pyproject_config
 
     def check_deprecated_config(self) -> None:
         """Check for deprecated model_config.json and warn if found."""
@@ -266,13 +244,15 @@ class ConfigurationLoader:
 
     def _get_url_context(self, config_dict: Dict[str, ConfigValue]) -> Optional[Union[str, List[str]]]:
         """Get url_context which can be string or list of strings."""
+        # url_context is special - it's not in ConfigValue but might come from CLI
+        # For now, we only support string values from our config sources
         val = config_dict.get("url_context")
         if val is None:
             return None
         if isinstance(val, str):
             return val
-        if isinstance(val, list) and all(isinstance(item, str) for item in val):
-            return [str(item) for item in val]
+        # Lists aren't supported in our ConfigValue type
+        # This would only happen if someone passed a list via CLI args
         return None
 
 
