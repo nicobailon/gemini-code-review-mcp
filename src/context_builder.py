@@ -357,7 +357,7 @@ def discover_project_configurations_with_fallback(project_path: str) -> Dict[str
 
 def discover_project_configurations_with_flags(
     project_path: str,
-    include_claude_memory: bool = True,
+    include_claude_memory: bool = False,
     include_cursor_rules: bool = False,
 ) -> DiscoveredConfigurations:
     """

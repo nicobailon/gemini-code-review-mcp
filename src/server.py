@@ -124,7 +124,7 @@ generate_context = generate_review_context
 def generate_context_in_memory(
     github_pr_url: Optional[str] = None,
     project_path: Optional[str] = None,
-    include_claude_memory: bool = True,
+    include_claude_memory: bool = False,
     include_cursor_rules: bool = False,
     auto_prompt_content: Optional[str] = None,
     temperature: float = 0.5,
@@ -138,8 +138,8 @@ def generate_context_in_memory(
     Args:
         github_pr_url: GitHub PR URL for analysis
         project_path: Project directory path
-        include_claude_memory: Include CLAUDE.md files in context
-        include_cursor_rules: Include Cursor rules files in context
+        include_claude_memory: Include CLAUDE.md files in context (optional - off by default)
+        include_cursor_rules: Include Cursor rules files in context (optional - off by default)
         auto_prompt_content: Generated meta-prompt content to embed
         temperature: AI temperature setting
 
@@ -313,7 +313,7 @@ async def generate_pr_review(
     project_path: Optional[str] = None,
     temperature: float = 0.5,
     enable_gemini_review: bool = True,
-    include_claude_memory: bool = True,
+    include_claude_memory: bool = False,
     include_cursor_rules: bool = False,
     auto_meta_prompt: bool = True,
     use_templated_instructions: bool = False,
@@ -330,8 +330,8 @@ async def generate_pr_review(
         project_path: Optional local project path for context (default: current directory)
         temperature: Temperature for AI model (default: 0.5, range: 0.0-2.0)
         enable_gemini_review: Enable Gemini AI code review generation (default: true)
-        include_claude_memory: Include CLAUDE.md files in context (default: true)
-        include_cursor_rules: Include Cursor rules files in context (default: false)
+        include_claude_memory: Include CLAUDE.md files in context (optional - off by default)
+        include_cursor_rules: Include Cursor rules files in context (optional - off by default)
         auto_meta_prompt: Automatically generate and embed meta prompt in user_instructions (default: true)
         use_templated_instructions: Use templated backup instructions instead of generated meta prompt (default: false)
         create_context_file: Save context to file and return context content (default: false)
@@ -581,7 +581,7 @@ def generate_code_review_context(
     output_path: Optional[str] = None,
     enable_gemini_review: bool = False,
     temperature: float = 0.5,
-    include_claude_memory: bool = True,
+    include_claude_memory: bool = False,
     include_cursor_rules: bool = False,
     raw_context_only: bool = False,
     text_output: bool = True,
@@ -600,8 +600,8 @@ def generate_code_review_context(
         output_path: Custom output file path. If not provided, uses default timestamped path
         enable_gemini_review: Enable Gemini AI code review generation (default: true)
         temperature: Temperature for AI model (default: 0.5, range: 0.0-2.0)
-        include_claude_memory: Include CLAUDE.md files in context (default: true)
-        include_cursor_rules: Include Cursor rules files in context (default: false)
+        include_claude_memory: Include CLAUDE.md files in context (optional - off by default)
+        include_cursor_rules: Include Cursor rules files in context (optional - off by default)
         raw_context_only: Exclude default AI review instructions (default: false)
         text_output: Return context directly as text (default: true - for AI agent chaining)
         auto_meta_prompt: Automatically generate and embed meta prompt in user_instructions (default: true)
@@ -781,7 +781,7 @@ def generate_ai_code_review(
     custom_prompt: Optional[str] = None,
     text_output: bool = True,
     auto_meta_prompt: bool = True,
-    include_claude_memory: bool = True,
+    include_claude_memory: bool = False,
     include_cursor_rules: bool = False,
     thinking_budget: Optional[int] = None,
     url_context: Optional[Union[str, List[str]]] = None,
@@ -801,8 +801,8 @@ def generate_ai_code_review(
         custom_prompt: Optional custom AI prompt to override default instructions
         text_output: Return review directly as text (default: true - for AI agent chaining)
         auto_meta_prompt: Automatically generate and embed meta prompt (default: true)
-        include_claude_memory: Include CLAUDE.md files in context (default: true)
-        include_cursor_rules: Include Cursor rules files in context (default: false)
+        include_claude_memory: Include CLAUDE.md files in context (optional - off by default)
+        include_cursor_rules: Include Cursor rules files in context (optional - off by default)
         thinking_budget: Optional token budget for thinking mode (if supported by model)
         url_context: Optional URL(s) to include in context - can be string or list of strings
 
@@ -1248,8 +1248,8 @@ async def generate_meta_prompt(
                 scope=scope,
                 enable_gemini_review=False,
                 raw_context_only=True,
-                include_claude_memory=True,
-                include_cursor_rules=False,
+                include_claude_memory=include_claude_memory,
+                include_cursor_rules=include_cursor_rules,
             )
 
             # Generate context data (this gathers all the data but doesn't save anything)
@@ -1419,7 +1419,7 @@ def generate_file_context(
     file_selections: List[Dict[str, Any]],
     project_path: Optional[str] = None,
     user_instructions: Optional[str] = None,
-    include_claude_memory: bool = True,
+    include_claude_memory: bool = False,
     include_cursor_rules: bool = False,
     auto_meta_prompt: bool = True,
     temperature: float = 0.5,
@@ -1439,8 +1439,8 @@ def generate_file_context(
             - include_full: bool (default True) - Include full file if no ranges specified
         project_path: Optional project root for relative paths and config discovery
         user_instructions: Custom instructions for the context
-        include_claude_memory: Include CLAUDE.md files in context
-        include_cursor_rules: Include Cursor rules files in context  
+        include_claude_memory: Include CLAUDE.md files in context (optional - off by default)
+        include_cursor_rules: Include Cursor rules files in context (optional - off by default)  
         auto_meta_prompt: Generate context-aware meta-prompt
         temperature: AI temperature for meta-prompt generation
         text_output: Return content directly (True) or save to file (False)
@@ -1511,7 +1511,7 @@ def ask_gemini(
     user_instructions: Optional[str] = None,
     file_selections: Optional[List[Dict[str, Any]]] = None,
     project_path: Optional[str] = None,
-    include_claude_memory: bool = True,
+    include_claude_memory: bool = False,
     include_cursor_rules: bool = False,
     auto_meta_prompt: bool = True,
     temperature: float = 0.5,
@@ -1528,8 +1528,8 @@ def ask_gemini(
         user_instructions: The primary query or instructions for Gemini.
         file_selections: Optional list of files/line ranges to include in the context.
         project_path: Optional project root for relative paths.
-        include_claude_memory: Include CLAUDE.md files in context.
-        include_cursor_rules: Include Cursor rules files in context.
+        include_claude_memory: Include CLAUDE.md files in context (optional - off by default).
+        include_cursor_rules: Include Cursor rules files in context (optional - off by default).
         auto_meta_prompt: If no user_instructions, generate a meta-prompt.
         temperature: AI temperature for generation.
         model: Specific Gemini model to use.

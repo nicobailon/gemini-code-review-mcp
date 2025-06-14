@@ -55,7 +55,7 @@ class TestAskGeminiTool:
                     config_call = mock_config_class.call_args
                     assert config_call.kwargs["file_selections"] == []
                     assert config_call.kwargs["user_instructions"] == "Review this code for security issues"
-                    assert config_call.kwargs["include_claude_memory"] is True
+                    assert config_call.kwargs["include_claude_memory"] is False
                     assert config_call.kwargs["temperature"] == 0.5
                     
                     # Verify generate_file_context_data was called

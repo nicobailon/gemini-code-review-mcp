@@ -26,7 +26,7 @@ class CodeReviewConfig:
     compare_branch: Optional[str] = None
     target_branch: Optional[str] = None
     github_pr_url: Optional[str] = None
-    include_claude_memory: bool = True
+    include_claude_memory: bool = False
     include_cursor_rules: bool = False
     raw_context_only: bool = False
     auto_prompt_content: Optional[str] = None

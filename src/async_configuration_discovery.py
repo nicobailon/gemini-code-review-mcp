@@ -243,7 +243,7 @@ async def async_discover_modern_cursor_rules(project_path: str) -> List[Dict[str
 
 async def async_discover_all_configurations(
     project_path: str,
-    include_claude_memory: bool = True,
+    include_claude_memory: bool = False,
     include_cursor_rules: bool = False,
     max_workers: int = 10,
 ) -> Dict[str, Any]:
@@ -440,7 +440,7 @@ def _get_enterprise_directories() -> List[str]:
 # Default high-performance discovery function
 def discover_all_configurations(
     project_path: str,
-    include_claude_memory: bool = True,
+    include_claude_memory: bool = False,
     include_cursor_rules: bool = False,
 ) -> Dict[str, Any]:
     """

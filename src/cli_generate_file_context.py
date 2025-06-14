@@ -49,8 +49,8 @@ EXAMPLES:
   # With custom instructions
   generate-file-context -f src/main.py --user-instructions "Focus on error handling"
   
-  # Exclude CLAUDE.md files
-  generate-file-context -f src/main.py --no-claude-memory
+  # Include CLAUDE.md files
+  generate-file-context -f src/main.py --include-claude-memory
         """
     )
     
@@ -71,9 +71,14 @@ EXAMPLES:
         help="Custom instructions to embed in the context"
     )
     parser.add_argument(
+        "--include-claude-memory",
+        action="store_true",
+        help="Include CLAUDE.md files in context (optional - off by default)"
+    )
+    parser.add_argument(
         "--no-claude-memory",
         action="store_true",
-        help="Exclude CLAUDE.md files from context"
+        help="[DEPRECATED] Use --include-claude-memory instead. This flag will be removed in a future version."
     )
     parser.add_argument(
         "--include-cursor-rules",
@@ -104,6 +109,26 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
     
+    # Handle deprecated flag
+    if args.no_claude_memory:
+        import warnings
+        warnings.warn(
+            "--no-claude-memory is deprecated and will be removed in a future version. "
+            "Use --include-claude-memory to opt-in to CLAUDE.md inclusion.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+    
+    # Check for conflicting flags
+    if args.include_claude_memory and args.no_claude_memory:
+        import warnings
+        warnings.warn(
+            "Both --include-claude-memory and --no-claude-memory specified. "
+            "--include-claude-memory takes precedence.",
+            UserWarning,
+            stacklevel=2
+        )
+    
     try:
         # Parse file selections using the batch parser
         try:
@@ -119,7 +144,7 @@ def main():
             file_selections=parsed_selections,
             project_path=args.project_path,
             user_instructions=args.user_instructions,
-            include_claude_memory=not args.no_claude_memory,
+            include_claude_memory=args.include_claude_memory if hasattr(args, 'include_claude_memory') else False,
             include_cursor_rules=args.include_cursor_rules,
             auto_meta_prompt=not args.no_auto_meta_prompt,
             temperature=args.temperature,

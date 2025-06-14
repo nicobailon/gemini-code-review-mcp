@@ -11,6 +11,7 @@ import argparse
 import logging
 import os
 import sys
+import warnings
 from typing import Any, Dict, List, Optional
 
 # Import the main generation function from the old module
@@ -295,9 +296,14 @@ def create_argument_parser():
 
     # Configuration inclusion parameters
     parser.add_argument(
+        "--include-claude-memory",
+        action="store_true",
+        help="Include CLAUDE.md files in context (optional - off by default)",
+    )
+    parser.add_argument(
         "--no-claude-memory",
         action="store_true",
-        help="Disable CLAUDE.md file inclusion (enabled by default)",
+        help="[DEPRECATED] Use --include-claude-memory instead. This flag will be removed in a future version.",
     )
     parser.add_argument(
         "--include-cursor-rules",
@@ -335,6 +341,24 @@ def create_argument_parser():
 
 def validate_cli_arguments(args: Any):
     """Validate CLI arguments and check for conflicts."""
+    
+    # Handle deprecated --no-claude-memory flag
+    if args.no_claude_memory:
+        warnings.warn(
+            "--no-claude-memory is deprecated and will be removed in a future version. "
+            "Use --include-claude-memory to opt-in to CLAUDE.md inclusion.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        
+    # Check for conflicting claude memory flags
+    if args.include_claude_memory and args.no_claude_memory:
+        warnings.warn(
+            "Both --include-claude-memory and --no-claude-memory specified. "
+            "--include-claude-memory takes precedence.",
+            UserWarning,
+            stacklevel=2
+        )
 
     # Check for mutually exclusive auto-prompt flags
     if args.auto_prompt and args.generate_prompt_only:
@@ -642,7 +666,7 @@ Working examples:
                     "compare_branch": getattr(args, "compare_branch"),
                     "target_branch": getattr(args, "target_branch"),
                     "github_pr_url": getattr(args, "github_pr_url"),
-                    "include_claude_memory": not args.no_claude_memory,
+                    "include_claude_memory": args.include_claude_memory if hasattr(args, 'include_claude_memory') else False,
                     "include_cursor_rules": args.include_cursor_rules,
                 }
 
@@ -690,7 +714,7 @@ Working examples:
                     file_selections=file_selections,
                     project_path=args.project_path,
                     user_instructions=args.file_instructions,
-                    include_claude_memory=not args.no_claude_memory,
+                    include_claude_memory=args.include_claude_memory if hasattr(args, 'include_claude_memory') else False,
                     include_cursor_rules=args.include_cursor_rules,
                     auto_meta_prompt=args.auto_prompt,
                     temperature=temperature,
@@ -755,7 +779,7 @@ Working examples:
             compare_branch=getattr(args, "compare_branch"),
             target_branch=getattr(args, "target_branch"),
             github_pr_url=getattr(args, "github_pr_url"),
-            include_claude_memory=not args.no_claude_memory,
+            include_claude_memory=args.include_claude_memory if hasattr(args, 'include_claude_memory') else False,
             include_cursor_rules=args.include_cursor_rules,
             thinking_budget=getattr(args, "thinking_budget", None),
             url_context=getattr(args, "url_context", None),
