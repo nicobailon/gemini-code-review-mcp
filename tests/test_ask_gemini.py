@@ -15,29 +15,33 @@ import pytest
 # Import from the installed package
 try:
     from src.file_context_types import FileContentData, FileContextResult
-    from src import server
 except ImportError:
     # Fall back to direct imports if package not installed
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
     from src.file_context_types import FileContentData, FileContextResult
-    from src import server
-
-# Access the actual function from the FunctionTool
-if hasattr(server, 'ask_gemini'):
-    if hasattr(server.ask_gemini, 'func'):
-        ask_gemini = server.ask_gemini.func
-    else:
-        # Direct access if not a FunctionTool
-        ask_gemini = server.ask_gemini
-else:
-    raise ImportError("ask_gemini not found in server module")
 
 
 class TestAskGeminiTool:
     """Test suite for the ask_gemini MCP tool."""
+    
+    def _get_ask_gemini_func(self):
+        """Helper to get the actual ask_gemini function, handling FunctionTool wrapper."""
+        from src.server import ask_gemini
+        
+        # If it's a FunctionTool object, extract the actual function
+        if hasattr(ask_gemini, 'func') and callable(ask_gemini.func):
+            return ask_gemini.func
+        elif callable(ask_gemini):
+            return ask_gemini
+        else:
+            # This shouldn't happen, but handle it gracefully
+            raise TypeError(f"ask_gemini is not callable: {type(ask_gemini)}")
 
     def test_ask_gemini_with_user_instructions_only(self):
         """Test ask_gemini with just user instructions (no files)."""
+        # Get the actual function to test
+        test_func = self._get_ask_gemini_func()
+            
         # Mock the dependencies
         mock_config = MagicMock()
         mock_result = FileContextResult(
@@ -60,7 +64,7 @@ class TestAskGeminiTool:
                     return_value="AI response text",
                 ) as mock_gemini:
                     # Call the function
-                    result = ask_gemini(
+                    result = test_func(
                         user_instructions="Review this code for security issues",
                         text_output=True,
                     )
@@ -93,6 +97,9 @@ class TestAskGeminiTool:
 
     def test_ask_gemini_with_file_selections(self):
         """Test ask_gemini with file selections."""
+        # Get the actual function to test
+        test_func = self._get_ask_gemini_func()
+        
         file_selections = [
             {"path": "src/main.py", "line_ranges": [(10, 50)]},
             {"path": "src/utils.py", "include_full": True},
@@ -129,7 +136,7 @@ class TestAskGeminiTool:
                     return_value="AI analysis of files",
                 ) as mock_gemini:
                     # Call the function
-                    result = ask_gemini(
+                    result = test_func(
                         user_instructions="Analyze these files",
                         file_selections=file_selections,
                         project_path="/path/to/project",
@@ -148,17 +155,23 @@ class TestAskGeminiTool:
 
     def test_ask_gemini_invalid_file_selection(self):
         """Test ask_gemini with invalid file selection (missing path)."""
+        # Get the actual function to test
+        test_func = self._get_ask_gemini_func()
+        
         file_selections = [{"line_ranges": [(10, 50)]}]  # Missing 'path' field
 
         # Should raise ValueError
         with pytest.raises(ValueError) as exc_info:
-            ask_gemini(user_instructions="Test", file_selections=file_selections)
+            test_func(user_instructions="Test", file_selections=file_selections)
 
         # Check the error message
         assert "path" in str(exc_info.value).lower()
 
     def test_ask_gemini_with_output_file(self):
         """Test ask_gemini with text_output=False (save to file)."""
+        # Get the actual function to test
+        test_func = self._get_ask_gemini_func()
+        
         mock_config = MagicMock()
         mock_result = FileContextResult(
             content="Context content",
@@ -177,7 +190,7 @@ class TestAskGeminiTool:
                     "src.server.send_to_gemini_for_review", return_value="output.md"
                 ) as mock_gemini:
                     # Call the function
-                    result = ask_gemini(
+                    result = test_func(
                         user_instructions="Generate review", text_output=False
                     )
 
@@ -193,6 +206,9 @@ class TestAskGeminiTool:
 
     def test_ask_gemini_gemini_failure(self):
         """Test ask_gemini when Gemini API fails."""
+        # Get the actual function to test
+        test_func = self._get_ask_gemini_func()
+        
         mock_config = MagicMock()
         mock_result = FileContextResult(
             content="Context content",
@@ -210,23 +226,29 @@ class TestAskGeminiTool:
                 with patch("src.server.send_to_gemini_for_review", return_value=None):
                     # Should raise RuntimeError
                     with pytest.raises(RuntimeError) as exc_info:
-                        ask_gemini(user_instructions="Test")
+                        test_func(user_instructions="Test")
 
                     assert "Failed to get a response from Gemini" in str(exc_info.value)
 
     def test_ask_gemini_unexpected_exception(self):
         """Test ask_gemini handling of unexpected exceptions."""
+        # Get the actual function to test
+        test_func = self._get_ask_gemini_func()
+        
         # Should re-raise the exception
         with patch(
             "src.server.FileContextConfig", side_effect=Exception("Unexpected error")
         ):
             with pytest.raises(Exception) as exc_info:
-                ask_gemini(user_instructions="Test")
+                test_func(user_instructions="Test")
 
             assert str(exc_info.value) == "Unexpected error"
 
     def test_ask_gemini_with_all_parameters(self):
         """Test ask_gemini with all parameters specified."""
+        # Get the actual function to test
+        test_func = self._get_ask_gemini_func()
+        
         file_selections = [{"path": "test.py"}]
 
         mock_config = MagicMock()
@@ -250,7 +272,7 @@ class TestAskGeminiTool:
                     return_value="Complete response",
                 ) as mock_gemini:
                     # Call the function
-                    result = ask_gemini(
+                    result = test_func(
                         user_instructions="Custom instructions",
                         file_selections=file_selections,
                         project_path="/project",
