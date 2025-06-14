@@ -48,19 +48,7 @@ jobs:
           --cov=src/orchestrator \
           --cov=src/dependencies \
           --cov-report=term-missing \
-          --cov-report=xml \
           --cov-fail-under=80
-    
-    - name: Upload coverage reports to Codecov
-      if: matrix.python-version == '3.12'
-      uses: codecov/codecov-action@v4
-      with:
-        # CODECOV_TOKEN must be set in repository secrets
-        token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
     
     - name: Check for print statements
       run: |
