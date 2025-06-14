@@ -81,16 +81,21 @@ class TestMCPToolsBasic:
             generate_pr_review,
         )
 
+        # Get the actual functions from FunctionTool objects
+        pr_review_func = generate_pr_review.func if hasattr(generate_pr_review, 'func') else generate_pr_review
+        ai_review_func = generate_ai_code_review.func if hasattr(generate_ai_code_review, 'func') else generate_ai_code_review
+        context_func = generate_code_review_context.func if hasattr(generate_code_review_context, 'func') else generate_code_review_context
+
         # Check generate_pr_review has thinking_budget parameter
-        sig = inspect.signature(generate_pr_review)
+        sig = inspect.signature(pr_review_func)
         assert "thinking_budget" in sig.parameters
 
         # Check generate_ai_code_review has thinking_budget parameter
-        sig = inspect.signature(generate_ai_code_review)
+        sig = inspect.signature(ai_review_func)
         assert "thinking_budget" in sig.parameters
 
         # Check generate_code_review_context has thinking_budget parameter
-        sig = inspect.signature(generate_code_review_context)
+        sig = inspect.signature(context_func)
         assert "thinking_budget" in sig.parameters
 
         # Check generate_meta_prompt has thinking_budget parameter
@@ -109,15 +114,21 @@ class TestMCPToolsBasic:
             generate_pr_review,
         )
 
+        # Get the actual functions from FunctionTool objects
+        pr_review_func = generate_pr_review.func if hasattr(generate_pr_review, 'func') else generate_pr_review
+        ai_review_func = generate_ai_code_review.func if hasattr(generate_ai_code_review, 'func') else generate_ai_code_review
+        context_func = generate_code_review_context.func if hasattr(generate_code_review_context, 'func') else generate_code_review_context
+
         # Check generate_pr_review has url_context parameter
-        sig = inspect.signature(generate_pr_review)
+        sig = inspect.signature(pr_review_func)
         assert "url_context" in sig.parameters
 
         # Check generate_ai_code_review has url_context parameter
-        sig = inspect.signature(generate_ai_code_review)
+        sig = inspect.signature(ai_review_func)
         assert "url_context" in sig.parameters
 
         # Check generate_code_review_context has url_context parameter
+        sig = inspect.signature(context_func)
         sig = inspect.signature(generate_code_review_context)
         assert "url_context" in sig.parameters
 
@@ -135,7 +146,10 @@ class TestMCPToolsBasic:
 
         from src.server import generate_ai_code_review
 
-        sig = inspect.signature(generate_ai_code_review)
+        # Get the actual function from FunctionTool object
+        ai_review_func = generate_ai_code_review.func if hasattr(generate_ai_code_review, 'func') else generate_ai_code_review
+        
+        sig = inspect.signature(ai_review_func)
 
         # Check thinking_budget has default None
         assert sig.parameters["thinking_budget"].default is None
