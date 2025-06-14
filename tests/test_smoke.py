@@ -83,7 +83,7 @@ def test_cli_help_functions():
 
 def test_mcp_server_startup():
     """Test that MCP server can be imported and basic setup works"""
-    from server import main as server_main
+    from src.server import main as server_main
 
     # Should be able to import the main function
     assert callable(server_main)

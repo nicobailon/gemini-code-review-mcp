@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **BREAKING**: Project guidelines (CLAUDE.md and cursor rules) are now opt-in by default
+  - `include_claude_memory` parameter now defaults to `False` in all MCP tools and functions
+  - `include_cursor_rules` parameter remains `False` by default (no change)
+  - This change improves performance and gives users explicit control over configuration inclusion
+
+### Added
+- New CLI flag `--include-claude-memory` to opt-in to CLAUDE.md file inclusion
+- Deprecation warnings for `--no-claude-memory` flag (will be removed in a future version)
+
+### Deprecated
+- `--no-claude-memory` CLI flag - use `--include-claude-memory` to opt-in instead
+  - The flag still works but shows a deprecation warning
+  - Will be removed in the next major version
+
 ## [0.4.3] - 2025-01-06
 
 ### Removed

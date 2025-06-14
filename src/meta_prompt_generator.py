@@ -101,7 +101,7 @@ def _get_generate_meta_prompt() -> Any:
                         scope=scope,
                         enable_gemini_review=False,
                         raw_context_only=True,
-                        include_claude_memory=True,
+                        include_claude_memory=False,
                         include_cursor_rules=False,
                     )
 

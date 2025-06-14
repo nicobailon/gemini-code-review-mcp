@@ -49,7 +49,7 @@ class FileContextConfig:
     file_selections: List[FileSelection]
     project_path: Optional[str] = None
     user_instructions: Optional[str] = None
-    include_claude_memory: bool = True
+    include_claude_memory: bool = False
     include_cursor_rules: bool = False
     auto_meta_prompt: bool = True
     temperature: float = 0.5
