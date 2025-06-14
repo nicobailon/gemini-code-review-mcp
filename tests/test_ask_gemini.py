@@ -18,9 +18,9 @@ try:
     from src import server
 except ImportError:
     # Fall back to direct imports if package not installed
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-    from file_context_types import FileContentData, FileContextResult
-    import server
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+    from src.file_context_types import FileContentData, FileContextResult
+    from src import server
 
 # Access the actual function from the FunctionTool
 if hasattr(server, 'ask_gemini'):
