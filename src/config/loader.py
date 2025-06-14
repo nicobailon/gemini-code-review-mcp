@@ -17,7 +17,7 @@ try:
     import tomllib
 except ImportError:
     # Python < 3.11
-    import tomli as tomllib  # type: ignore
+    import tomli as tomllib  # type: ignore[import-not-found,no-redef]
 
 from ..config_types import CodeReviewConfig
 from ..errors import ConfigurationError
@@ -72,7 +72,7 @@ class ConfigurationLoader:
         try:
             with open(pyproject_path, "rb") as f:
                 data = tomllib.load(f)
-                tool_section = data.get("tool")
+                tool_section = data.get("tool") if isinstance(data, dict) else None
                 if tool_section and isinstance(tool_section, dict):
                     gemini_section = tool_section.get("gemini")
                     self._pyproject_config = gemini_section if isinstance(gemini_section, dict) else {}

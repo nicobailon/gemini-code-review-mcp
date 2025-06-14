@@ -43,7 +43,9 @@ def dict_to_review_context(data: Dict[str, Any]) -> ReviewContext:
         # Could be list of dicts or list of strings
         for item in changed_files_data:
             if isinstance(item, dict) and "file_path" in item:
-                changed_files.append(str(item["file_path"]))
+                file_path = item.get("file_path")
+                if file_path is not None:
+                    changed_files.append(str(file_path))
             elif isinstance(item, str):
                 changed_files.append(item)
     else:

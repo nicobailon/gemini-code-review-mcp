@@ -8,20 +8,16 @@ both development (human-readable) and production/MCP (JSON) formats.
 import logging
 import os
 import sys
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional, Union
 
 # Try to import structlog for structured logging
-HAS_STRUCTLOG = False
-
-if TYPE_CHECKING:
-    import structlog
-else:
-    try:
-        import structlog
-        HAS_STRUCTLOG = True
-    except ImportError:
-        structlog = None
-        HAS_STRUCTLOG = False
+try:
+    import structlog  # type: ignore[import-not-found]
+    _has_structlog = True
+    structlog_module: Any = structlog
+except ImportError:
+    _has_structlog = False
+    structlog_module = None
 
 
 def configure_logging(
@@ -46,22 +42,22 @@ def configure_logging(
     # Determine format based on settings
     use_json = format_type == "json" or (format_type == "auto" and is_mcp_context)
     
-    if HAS_STRUCTLOG and use_json and structlog is not None:
+    if _has_structlog and use_json and structlog_module is not None:
         # Configure structlog with JSON renderer for MCP/production
-        structlog.configure(
+        structlog_module.configure(
             processors=[
-                structlog.stdlib.filter_by_level,
-                structlog.stdlib.add_logger_name,
-                structlog.stdlib.add_log_level,
-                structlog.stdlib.PositionalArgumentsFormatter(),
-                structlog.processors.TimeStamper(fmt="iso"),
-                structlog.processors.StackInfoRenderer(),
-                structlog.processors.format_exc_info,
-                structlog.processors.UnicodeDecoder(),
-                structlog.processors.JSONRenderer()  # JSON output for log aggregation
+                structlog_module.stdlib.filter_by_level,
+                structlog_module.stdlib.add_logger_name,
+                structlog_module.stdlib.add_log_level,
+                structlog_module.stdlib.PositionalArgumentsFormatter(),
+                structlog_module.processors.TimeStamper(fmt="iso"),
+                structlog_module.processors.StackInfoRenderer(),
+                structlog_module.processors.format_exc_info,
+                structlog_module.processors.UnicodeDecoder(),
+                structlog_module.processors.JSONRenderer()  # JSON output for log aggregation
             ],
             context_class=dict,
-            logger_factory=structlog.stdlib.LoggerFactory(),
+            logger_factory=structlog_module.stdlib.LoggerFactory(),
             cache_logger_on_first_use=True,
         )
         
@@ -93,7 +89,7 @@ def configure_logging(
         )
 
 
-def get_logger(name: str) -> Any:
+def get_logger(name: str) -> Union[logging.Logger, Any]:
     """
     Get a logger instance.
     
@@ -103,21 +99,21 @@ def get_logger(name: str) -> Any:
     Returns:
         Logger instance (structlog or standard logging)
     """
-    if HAS_STRUCTLOG and _is_structlog_configured() and structlog is not None:
-        return structlog.get_logger(name)
+    if _has_structlog and _is_structlog_configured() and structlog_module is not None:
+        return structlog_module.get_logger(name)
     else:
         return logging.getLogger(name)
 
 
 def _is_structlog_configured() -> bool:
     """Check if structlog is configured."""
-    if not HAS_STRUCTLOG or structlog is None:
+    if not _has_structlog or structlog_module is None:
         return False
     
     try:
         # Try to get the current configuration
-        if structlog and hasattr(structlog, '_config'):
-            config_module = getattr(structlog, '_config')
+        if structlog_module and hasattr(structlog_module, '_config'):
+            config_module = getattr(structlog_module, '_config')
             return hasattr(config_module, '_CONFIG') and config_module._CONFIG is not None
         return False
     except (ImportError, AttributeError):
