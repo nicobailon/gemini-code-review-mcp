@@ -23,6 +23,7 @@ code-review-*.md
 !CHANGELOG.md
 !WORKFLOW_DIAGRAMS.md
 /tasks/*.md
+/codereview/*.md
 /tasks/*.dist-info/
 .cursor/
 .cursorrules
