@@ -61,22 +61,21 @@ def dict_to_review_context(data: Dict[str, object]) -> ReviewContext:
 
     # Extract changed files
     changed_files: List[str] = []
-    changed_files_data = data.get("changed_files", [])
-    if isinstance(changed_files_data, list):
-        # Could be list of dicts or list of strings
-        # We handle the unknown item types by checking isinstance
-        for idx in range(len(changed_files_data)):
-            item = changed_files_data[idx]
-            if isinstance(item, dict):
-                # Type guard ensures item is dict here
-                if "file_path" in item:
-                    file_path = item["file_path"]
-                    if isinstance(file_path, str):
-                        changed_files.append(file_path)
-                    elif isinstance(file_path, (int, float)):
-                        changed_files.append(str(file_path))
-            elif isinstance(item, str):
-                changed_files.append(item)
+    changed_files_value = data.get("changed_files")
+    if isinstance(changed_files_value, list):
+        # Process each item in the list
+        for list_item in changed_files_value:
+            if isinstance(list_item, dict):
+                # Handle dictionary items with file_path key
+                if "file_path" in list_item:
+                    path_value = list_item["file_path"]
+                    if isinstance(path_value, str):
+                        changed_files.append(path_value)
+                    elif isinstance(path_value, (int, float)):
+                        changed_files.append(str(path_value))
+            elif isinstance(list_item, str):
+                # Handle string items directly
+                changed_files.append(list_item)
 
     # Extract default prompt from user instructions or auto prompt
     default_prompt = ""

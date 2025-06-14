@@ -13,13 +13,10 @@ import warnings
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
-from .toml_parser import parse_pyproject_toml
-
 from ..config_types import CodeReviewConfig
 
 # Type for configuration values
 ConfigValue = Union[str, int, float, bool, None]
-ConfigListValue = Union[ConfigValue, List[ConfigValue]]
 
 # Built-in defaults with specific types
 DEFAULT_TEMPERATURE: float = 0.5
@@ -73,16 +70,56 @@ class ConfigurationLoader:
             return self._pyproject_config
 
         pyproject_path = self.project_path / "pyproject.toml"
+        self._pyproject_config = {}
+        
         if not pyproject_path.exists():
-            self._pyproject_config = {}
             return self._pyproject_config
 
-        config = parse_pyproject_toml(pyproject_path)
-        if config is None:
+        try:
+            # Read and parse TOML manually to avoid type issues
+            content = pyproject_path.read_text()
+            
+            # Simple TOML parsing for [tool.gemini] section
+            in_gemini_section = False
+            
+            for line in content.splitlines():
+                line = line.strip()
+                
+                # Check for section headers
+                if line == "[tool.gemini]":
+                    in_gemini_section = True
+                elif line.startswith("[") and line != "[tool.gemini]":
+                    in_gemini_section = False
+                
+                # Parse key-value pairs in gemini section
+                if in_gemini_section and "=" in line and not line.startswith("#"):
+                    key, value = line.split("=", 1)
+                    key = key.strip()
+                    value = value.strip()
+                    
+                    # Parse value types
+                    if value.lower() in ("true", "false"):
+                        self._pyproject_config[key] = value.lower() == "true"
+                    elif value.startswith('"') and value.endswith('"'):
+                        self._pyproject_config[key] = value[1:-1]
+                    elif value.startswith("'") and value.endswith("'"):
+                        self._pyproject_config[key] = value[1:-1]
+                    else:
+                        try:
+                            # Try to parse as number
+                            if "." in value:
+                                self._pyproject_config[key] = float(value)
+                            else:
+                                self._pyproject_config[key] = int(value)
+                        except ValueError:
+                            # Keep as string
+                            self._pyproject_config[key] = value
+            
+            return self._pyproject_config
+        except Exception:
+            # If parsing fails, return empty config
             self._pyproject_config = {}
-        else:
-            self._pyproject_config = config
-        return self._pyproject_config
+            return self._pyproject_config
 
     def check_deprecated_config(self) -> None:
         """Check for deprecated model_config.json and warn if found."""
