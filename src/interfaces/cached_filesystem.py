@@ -3,8 +3,15 @@
 from pathlib import Path
 from typing import List, Optional, Union
 
-from ..cache import CacheManager, get_cache_manager
-from .filesystem import FileSystem
+try:
+    from ..cache import CacheManager, get_cache_manager
+    from .filesystem import FileSystem
+except ImportError:
+    import sys
+    from pathlib import Path as PathLib
+    sys.path.insert(0, str(PathLib(__file__).parent.parent.parent))
+    from cache import CacheManager, get_cache_manager
+    from interfaces.filesystem import FileSystem
 
 
 class CachedFileSystem(FileSystem):

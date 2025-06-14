@@ -3,7 +3,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
-from ..interfaces import FileSystem
+try:
+    from ..interfaces import FileSystem
+except ImportError:
+    import sys
+    from pathlib import Path as PathLib
+    sys.path.insert(0, str(PathLib(__file__).parent.parent.parent))
+    from interfaces import FileSystem
 
 logger = logging.getLogger(__name__)
 

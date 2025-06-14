@@ -15,7 +15,13 @@ from pathlib import Path
 from threading import Lock
 from typing import Any, Dict, List, Optional
 
-from ..errors import CacheError
+try:
+    from ..errors import CacheError
+except ImportError:
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from errors import CacheError
 
 
 @dataclass

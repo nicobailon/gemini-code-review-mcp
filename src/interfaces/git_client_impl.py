@@ -2,8 +2,15 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from ..progress import progress
-from .git_client import GitClient, GitCommit, GitFileChange
+try:
+    from ..progress import progress
+    from .git_client import GitClient, GitCommit, GitFileChange
+except ImportError:
+    import sys
+    from pathlib import Path as PathLib
+    sys.path.insert(0, str(PathLib(__file__).parent.parent.parent))
+    from progress import progress
+    from interfaces.git_client import GitClient, GitCommit, GitFileChange
 
 
 class ProductionGitClient(GitClient):

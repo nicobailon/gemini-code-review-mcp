@@ -1,7 +1,10 @@
 from pathlib import Path
 from typing import Dict, List, Union
 
-from .filesystem import FileSystem
+try:
+    from .filesystem import FileSystem
+except ImportError:
+    from filesystem import FileSystem
 
 
 class ProductionFileSystem(FileSystem):

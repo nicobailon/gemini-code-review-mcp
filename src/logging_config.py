@@ -11,6 +11,7 @@ import sys
 from typing import TYPE_CHECKING, Any, Optional
 
 # Try to import structlog for structured logging
+HAS_STRUCTLOG = False
 
 if TYPE_CHECKING:
     import structlog

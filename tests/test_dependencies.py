@@ -7,6 +7,8 @@ from src.dependencies import (
     get_test_container,
 )
 from src.interfaces import (
+    CachedFileSystem,
+    CachedGitClient,
     InMemoryFileSystem,
     InMemoryGitClient,
     ProductionFileSystem,
@@ -19,10 +21,14 @@ class TestDependencyContainer:
     def test_production_container(self):
         container = DependencyContainer(use_production=True)
 
-        # Check that production implementations are used
-        assert isinstance(container.filesystem, ProductionFileSystem)
-        assert isinstance(container.git_client, ProductionGitClient)
+        # Check that cached production implementations are used by default
+        assert isinstance(container.filesystem, CachedFileSystem)
+        assert isinstance(container.git_client, CachedGitClient)
         assert isinstance(container.file_finder, FileFinder)
+        
+        # Check that the underlying implementations are production ones
+        assert isinstance(container.filesystem._fs, ProductionFileSystem)
+        assert isinstance(container.git_client._git, ProductionGitClient)
 
         # Check that same instances are returned (singleton behavior)
         fs1 = container.filesystem
@@ -74,7 +80,8 @@ class TestGlobalContainers:
     def test_get_production_container(self):
         container = get_production_container()
         assert container.use_production is True
-        assert isinstance(container.filesystem, ProductionFileSystem)
+        assert isinstance(container.filesystem, CachedFileSystem)
+        assert isinstance(container.filesystem._fs, ProductionFileSystem)
 
     def test_get_test_container(self):
         container = get_test_container()

@@ -4,8 +4,12 @@ import asyncio
 from pathlib import Path
 from typing import List, Optional, Union
 
-from .filesystem import FileSystem
-from .git_client import GitClient, GitFileChange
+try:
+    from .filesystem import FileSystem
+    from .git_client import GitClient, GitFileChange
+except ImportError:
+    from filesystem import FileSystem
+    from git_client import GitClient, GitFileChange
 
 
 class AsyncFileSystemWrapper:

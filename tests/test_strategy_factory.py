@@ -1,6 +1,7 @@
 import pytest
 
 from src.dependencies import DependencyContainer
+from src.errors import ConfigurationError
 from src.models import ReviewMode
 from src.strategies import GeneralStrategy, GitHubPRStrategy, TaskDrivenStrategy
 from src.strategies.factory import StrategyFactory
@@ -38,7 +39,7 @@ class TestStrategyFactory:
     def test_create_unsupported_mode(self):
         # Create a fake mode by directly setting a value
         # This tests the error handling
-        with pytest.raises(ValueError, match="Unsupported review mode"):
+        with pytest.raises(ConfigurationError, match="Unsupported review mode"):
             # We can't create a new enum value, so we'll test with None
             self.factory.create_strategy(None)  # type: ignore
 
@@ -58,8 +59,10 @@ class TestStrategyFactory:
         factory = StrategyFactory()
         strategy = factory.create_strategy(ReviewMode.GENERAL_REVIEW)
         assert isinstance(strategy, GeneralStrategy)
-        # Should use production implementations
-        from src.interfaces import ProductionFileSystem, ProductionGitClient
+        # Should use cached production implementations
+        from src.interfaces import CachedFileSystem, CachedGitClient, ProductionFileSystem, ProductionGitClient
 
-        assert isinstance(strategy.fs, ProductionFileSystem)
-        assert isinstance(strategy.git, ProductionGitClient)
+        assert isinstance(strategy.fs, CachedFileSystem)
+        assert isinstance(strategy.fs._fs, ProductionFileSystem)
+        assert isinstance(strategy.git, CachedGitClient)
+        assert isinstance(strategy.git._git, ProductionGitClient)

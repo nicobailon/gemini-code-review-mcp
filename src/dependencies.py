@@ -8,22 +8,40 @@ the creation and lifecycle of dependencies.
 from dataclasses import dataclass
 from typing import Optional
 
-from .cache import CacheManager, get_cache_manager
-from .interfaces import (
-    AsyncFileSystemWrapper,
-    AsyncGitClientWrapper,
-    CachedFileSystem,
-    CachedGitClient,
-    FileSystem,
-    GitClient,
-    InMemoryFileSystem,
-    InMemoryGitClient,
-    ProductionFileSystem,
-    ProductionGitClient,
-    create_async_filesystem,
-    create_async_git_client,
-)
-from .services import FileFinder
+try:
+    from .cache import CacheManager, get_cache_manager
+    from .interfaces import (
+        AsyncFileSystemWrapper,
+        AsyncGitClientWrapper,
+        CachedFileSystem,
+        CachedGitClient,
+        FileSystem,
+        GitClient,
+        InMemoryFileSystem,
+        InMemoryGitClient,
+        ProductionFileSystem,
+        ProductionGitClient,
+        create_async_filesystem,
+        create_async_git_client,
+    )
+    from .services import FileFinder
+except ImportError:
+    from cache import CacheManager, get_cache_manager
+    from interfaces import (
+        AsyncFileSystemWrapper,
+        AsyncGitClientWrapper,
+        CachedFileSystem,
+        CachedGitClient,
+        FileSystem,
+        GitClient,
+        InMemoryFileSystem,
+        InMemoryGitClient,
+        ProductionFileSystem,
+        ProductionGitClient,
+        create_async_filesystem,
+        create_async_git_client,
+    )
+    from services import FileFinder
 
 
 @dataclass

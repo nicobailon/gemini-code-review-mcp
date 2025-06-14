@@ -3,8 +3,15 @@
 from pathlib import Path
 from typing import List, Optional, Union
 
-from ..cache import CacheManager, get_cache_manager
-from .git_client import GitClient, GitCommit, GitFileChange
+try:
+    from ..cache import CacheManager, get_cache_manager
+    from .git_client import GitClient, GitCommit, GitFileChange
+except ImportError:
+    import sys
+    from pathlib import Path as PathLib
+    sys.path.insert(0, str(PathLib(__file__).parent.parent.parent))
+    from cache import CacheManager, get_cache_manager
+    from interfaces.git_client import GitClient, GitCommit, GitFileChange
 
 
 class CachedGitClient(GitClient):

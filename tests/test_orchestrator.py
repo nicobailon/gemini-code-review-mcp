@@ -2,6 +2,7 @@ import pytest
 
 from src.config_types import CodeReviewConfig
 from src.dependencies import DependencyContainer
+from src.errors import ConfigurationError
 from src.models import ReviewMode
 from src.orchestrator import ReviewOrchestrator, StrategyRegistry
 from src.orchestrator.init_strategies import initialize_strategies

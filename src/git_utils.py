@@ -12,7 +12,10 @@ import os
 import subprocess
 from typing import Dict, List, Optional
 
-from .progress import progress
+try:
+    from .progress import progress
+except ImportError:
+    from progress import progress
 
 logger = logging.getLogger(__name__)
 
