@@ -7,7 +7,7 @@ with direct Gemini API calls.
 """
 
 import pytest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 import sys
 import os
 
@@ -95,8 +95,8 @@ class TestAskGeminiTool:
         )
         
         with patch("src.server.FileContextConfig", return_value=mock_config) as mock_config_class:
-            with patch("src.server.generate_file_context_data", return_value=mock_result) as mock_generate:
-                with patch("src.server.send_to_gemini_for_review", return_value="AI analysis of files") as mock_gemini:
+            with patch("src.server.generate_file_context_data", return_value=mock_result):
+                with patch("src.server.send_to_gemini_for_review", return_value="AI analysis of files"):
                     # Call the function
                     result = ask_gemini(
                         user_instructions="Analyze these files",

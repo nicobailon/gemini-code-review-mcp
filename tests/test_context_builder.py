@@ -5,7 +5,7 @@ Tests for context_builder module to ensure proper flag handling.
 
 import os
 import tempfile
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 import pytest
 
 from src.context_builder import (
@@ -15,7 +15,7 @@ from src.context_builder import (
 )
 
 
-def test_discover_configurations_respects_default_flags():
+def test_discover_configurations_respects_default_flags() -> None:
     """Test that discovery respects the default False flags for CLAUDE.md and cursor rules."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create CLAUDE.md and .cursorrules files
@@ -43,7 +43,7 @@ def test_discover_configurations_respects_default_flags():
         assert len(result["cursor_rules"]) > 0
 
 
-def test_discover_configurations_with_flags_respects_defaults():
+def test_discover_configurations_with_flags_respects_defaults() -> None:
     """Test that discover_project_configurations_with_flags respects default False flags."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create CLAUDE.md file
@@ -65,7 +65,7 @@ def test_discover_configurations_with_flags_respects_defaults():
         assert len(result["claude_memory_files"]) > 0
 
 
-def test_generate_enhanced_review_context_respects_flags():
+def test_generate_enhanced_review_context_respects_flags() -> None:
     """Test that generate_enhanced_review_context respects the include flags."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create test files
@@ -75,6 +75,7 @@ def test_generate_enhanced_review_context_respects_flags():
         
         # Mock git_utils to avoid git dependency
         with patch("src.git_utils.get_changed_files") as mock_git:
+            mock_git: MagicMock
             mock_git.return_value = []
             
             # Test with defaults (should not include configuration)
@@ -91,7 +92,7 @@ def test_generate_enhanced_review_context_respects_flags():
             assert "Claude Memory Configuration" in context.get("configuration_content", "")
 
 
-def test_cache_respects_different_flag_combinations():
+def test_cache_respects_different_flag_combinations() -> None:
     """Test that the cache correctly handles different flag combinations."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create test files
