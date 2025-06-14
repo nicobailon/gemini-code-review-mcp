@@ -10,7 +10,7 @@ import sys
 import tempfile
 import threading
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Callable, Generator
+from typing import Any, Callable, Dict, Generator, List, Optional
 from unittest.mock import patch
 
 import pytest
@@ -19,6 +19,7 @@ import pytest
 _psutil_available = False
 try:
     import psutil
+
     _psutil_available = True
 except ImportError:
     psutil = None
@@ -29,8 +30,8 @@ def setup_test_environment():
     """Session-wide test environment setup."""
     # Add src to Python path for all tests
     current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    src_dir = os.path.join(current_dir, 'src')
-    
+    src_dir = os.path.join(current_dir, "src")
+
     if current_dir not in sys.path:
         sys.path.insert(0, current_dir)
     if src_dir not in sys.path:
@@ -125,7 +126,9 @@ def process_monitor():
 
     class ProcessMonitor:
         def __init__(self) -> None:
-            self.process: Optional[Any] = psutil.Process() if _psutil_available and psutil is not None else None
+            self.process: Optional[Any] = (
+                psutil.Process() if _psutil_available and psutil is not None else None
+            )
             self.start_memory: Optional[float] = None
             self.start_cpu_percent: Optional[float] = None
             self.peak_memory: Optional[float] = None
@@ -154,7 +157,9 @@ def process_monitor():
                     current_memory - self.start_memory if self.start_memory else 0
                 ),
                 "peak_memory_delta": (
-                    self.peak_memory - self.start_memory if self.start_memory and self.peak_memory else 0
+                    self.peak_memory - self.start_memory
+                    if self.start_memory and self.peak_memory
+                    else 0
                 ),
                 "current_memory": current_memory,
             }
@@ -164,7 +169,9 @@ def process_monitor():
 
 
 @pytest.fixture
-def thread_isolation() -> Generator[Callable[[threading.Thread], threading.Thread], None, None]:
+def thread_isolation() -> (
+    Generator[Callable[[threading.Thread], threading.Thread], None, None]
+):
     """Ensure thread isolation and cleanup."""
     initial_thread_count = threading.active_count()
     created_threads: List[threading.Thread] = []
@@ -318,7 +325,9 @@ class TestCleanupProtocols:
         assert "current_memory" in stats
         assert isinstance(stats["memory_delta"], (int, float))
 
-    def test_thread_isolation(self, thread_isolation: Callable[[threading.Thread], threading.Thread]) -> None:
+    def test_thread_isolation(
+        self, thread_isolation: Callable[[threading.Thread], threading.Thread]
+    ) -> None:
         """Test thread isolation and cleanup."""
         import threading
         import time
@@ -436,7 +445,9 @@ class TestResourceManagement:
 
         # Get initial file descriptor count
         try:
-            _ = resource.getrlimit(resource.RLIMIT_NOFILE)[0]  # Check we can get fd limit
+            _ = resource.getrlimit(resource.RLIMIT_NOFILE)[
+                0
+            ]  # Check we can get fd limit
         except:
             pytest.skip("Cannot get file descriptor limit on this system")
 

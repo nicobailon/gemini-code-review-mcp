@@ -48,62 +48,54 @@ EXAMPLES:
   # With custom instructions
   generate-file-context -f src/main.py --user-instructions "Focus on error handling"
   
-  # Include CLAUDE.md files
-  generate-file-context -f src/main.py --include-claude-memory
-        """
+  # Exclude CLAUDE.md files
+  generate-file-context -f src/main.py --no-claude-memory
+        """,
     )
-    
+
     parser.add_argument(
-        "-f", "--file-selection",
+        "-f",
+        "--file-selection",
         dest="file_selections",
         action="append",
         required=True,
-        help="File to include, with optional line ranges (e.g., 'src/main.py:10-20,30-35')"
+        help="File to include, with optional line ranges (e.g., 'src/main.py:10-20,30-35')",
     )
     parser.add_argument(
         "--project-path",
         default=os.getcwd(),
-        help="Project root for relative paths (default: current directory)"
+        help="Project root for relative paths (default: current directory)",
     )
     parser.add_argument(
-        "--user-instructions",
-        help="Custom instructions to embed in the context"
+        "--user-instructions", help="Custom instructions to embed in the context"
     )
-    
-    # Use mutual exclusion group for claude memory flags
-    claude_memory_group = parser.add_mutually_exclusive_group()
-    claude_memory_group.add_argument(
-        "--include-claude-memory",
-        action="store_true",
-        help="Include CLAUDE.md files in context (optional - off by default)"
-    )
-    claude_memory_group.add_argument(
+    parser.add_argument(
         "--no-claude-memory",
         action="store_true",
-        help="[DEPRECATED] Use --include-claude-memory instead. This flag will be removed in a future version."
+        help="Exclude CLAUDE.md files from context",
     )
-    
     parser.add_argument(
         "--include-cursor-rules",
         action="store_true",
-        help="Include .cursorrules and .cursor/rules/*.mdc files"
+        help="Include .cursorrules and .cursor/rules/*.mdc files",
     )
     parser.add_argument(
         "--no-auto-meta-prompt",
         action="store_true",
-        help="Disable automatic meta-prompt generation"
+        help="Disable automatic meta-prompt generation",
     )
     parser.add_argument(
         "--temperature",
         type=float,
         default=0.5,
-        help="AI temperature for meta-prompt generation (default: 0.5)"
+        help="AI temperature for meta-prompt generation (default: 0.5)",
     )
     parser.add_argument(
-        "-o", "--output-path",
-        help="Save context to specified file path instead of printing to stdout"
+        "-o",
+        "--output-path",
+        help="Save context to specified file path instead of printing to stdout",
     )
-    
+
     return parser
 
 
@@ -111,17 +103,7 @@ def main():
     """Main entry point for the CLI command."""
     parser = create_parser()
     args = parser.parse_args()
-    
-    # Handle deprecated flag
-    if args.no_claude_memory:
-        import warnings
-        warnings.warn(
-            "--no-claude-memory is deprecated and will be removed in a future version. "
-            "Use --include-claude-memory to opt-in to CLAUDE.md inclusion.",
-            DeprecationWarning,
-            stacklevel=2
-        )
-    
+
     try:
         # Parse file selections using the batch parser
         try:
@@ -129,44 +111,51 @@ def main():
         except ValueError as e:
             print(f"Error parsing file selections: {e}", file=sys.stderr)
             sys.exit(1)
-        
+
         print("Generating file context...")
-        
+
         # Create configuration
         config = FileContextConfig(
             file_selections=parsed_selections,
             project_path=args.project_path,
             user_instructions=args.user_instructions,
-            include_claude_memory=args.include_claude_memory,
+            include_claude_memory=not args.no_claude_memory,
             include_cursor_rules=args.include_cursor_rules,
             auto_meta_prompt=not args.no_auto_meta_prompt,
             temperature=args.temperature,
             text_output=not bool(args.output_path),
             output_path=args.output_path,
         )
-        
+
         # Generate context
         result = generate_file_context_data(config)
-        
+
         # Handle output
         if args.output_path:
             saved_path = save_file_context(result, args.output_path, args.project_path)
             print(f"✅ Context saved to: {saved_path}")
-            print(f"📊 Included {len(result.included_files)} files, {result.total_tokens} estimated tokens")
+            print(
+                f"📊 Included {len(result.included_files)} files, {result.total_tokens} estimated tokens"
+            )
         else:
             print("\n--- Generated Context ---")
             print(result.content)
             print("--- End Context ---")
-            print(f"\n📊 Included {len(result.included_files)} files, {result.total_tokens} estimated tokens", file=sys.stderr)
-        
+            print(
+                f"\n📊 Included {len(result.included_files)} files, {result.total_tokens} estimated tokens",
+                file=sys.stderr,
+            )
+
         # Show excluded files if any
         if result.excluded_files:
             print(f"\n⚠️  {len(result.excluded_files)} files excluded:", file=sys.stderr)
             for path, reason in result.excluded_files[:5]:
                 print(f"   - {path}: {reason}", file=sys.stderr)
             if len(result.excluded_files) > 5:
-                print(f"   ... and {len(result.excluded_files) - 5} more", file=sys.stderr)
-    
+                print(
+                    f"   ... and {len(result.excluded_files) - 5} more", file=sys.stderr
+                )
+
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

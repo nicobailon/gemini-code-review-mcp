@@ -25,7 +25,7 @@ Transform your git diffs into actionable insights with contextual awareness of y
 
 ## Why Use This?
 
-- **🎯 Context-Aware Reviews**: Can include your CLAUDE.md guidelines and project standards (opt-in)
+- **🎯 Context-Aware Reviews**: Automatically includes your CLAUDE.md guidelines and project standards
 - **📊 Progress Tracking**: Understands your task lists and development phases
 - **🤖 AI Agent Integration**: Seamless MCP integration with Claude Code and Cursor
 - **🔄 Flexible Workflows**: GitHub PR reviews, project analysis, or custom scopes
@@ -33,17 +33,29 @@ Transform your git diffs into actionable insights with contextual awareness of y
 
 ## 🚀 Claude Code Installation
 
-**Option A:** Install the MCP server to Claude Code as user-scoped MCP server (recommended):
-```bash
-claude mcp add-json gemini-code-review -s user '{"command":"uvx","args":["gemini-code-review-mcp"],"env":{"GEMINI_API_KEY":"your_key_here","GITHUB_TOKEN":"your_github_token_here"}}'
+**Option A:** Install the MCP server to Claude Code as user-scoped MCP server:
 ```
-(`-s user` installs as user-scoped and will be available to you across all projects on your machine, and will be private to you.)
+claude mcp add-json gemini-code-review -s user '{"command":"uvx","args":["gemini-code-review-mcp"],"env":{"GEMINI_API_KEY":"your_key_here","GITHUB_TOKEN":"your_key_here"}}'
+```
+(`-s user` installs as user-scoped and will be available to you across all projects on your machine, and will be private to you. Omit `-s user` to install the as locally scoped.)
 
 **Option B:** Install the MCP server to Claude Code as project-scoped MCP server:
-```bash
-claude mcp add-json gemini-code-review -s project '{"command":"uvx","args":["gemini-code-review-mcp"],"env":{"GEMINI_API_KEY":"your_key_here","GITHUB_TOKEN":"your_github_token_here"}}'
 ```
-(This creates or updates a `.mcp.json` file in the project root)
+claude mcp add-json gemini-code-review -s project /path/to/server '{"type":"stdio","command":"npx","args":["gemini-code-review"],"env":{"GEMINI_API_KEY":"your_key_here","GITHUB_TOKEN":"your_key_here"}}'
+```
+
+The command above creates or updates a `.mcp.json` file to the project root with the following structure:
+```
+{
+  "mcpServers": {
+    "gemini-code-review": {
+      "command": "/path/to/server",
+      "args": ["gemini-code-review"],
+      "env": {"GEMINI_API_KEY":"your_key_here","GITHUB_TOKEN":"your_key_here"}
+    }
+  }
+}
+```
 
 Get your Gemini API key:  https://ai.google.dev/gemini-api/docs/api-key
 
@@ -60,8 +72,9 @@ If the MCP tools aren't working:
 3. If API key shows empty, remove and re-add:
    ```bash
    claude mcp remove gemini-code-review
-   claude mcp add-json gemini-code-review -s user '{"command":"uvx","args":["gemini-code-review-mcp"],"env":{"GEMINI_API_KEY":"your_key_here","GITHUB_TOKEN":"your_github_token_here"}}'
+   claude mcp add-json gemini-code-review -s user '{"type":"stdio","command":"npx","args":["@modelcontextprotocol/server-gemini-code-review"],"env":{"GEMINI_API_KEY":"your_key_here","GITHUB_TOKEN":"your_key_here"}}'
    ```
+   (Make sure you replace `/path/to/server` with the path to your server executable)
 4. **Always restart Claude Desktop after any MCP configuration changes**
 
 ## 📋 Available MCP Tools
@@ -72,7 +85,8 @@ If the MCP tools aren't working:
 | **`generate_pr_review`** | GitHub PR analysis | `github_pr_url`, `project_path` |
 | **`ask_gemini`** | Generate context and get AI response | `user_instructions`, `file_selections` |
 
-📖 Detailed Tool Examples
+<details>
+<summary>📖 Detailed Tool Examples</summary>
 
 ### AI Code Review
 ```javascript
@@ -137,10 +151,12 @@ If the MCP tools aren't working:
   tool_name: "ask_gemini",
   arguments: {
     user_instructions: "Explain the security implications of the current authentication approach",
-    include_claude_memory: true  // Optional - includes project guidelines (off by default)
+    include_claude_memory: true  // Includes project guidelines
   }
 }
 ```
+
+</details>
 
 ### Common Workflows
 
@@ -248,21 +264,41 @@ All models support code review, with varying capabilities:
 } }
 ```
 
-### Optional Configuration Discovery
+### Automatic Configuration Discovery
 
-The tool can discover and include when opted-in:
-- 📁 **CLAUDE.md** files at project/user/enterprise levels (use `include_claude_memory: true`)
-- 📝 **Cursor rules** (`.cursorrules`, `.cursor/rules/*.mdc`) (use `include_cursor_rules: true`)
+When enabled with flags, the tool discovers and includes:
+- 📁 **CLAUDE.md** files at project/user/enterprise levels (use `--include-claude-memory`)
+- 📝 **Cursor rules** (`.cursorrules`, `.cursor/rules/*.mdc`) (use `--include-cursor-rules`)
 - 🔗 **Import syntax** (`@path/to/file.md`) for modular configs
+
+### Configuration in pyproject.toml
+
+You can set default values in your `pyproject.toml`:
+
+```toml
+[tool.gemini]
+temperature = 0.5
+default_prompt = "Your custom review prompt"
+default_model = "gemini-1.5-flash"
+include_claude_memory = true
+include_cursor_rules = false
+enable_cache = true
+cache_ttl_seconds = 900  # 15 minutes
+```
+
+Configuration precedence: CLI flags > Environment variables > pyproject.toml > Built-in defaults
 
 ## ✨ Key Features
 
-- 🤖 **Smart Context** - Includes task lists and project structure, with optional CLAUDE.md/cursor rules
+- 🤖 **Smart Context** - Optionally includes CLAUDE.md (use `--include-claude-memory`), task lists (use `--task-list`), and project structure
 - 🎯 **Flexible Scopes** - Review PRs, recent changes, or entire projects
 - ⚡ **Model Selection** - Choose between Gemini 2.0 Flash (speed) or 2.5 Pro (depth)
 - 🔄 **GitHub Integration** - Direct PR analysis with full context
 - 📊 **Progress Aware** - Understands development phases and task completion
 - 🔗 **URL Context** - Gemini automatically fetches and analyzes URLs in prompts (or use `--url-context` flag)
+- 🏗️ **Project Scaffolding** - Initialize projects with recommended structure via `gemini-code-review-init`
+- 🚀 **Performance Optimized** - Built-in caching layer for faster repeated operations
+- 🎨 **Clear Mode Indication** - Explicit feedback about Task-Driven vs General Review modes
 
 ## 🖥️ CLI Usage
 
@@ -281,6 +317,9 @@ pip install gemini-code-review-mcp
 ### Commands
 
 ```bash
+# Initialize a new project with recommended structure
+gemini-code-review-init
+
 # Basic review (current directory)
 generate-code-review
 
@@ -292,11 +331,14 @@ generate-code-review . \
   --scope full_project \
   --model gemini-2.5-pro
 
+# Use specific task list (overrides auto-discovery)
+generate-code-review \
+  --task-list tasks/tasks-feature-x.md \
+  --scope specific_phase \
+  --phase-number 2.0
+
 # With thinking budget (current directory)
 generate-code-review --thinking-budget 20000 --temperature 0.7
-
-# Include project guidelines (CLAUDE.md)
-generate-code-review --include-claude-memory
 
 # With URL context for framework-specific review
 generate-code-review \
@@ -312,6 +354,27 @@ generate-file-context -f src/main.py -f src/utils.py:10-50 \
 generate-meta-prompt --stream
 ```
 
+### Review Modes
+
+The tool operates in one of three modes:
+
+1. **📝 Task-Driven Mode**: When `--task-list` flag is used
+   - Enable with: `generate-code-review . --task-list tasks-feature.md`
+   - Or auto-select latest: `generate-code-review . --task-list`
+   - Contextualizes review based on your current development phase
+   - Tracks progress against planned tasks
+   - Best for: Active development with defined milestones
+
+2. **🔍 General Review Mode**: Default mode (no flags)
+   - Comprehensive code quality analysis
+   - Focuses on best practices and improvements
+   - Best for: Maintenance, refactoring, or exploratory reviews
+
+3. **🐙 GitHub PR Mode**: When `--github-pr-url` is provided
+   - Analyzes specific pull request changes
+   - Includes PR context and discussions
+   - Best for: Code review workflows
+
 ### Supported File Formats
 
 - 📋 **Task Lists**: `/tasks/tasks-*.md` - Track development phases
@@ -326,60 +389,17 @@ generate-meta-prompt --stream
 
 ## 📦 Development
 
-### Installation for Development
-
-If you want to contribute or modify the code, clone the repository:
-
 ```bash
-# Clone the repository
+# Setup
 git clone https://github.com/nicobailon/gemini-code-review-mcp
 cd gemini-code-review-mcp
-
-# Create a virtual environment (recommended)
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install in development mode with all dependencies
 pip install -e ".[dev]"
 
-# Set up environment variables
-cp .env.example .env
-# Edit .env and add your GEMINI_API_KEY and GITHUB_TOKEN
-```
-
-### Development Workflow
-
-```bash
-# Run the MCP server locally
-python -m src.server
-
-# Test CLI commands
-generate-code-review /path/to/project
-
-# Run tests
-python -m pytest tests/    # Run all tests
-python -m pytest tests/ -v # Verbose output
-
-# Code quality
+# Testing commands
+python -m pytest tests/    # Run all tests in venv
 make lint                  # Check code style
-make format               # Auto-format code
 make test-cli             # Test CLI commands
 ```
-
-### Installing Development Version in Claude Code
-
-To use your local development version with Claude Code:
-
-```bash
-# Option 1: Use the local Python script directly
-claude mcp add-json gemini-code-review-dev -s user '{"command":"python","args":["-m","src.server"],"cwd":"/path/to/gemini-code-review-mcp","env":{"GEMINI_API_KEY":"your_key_here","GITHUB_TOKEN":"your_github_token_here"}}'
-
-# Option 2: Install your local version with pip and use it
-pip install -e /path/to/gemini-code-review-mcp
-claude mcp add-json gemini-code-review-dev -s user '{"command":"gemini-code-review-mcp","env":{"GEMINI_API_KEY":"your_key_here","GITHUB_TOKEN":"your_github_token_here"}}'
-```
-
-Remember to restart Claude Desktop after adding the development server.
 
 ### Testing Configuration
 
