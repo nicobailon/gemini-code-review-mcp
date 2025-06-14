@@ -12,6 +12,12 @@ from typing import Optional, Union, List
 DEFAULT_INCLUDE_CLAUDE_MEMORY = False
 DEFAULT_INCLUDE_CURSOR_RULES = False
 
+__all__ = (
+    "CodeReviewConfig",
+    "DEFAULT_INCLUDE_CLAUDE_MEMORY",
+    "DEFAULT_INCLUDE_CURSOR_RULES",
+)
+
 
 @dataclass
 class CodeReviewConfig:

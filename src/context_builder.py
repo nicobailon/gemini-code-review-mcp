@@ -12,10 +12,7 @@ import logging
 import os
 from typing import Any, Dict, List, Optional, TypedDict
 
-try:
-    from .config_types import DEFAULT_INCLUDE_CLAUDE_MEMORY, DEFAULT_INCLUDE_CURSOR_RULES
-except ImportError:
-    from config_types import DEFAULT_INCLUDE_CLAUDE_MEMORY, DEFAULT_INCLUDE_CURSOR_RULES
+from .config_types import DEFAULT_INCLUDE_CLAUDE_MEMORY, DEFAULT_INCLUDE_CURSOR_RULES
 
 logger = logging.getLogger(__name__)
 
