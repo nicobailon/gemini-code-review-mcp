@@ -8,7 +8,6 @@ This is a standalone utility for debugging context generation.
 import argparse
 import os
 import sys
-from typing import List, Optional
 
 # Add current directory to path for imports
 sys.path.insert(0, os.path.dirname(__file__))
@@ -16,13 +15,13 @@ sys.path.insert(0, os.path.dirname(__file__))
 try:
     # Try relative imports first (when run as module)
     from .file_context_generator import generate_file_context_data, save_file_context
-    from .file_context_types import FileContextConfig, FileSelection
+    from .file_context_types import FileContextConfig
     from .file_selector import parse_file_selections
 except ImportError:
     try:
         # Fall back to absolute imports for testing or direct execution
         from file_context_generator import generate_file_context_data, save_file_context
-        from file_context_types import FileContextConfig, FileSelection
+        from file_context_types import FileContextConfig
         from file_selector import parse_file_selections
     except ImportError as e:
         print(f"Required dependencies not available: {e}", file=sys.stderr)
@@ -49,8 +48,8 @@ EXAMPLES:
   # With custom instructions
   generate-file-context -f src/main.py --user-instructions "Focus on error handling"
   
-  # Exclude CLAUDE.md files
-  generate-file-context -f src/main.py --no-claude-memory
+  # Include CLAUDE.md files
+  generate-file-context -f src/main.py --include-claude-memory
         """
     )
     
@@ -70,11 +69,20 @@ EXAMPLES:
         "--user-instructions",
         help="Custom instructions to embed in the context"
     )
-    parser.add_argument(
+    
+    # Use mutual exclusion group for claude memory flags
+    claude_memory_group = parser.add_mutually_exclusive_group()
+    claude_memory_group.add_argument(
+        "--include-claude-memory",
+        action="store_true",
+        help="Include CLAUDE.md files in context (optional - off by default)"
+    )
+    claude_memory_group.add_argument(
         "--no-claude-memory",
         action="store_true",
-        help="Exclude CLAUDE.md files from context"
+        help="[DEPRECATED] Use --include-claude-memory instead. This flag will be removed in a future version."
     )
+    
     parser.add_argument(
         "--include-cursor-rules",
         action="store_true",
@@ -104,6 +112,16 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
     
+    # Handle deprecated flag
+    if args.no_claude_memory:
+        import warnings
+        warnings.warn(
+            "--no-claude-memory is deprecated and will be removed in a future version. "
+            "Use --include-claude-memory to opt-in to CLAUDE.md inclusion.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+    
     try:
         # Parse file selections using the batch parser
         try:
@@ -119,7 +137,7 @@ def main():
             file_selections=parsed_selections,
             project_path=args.project_path,
             user_instructions=args.user_instructions,
-            include_claude_memory=not args.no_claude_memory,
+            include_claude_memory=args.include_claude_memory,
             include_cursor_rules=args.include_cursor_rules,
             auto_meta_prompt=not args.no_auto_meta_prompt,
             temperature=args.temperature,

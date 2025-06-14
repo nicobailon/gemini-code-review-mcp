@@ -28,17 +28,17 @@ class TestCoreImports:
 
     def test_generate_code_review_context_imports(self):
         """Test generate_code_review_context module imports"""
-        import generate_code_review_context
+        from src import generate_code_review_context
 
         assert hasattr(generate_code_review_context, "main")
         # load_model_config is now in model_config_manager
-        from model_config_manager import load_model_config
+        from src.model_config_manager import load_model_config
 
         assert callable(load_model_config)
 
     def test_ai_code_review_imports(self):
         """Test ai_code_review functionality is available in server"""
-        from server import generate_ai_code_review
+        from src.server import generate_ai_code_review
         
         # The function might be wrapped in an MCP FunctionTool or be a plain function
         # depending on how the module is loaded

@@ -11,6 +11,7 @@ import argparse
 import logging
 import os
 import sys
+import warnings
 from typing import Any, Dict, List, Optional
 
 # Import the main generation function from the old module
@@ -240,13 +241,14 @@ def create_argument_parser():
         "--no-gemini", action="store_true", help=argparse.SUPPRESS
     )  # Hidden deprecated option
 
-    # Auto-prompt generation flags
-    parser.add_argument(
+    # Auto-prompt generation flags (mutual exclusion group)
+    auto_prompt_group = parser.add_mutually_exclusive_group()
+    auto_prompt_group.add_argument(
         "--auto-prompt",
         action="store_true",
         help="Generate optimized prompt using Gemini analysis and use it for AI code review",
     )
-    parser.add_argument(
+    auto_prompt_group.add_argument(
         "--generate-prompt-only",
         action="store_true",
         help="Only generate the optimized prompt, do not run code review",
@@ -294,11 +296,19 @@ def create_argument_parser():
     )
 
     # Configuration inclusion parameters
-    parser.add_argument(
+    # Use mutual exclusion group for claude memory flags
+    claude_memory_group = parser.add_mutually_exclusive_group()
+    claude_memory_group.add_argument(
+        "--include-claude-memory",
+        action="store_true",
+        help="Include CLAUDE.md files in context (optional - off by default)",
+    )
+    claude_memory_group.add_argument(
         "--no-claude-memory",
         action="store_true",
-        help="Disable CLAUDE.md file inclusion (enabled by default)",
+        help="[DEPRECATED] Use --include-claude-memory instead. This flag will be removed in a future version.",
     )
+    
     parser.add_argument(
         "--include-cursor-rules",
         action="store_true",
@@ -335,14 +345,19 @@ def create_argument_parser():
 
 def validate_cli_arguments(args: Any):
     """Validate CLI arguments and check for conflicts."""
-
-    # Check for mutually exclusive auto-prompt flags
-    if args.auto_prompt and args.generate_prompt_only:
-        raise ValueError(
-            "--auto-prompt and --generate-prompt-only are mutually exclusive. "
-            "Use --auto-prompt to generate a prompt and run code review, or "
-            "--generate-prompt-only to only generate the prompt."
+    
+    # Handle deprecated --no-claude-memory flag
+    if args.no_claude_memory:
+        warnings.warn(
+            "--no-claude-memory is deprecated and will be removed in a future version. "
+            "Use --include-claude-memory to opt-in to CLAUDE.md inclusion.",
+            DeprecationWarning,
+            stacklevel=2
         )
+        
+    # Note: argparse mutual exclusion group handles conflicting flags automatically
+
+    # No need to check for mutually exclusive auto-prompt flags - argparse handles it
 
     # Check for conflicts with context-only
     if args.generate_prompt_only and args.context_only:
@@ -387,7 +402,6 @@ def execute_auto_prompt_workflow(
             raise Exception("Auto-prompt generation failed")
 
         generated_prompt = prompt_result["generated_prompt"]
-        # context_analyzed = prompt_result["context_analyzed"]  # Not used currently
 
         # Format output for prompt-only mode
         if generate_prompt_only:
@@ -428,11 +442,8 @@ def execute_auto_prompt_workflow(
                 auto_prompt_content=generated_prompt,  # Pass the meta-prompt to embed in context
                 **context_kwargs,
             )
-            # context_file = context_result[0]  # Not used currently
 
             # Run AI review with custom prompt
-            # Convert to absolute path if needed
-            # absolute_context_file = os.path.abspath(context_file)  # Not used currently
             # Note: AI code review generation has been disabled to avoid circular imports
             # The auto-prompt workflow now only generates context + meta prompt
             # AI review should be handled separately via the MCP server tools
@@ -635,14 +646,14 @@ Working examples:
                 workflow_kwargs = {
                     "phase": args.phase,
                     "output": args.output,
-                    "phase_number": getattr(args, "phase_number"),
-                    "task_number": getattr(args, "task_number"),
-                    "task_list": getattr(args, "task_list"),
-                    "default_prompt": getattr(args, "default_prompt"),
-                    "compare_branch": getattr(args, "compare_branch"),
-                    "target_branch": getattr(args, "target_branch"),
-                    "github_pr_url": getattr(args, "github_pr_url"),
-                    "include_claude_memory": not args.no_claude_memory,
+                    "phase_number": args.phase_number,
+                    "task_number": args.task_number,
+                    "task_list": args.task_list,
+                    "default_prompt": args.default_prompt,
+                    "compare_branch": args.compare_branch,
+                    "target_branch": args.target_branch,
+                    "github_pr_url": args.github_pr_url,
+                    "include_claude_memory": args.include_claude_memory,
                     "include_cursor_rules": args.include_cursor_rules,
                 }
 
@@ -690,7 +701,7 @@ Working examples:
                     file_selections=file_selections,
                     project_path=args.project_path,
                     user_instructions=args.file_instructions,
-                    include_claude_memory=not args.no_claude_memory,
+                    include_claude_memory=args.include_claude_memory,
                     include_cursor_rules=args.include_cursor_rules,
                     auto_meta_prompt=args.auto_prompt,
                     temperature=temperature,
@@ -747,18 +758,18 @@ Working examples:
             output=args.output,
             enable_gemini_review=enable_gemini,
             scope=args.scope,
-            phase_number=getattr(args, "phase_number"),
-            task_number=getattr(args, "task_number"),
+            phase_number=args.phase_number,
+            task_number=args.task_number,
             temperature=temperature,
-            task_list=getattr(args, "task_list"),
-            default_prompt=getattr(args, "default_prompt"),
-            compare_branch=getattr(args, "compare_branch"),
-            target_branch=getattr(args, "target_branch"),
-            github_pr_url=getattr(args, "github_pr_url"),
-            include_claude_memory=not args.no_claude_memory,
+            task_list=args.task_list,
+            default_prompt=args.default_prompt,
+            compare_branch=args.compare_branch,
+            target_branch=args.target_branch,
+            github_pr_url=args.github_pr_url,
+            include_claude_memory=args.include_claude_memory,
             include_cursor_rules=args.include_cursor_rules,
-            thinking_budget=getattr(args, "thinking_budget", None),
-            url_context=getattr(args, "url_context", None),
+            thinking_budget=args.thinking_budget,
+            url_context=args.url_context,
         )
 
         print("\n🎉 Code review process completed!")

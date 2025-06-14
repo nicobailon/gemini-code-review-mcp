@@ -457,7 +457,7 @@ def classify_rule_type(metadata: Dict[str, Any]) -> str:
     # Check for explicit type override
     explicit_type = metadata.get("type")
     if explicit_type in ["auto", "agent", "manual"]:
-        return explicit_type
+        return str(explicit_type)
 
     # Default classification based on alwaysApply
     always_apply = metadata.get("alwaysApply", False)
