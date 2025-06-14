@@ -4,28 +4,27 @@ Tests for the generate-file-context CLI command.
 """
 
 import os
-import subprocess
 import sys
-import tempfile
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Import from the installed package
+# Add src to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+
 try:
+    from cli_generate_file_context import create_parser, main as cli_main
+except ImportError:
+    # If direct import fails, try from src package
     from src.cli_generate_file_context import create_parser
     from src.cli_generate_file_context import main as cli_main
-except ImportError:
-    # Fall back to direct imports if package not installed
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-    from cli_generate_file_context import create_parser
-    from cli_generate_file_context import main as cli_main
 
 
 class TestGenerateFileContextCLI:
     """Test suite for the generate-file-context CLI command."""
 
-    def test_parser_creation(self):
+    def test_parser_creation(self) -> None:
         """Test that the argument parser is created correctly."""
         parser = create_parser()
 
@@ -37,14 +36,14 @@ class TestGenerateFileContextCLI:
         assert args.file_selections == ["test.py"]
         assert args.output_path == "output.md"
 
-    def test_cli_with_single_file(self, tmp_path):
+    def test_cli_with_single_file(self, tmp_path: Path) -> None:
         """Test CLI with a single file selection."""
         # Create test file
-        test_file = tmp_path / "test.py"
+        test_file: Path = tmp_path / "test.py"
         test_file.write_text("def hello():\n    print('Hello')")
 
         # Create output file path
-        output_file = tmp_path / "context.md"
+        output_file: Path = tmp_path / "context.md"
 
         # Mock sys.argv
         test_args = [
@@ -67,14 +66,14 @@ class TestGenerateFileContextCLI:
 
         # Verify output file was created
         assert output_file.exists()
-        content = output_file.read_text()
+        content: str = output_file.read_text()
         assert "def hello():" in content
         assert "print('Hello')" in content
 
-    def test_cli_with_line_ranges(self, tmp_path):
+    def test_cli_with_line_ranges(self, tmp_path: Path) -> None:
         """Test CLI with line range selection."""
         # Create test file with multiple lines
-        test_file = tmp_path / "test.py"
+        test_file: Path = tmp_path / "test.py"
         test_file.write_text("\n".join(["line1", "line2", "line3", "line4", "line5"]))
 
         # Mock the file context generator to verify correct parsing
@@ -94,11 +93,11 @@ class TestGenerateFileContextCLI:
 
         with patch.object(sys, "argv", test_args):
             with patch(
-                "src.cli_generate_file_context.FileContextConfig",
+                "cli_generate_file_context.FileContextConfig",
                 return_value=mock_config,
             ) as mock_config_class:
                 with patch(
-                    "src.cli_generate_file_context.generate_file_context_data",
+                    "cli_generate_file_context.generate_file_context_data",
                     return_value=mock_result,
                 ):
                     with patch("builtins.print"):  # Suppress output
@@ -114,7 +113,7 @@ class TestGenerateFileContextCLI:
                 assert file_selections[0]["path"] == str(test_file)
                 assert file_selections[0]["line_ranges"] == [(2, 4)]
 
-    def test_cli_error_invalid_file_selection(self):
+    def test_cli_error_invalid_file_selection(self) -> None:
         """Test CLI with invalid file selection format."""
         test_args = ["generate-file-context", "-f", "test.py:invalid-range"]
 
@@ -126,9 +125,9 @@ class TestGenerateFileContextCLI:
                 # Should exit with error code
                 assert exc_info.value.code == 1
 
-    def test_cli_with_custom_instructions(self, tmp_path):
+    def test_cli_with_custom_instructions(self, tmp_path: Path) -> None:
         """Test CLI with custom user instructions."""
-        test_file = tmp_path / "test.py"
+        test_file: Path = tmp_path / "test.py"
         test_file.write_text("# Test file")
 
         mock_config = MagicMock()
@@ -150,11 +149,11 @@ class TestGenerateFileContextCLI:
 
         with patch.object(sys, "argv", test_args):
             with patch(
-                "src.cli_generate_file_context.FileContextConfig",
+                "cli_generate_file_context.FileContextConfig",
                 return_value=mock_config,
             ) as mock_config_class:
                 with patch(
-                    "src.cli_generate_file_context.generate_file_context_data",
+                    "cli_generate_file_context.generate_file_context_data",
                     return_value=mock_result,
                 ):
                     with patch("builtins.print"):  # Suppress output
@@ -169,9 +168,9 @@ class TestGenerateFileContextCLI:
                     config_call.kwargs["user_instructions"] == "Focus on error handling"
                 )
 
-    def test_cli_stdout_output(self, tmp_path, capsys):
+    def test_cli_stdout_output(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         """Test CLI output to stdout when no output file specified."""
-        test_file = tmp_path / "test.py"
+        test_file: Path = tmp_path / "test.py"
         test_file.write_text("print('test')")
 
         test_args = [
