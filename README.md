@@ -266,9 +266,9 @@ All models support code review, with varying capabilities:
 
 ### Automatic Configuration Discovery
 
-The tool automatically discovers and includes:
-- 📁 **CLAUDE.md** files at project/user/enterprise levels
-- 📝 **Cursor rules** (`.cursorrules`, `.cursor/rules/*.mdc`)
+When enabled with flags, the tool discovers and includes:
+- 📁 **CLAUDE.md** files at project/user/enterprise levels (use `--include-claude-memory`)
+- 📝 **Cursor rules** (`.cursorrules`, `.cursor/rules/*.mdc`) (use `--include-cursor-rules`)
 - 🔗 **Import syntax** (`@path/to/file.md`) for modular configs
 
 ### Configuration in pyproject.toml
@@ -290,7 +290,7 @@ Configuration precedence: CLI flags > Environment variables > pyproject.toml > B
 
 ## ✨ Key Features
 
-- 🤖 **Smart Context** - Includes CLAUDE.md (default: on), task lists, and project structure
+- 🤖 **Smart Context** - Optionally includes CLAUDE.md (use `--include-claude-memory`), task lists (use `--task-list`), and project structure
 - 🎯 **Flexible Scopes** - Review PRs, recent changes, or entire projects
 - ⚡ **Model Selection** - Choose between Gemini 2.0 Flash (speed) or 2.5 Pro (depth)
 - 🔄 **GitHub Integration** - Direct PR analysis with full context
@@ -356,14 +356,16 @@ generate-meta-prompt --stream
 
 ### Review Modes
 
-The tool operates in one of three modes, automatically detected based on your configuration:
+The tool operates in one of three modes:
 
-1. **📝 Task-Driven Mode**: When task lists are found in `/tasks/tasks-*.md`
+1. **📝 Task-Driven Mode**: When `--task-list` flag is used
+   - Enable with: `generate-code-review . --task-list tasks-feature.md`
+   - Or auto-select latest: `generate-code-review . --task-list`
    - Contextualizes review based on your current development phase
    - Tracks progress against planned tasks
    - Best for: Active development with defined milestones
 
-2. **🔍 General Review Mode**: When no task lists are present
+2. **🔍 General Review Mode**: Default mode (no flags)
    - Comprehensive code quality analysis
    - Focuses on best practices and improvements
    - Best for: Maintenance, refactoring, or exploratory reviews
@@ -389,7 +391,7 @@ The tool operates in one of three modes, automatically detected based on your co
 
 ```bash
 # Setup
-git clone https://github.com/yourusername/gemini-code-review-mcp
+git clone https://github.com/nicobailon/gemini-code-review-mcp
 cd gemini-code-review-mcp
 pip install -e ".[dev]"
 
