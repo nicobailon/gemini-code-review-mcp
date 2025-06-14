@@ -31,39 +31,51 @@ class ConfigurationCache:
         self.cache: Dict[str, Any] = {}
         self.mtimes: Dict[str, float] = {}
 
-    def get_configurations(self, project_path: str) -> Optional[Dict[str, Any]]:
+    def get_configurations(
+        self,
+        project_path: str,
+        include_claude_memory: bool = False,
+        include_cursor_rules: bool = True,
+    ) -> Optional[Dict[str, Any]]:
         """Get cached configurations if they exist and are up to date, otherwise discover and cache."""
+        # Create cache key based on path and flags
+        cache_key = f"{project_path}:{include_claude_memory}:{include_cursor_rules}"
+        
         # Check if we have cached data
-        if project_path not in self.cache:
+        if cache_key not in self.cache:
             # No cached data, discover configurations
-            configurations = _discover_project_configurations_uncached(project_path)
-            self.set_configurations(project_path, configurations)
+            configurations = _discover_project_configurations_uncached(
+                project_path, include_claude_memory, include_cursor_rules
+            )
+            self.set_configurations(cache_key, project_path, configurations)
             return configurations
 
         # Check if any configuration files have been modified
         current_mtime = self._get_max_config_mtime(project_path)
-        cached_mtime = self.mtimes.get(project_path, 0)
+        cached_mtime = self.mtimes.get(cache_key, 0)
 
         if current_mtime > cached_mtime:
             # Configuration files have been modified, invalidate cache and rediscover
-            self.invalidate(project_path)
-            configurations = _discover_project_configurations_uncached(project_path)
-            self.set_configurations(project_path, configurations)
+            self.invalidate(cache_key)
+            configurations = _discover_project_configurations_uncached(
+                project_path, include_claude_memory, include_cursor_rules
+            )
+            self.set_configurations(cache_key, project_path, configurations)
             return configurations
 
-        return self.cache[project_path]
+        return self.cache[cache_key]
 
-    def set_configurations(self, project_path: str, configurations: Dict[str, Any]):
+    def set_configurations(self, cache_key: str, project_path: str, configurations: Dict[str, Any]):
         """Cache configurations for a project."""
-        self.cache[project_path] = configurations
-        self.mtimes[project_path] = self._get_max_config_mtime(project_path)
+        self.cache[cache_key] = configurations
+        self.mtimes[cache_key] = self._get_max_config_mtime(project_path)
 
-    def invalidate(self, project_path: str):
-        """Invalidate cache for a project."""
-        if project_path in self.cache:
-            del self.cache[project_path]
-        if project_path in self.mtimes:
-            del self.mtimes[project_path]
+    def invalidate(self, cache_key: str):
+        """Invalidate cache for a cache key."""
+        if cache_key in self.cache:
+            del self.cache[cache_key]
+        if cache_key in self.mtimes:
+            del self.mtimes[cache_key]
 
     def _get_max_config_mtime(self, project_path: str) -> float:
         """Get the maximum modification time of configuration files."""
@@ -100,7 +112,11 @@ class ConfigurationCache:
 _config_cache = ConfigurationCache()
 
 
-def _discover_project_configurations_uncached(project_path: str) -> Dict[str, Any]:
+def _discover_project_configurations_uncached(
+    project_path: str,
+    include_claude_memory: bool = False,
+    include_cursor_rules: bool = True,
+) -> Dict[str, Any]:
     """
     High-performance discovery of Claude memory files and Cursor rules from project.
 
@@ -108,6 +124,8 @@ def _discover_project_configurations_uncached(project_path: str) -> Dict[str, An
 
     Args:
         project_path: Path to project root
+        include_claude_memory: Whether to discover CLAUDE.md files
+        include_cursor_rules: Whether to discover Cursor rules
 
     Returns:
         Dictionary with discovered configurations, performance stats, and any errors
@@ -127,7 +145,9 @@ def _discover_project_configurations_uncached(project_path: str) -> Dict[str, An
 
         # Use high-performance discovery (includes performance stats)
         discovery_result = discover_all_configurations(
-            project_path, include_claude_memory=True, include_cursor_rules=True
+            project_path,
+            include_claude_memory=include_claude_memory,
+            include_cursor_rules=include_cursor_rules,
         )
 
         # Log performance stats
@@ -305,18 +325,26 @@ def _discover_project_configurations_uncached(project_path: str) -> Dict[str, An
         }
 
 
-def discover_project_configurations(project_path: str) -> Dict[str, Any]:
+def discover_project_configurations(
+    project_path: str,
+    include_claude_memory: bool = False,
+    include_cursor_rules: bool = False,
+) -> Dict[str, Any]:
     """
     Discover Claude memory files and Cursor rules from project (cached version).
 
     Args:
         project_path: Path to project root
+        include_claude_memory: Whether to discover CLAUDE.md files (optional - off by default)
+        include_cursor_rules: Whether to discover Cursor rules (optional - off by default)
 
     Returns:
         Dictionary with discovered configurations and any errors
     """
     # Use cache for performance
-    configurations = _config_cache.get_configurations(project_path)
+    configurations = _config_cache.get_configurations(
+        project_path, include_claude_memory, include_cursor_rules
+    )
     if configurations is None:
         # Fallback if cache returns None
         return {
@@ -332,18 +360,26 @@ def discover_project_configurations(project_path: str) -> Dict[str, Any]:
     return configurations
 
 
-def discover_project_configurations_with_fallback(project_path: str) -> Dict[str, Any]:
+def discover_project_configurations_with_fallback(
+    project_path: str,
+    include_claude_memory: bool = False,
+    include_cursor_rules: bool = False,
+) -> Dict[str, Any]:
     """
     Discover configurations with comprehensive error handling and fallback.
 
     Args:
         project_path: Path to project root
+        include_claude_memory: Whether to discover CLAUDE.md files (optional - off by default)
+        include_cursor_rules: Whether to discover Cursor rules (optional - off by default)
 
     Returns:
         Dictionary with discovered configurations, always includes empty lists on failure
     """
     try:
-        return discover_project_configurations(project_path)
+        return discover_project_configurations(
+            project_path, include_claude_memory, include_cursor_rules
+        )
     except Exception as e:
         logger.warning(f"Configuration discovery failed: {e}")
         return {
@@ -371,139 +407,26 @@ def discover_project_configurations_with_flags(
     Returns:
         Dictionary with discovered configurations based on flags
     """
-    try:
-        # Start with empty configuration
-        result: DiscoveredConfigurations = {
-            "claude_memory_files": [],
-            "cursor_rules": [],
-            "discovery_errors": [],
-            "performance_stats": {},
-        }
-
-        # Import configuration modules
-        from .claude_memory_parser import parse_claude_memory_with_imports
-        from .configuration_context import ClaudeMemoryFile, CursorRule
-        from .configuration_discovery import (
-            discover_all_claude_md_files,
-            discover_all_cursor_rules,
-        )
-        from .cursor_rules_parser import parse_cursor_rules_directory
-
-        # Discover Claude memory files if enabled
-        if include_claude_memory:
-            try:
-                claude_files = discover_all_claude_md_files(project_path)
-                for file_info in claude_files:
-                    try:
-                        file_path = file_info["file_path"]
-                        parsed_data = parse_claude_memory_with_imports(
-                            file_path, project_path
-                        )
-
-                        # Create proper ClaudeMemoryFile object
-                        memory_file = ClaudeMemoryFile(
-                            file_path=file_path,
-                            content=parsed_data.get("content", ""),
-                            hierarchy_level=file_info.get("scope", "project"),
-                            imports=parsed_data.get("successful_imports", []),
-                            resolved_content=parsed_data.get(
-                                "resolved_content", parsed_data.get("content", "")
-                            ),
-                        )
-                        result["claude_memory_files"].append(memory_file)
-                    except Exception as e:
-                        file_path = file_info.get("file_path", "unknown")
-                        logger.warning(
-                            f"Failed to parse Claude memory file {file_path}: {e}"
-                        )
-                        result["discovery_errors"].append(
-                            {
-                                "error_type": "claude_parsing_error",
-                                "file_path": file_path,
-                                "error_message": str(e),
-                            }
-                        )
-            except Exception as e:
-                logger.warning(f"Failed to discover Claude memory files: {e}")
-                result["discovery_errors"].append(
-                    {"error_type": "claude_discovery_error", "error_message": str(e)}
-                )
-
-        # Discover Cursor rules if enabled
-        if include_cursor_rules:
-            try:
-                cursor_files = discover_all_cursor_rules(project_path)
-                for file_path in cursor_files:
-                    try:
-                        # Parse cursor rules directory to get structured rules
-                        rules_data = parse_cursor_rules_directory(project_path)
-
-                        # Add legacy rules
-                        if rules_data.get("legacy_rules"):
-                            legacy_data = rules_data["legacy_rules"]
-                            rule = CursorRule(
-                                file_path=legacy_data["file_path"],
-                                content=legacy_data["content"],
-                                rule_type=legacy_data["type"],
-                                precedence=legacy_data["precedence"],
-                                description=legacy_data["description"],
-                                globs=legacy_data["globs"],
-                                always_apply=legacy_data["always_apply"],
-                                metadata=legacy_data["metadata"],
-                            )
-                            result["cursor_rules"].append(rule)
-
-                        # Add modern rules
-                        for modern_data in rules_data.get("modern_rules", []):
-                            rule = CursorRule(
-                                file_path=modern_data["file_path"],
-                                content=modern_data["content"],
-                                rule_type=modern_data["type"],
-                                precedence=modern_data["precedence"],
-                                description=modern_data["description"],
-                                globs=modern_data["globs"],
-                                always_apply=modern_data["always_apply"],
-                                metadata=modern_data["metadata"],
-                            )
-                            result["cursor_rules"].append(rule)
-
-                        # Add parsing errors
-                        result["discovery_errors"].extend(
-                            rules_data.get("parse_errors", [])
-                        )
-
-                        # Break after processing the directory
-                        break
-
-                    except Exception as e:
-                        logger.warning(f"Failed to parse Cursor rules: {e}")
-                        result["discovery_errors"].append(
-                            {
-                                "error_type": "cursor_parsing_error",
-                                "file_path": file_path,
-                                "error_message": str(e),
-                            }
-                        )
-            except Exception as e:
-                logger.warning(f"Failed to discover Cursor rules: {e}")
-                result["discovery_errors"].append(
-                    {"error_type": "cursor_discovery_error", "error_message": str(e)}
-                )
-
-        return result
-
-    except Exception as e:
-        logger.warning(f"Configuration discovery with flags failed: {e}")
+    # Use the cache with the provided flags
+    configurations = _config_cache.get_configurations(
+        project_path, include_claude_memory, include_cursor_rules
+    )
+    
+    if configurations is None:
+        # Fallback if cache returns None
         return {
             "claude_memory_files": [],
             "cursor_rules": [],
             "discovery_errors": [
-                {"error_type": "discovery_failure", "error_message": str(e)}
+                {
+                    "error_type": "cache_error",
+                    "error_message": "Failed to get configurations from cache",
+                }
             ],
             "performance_stats": {},
         }
-
-
+    
+    return configurations
 def merge_configurations_into_context(
     existing_context: Dict[str, Any],
     claude_memory_files: List[Any],

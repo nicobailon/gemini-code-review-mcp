@@ -144,7 +144,7 @@ def main():
             file_selections=parsed_selections,
             project_path=args.project_path,
             user_instructions=args.user_instructions,
-            include_claude_memory=args.include_claude_memory if hasattr(args, 'include_claude_memory') else False,
+            include_claude_memory=args.include_claude_memory,
             include_cursor_rules=args.include_cursor_rules,
             auto_meta_prompt=not args.no_auto_meta_prompt,
             temperature=args.temperature,

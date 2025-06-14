@@ -87,8 +87,8 @@ class TestGenerateFileContextCLI:
         
         test_args = [
             "generate-file-context",
-            "-f", f"{test_file}:2-4",
-            "--no-claude-memory"
+            "-f", f"{test_file}:2-4"
+            # Remove deprecated flag - CLAUDE.md inclusion is opt-in by default
         ]
         
         with patch.object(sys, 'argv', test_args):

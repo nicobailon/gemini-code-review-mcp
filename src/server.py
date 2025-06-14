@@ -254,7 +254,9 @@ def generate_context_in_memory(
         if include_claude_memory or include_cursor_rules:
             try:
                 config_data = discover_project_configurations_with_fallback(
-                    project_path
+                    project_path,
+                    include_claude_memory=include_claude_memory,
+                    include_cursor_rules=include_cursor_rules
                 )
 
                 if include_claude_memory and config_data.get("claude_memory_files"):
@@ -1248,8 +1250,8 @@ async def generate_meta_prompt(
                 scope=scope,
                 enable_gemini_review=False,
                 raw_context_only=True,
-                include_claude_memory=include_claude_memory,
-                include_cursor_rules=include_cursor_rules,
+                include_claude_memory=False,  # Use default for meta prompt generation
+                include_cursor_rules=False,   # Use default for meta prompt generation
             )
 
             # Generate context data (this gathers all the data but doesn't save anything)
