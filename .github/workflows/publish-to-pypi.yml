@@ -1,14 +1,39 @@
-name: Publish to PyPI
+name: Publish to PyPI (DISABLED - See MANUAL_RELEASE_GUIDE.md)
+
+# This workflow has been disabled in favor of manual releases
+# To publish a new release, follow the instructions in MANUAL_RELEASE_GUIDE.md
+# or use scripts/release.sh
 
 on:
-  push:
-    branches:
-      - master
+  # Disabled automatic triggers
+  # push:
+  #   branches:
+  #     - master
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'This workflow is deprecated. Use manual release process instead.'
+        required: false
+        default: 'See MANUAL_RELEASE_GUIDE.md'
 
 jobs:
-  publish:
+  notify-deprecated:
     runs-on: ubuntu-latest
+    steps:
+    - name: Workflow Deprecated Notice
+      run: |
+        echo "::error::This workflow is deprecated!"
+        echo "::error::Please use the manual release process instead."
+        echo "::error::See MANUAL_RELEASE_GUIDE.md for instructions."
+        echo "::error::Or run: ./scripts/release.sh"
+        exit 1
+
+  # Original publish job kept for reference but will not run
+  publish:
+    if: false  # This ensures the job never runs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required for creating releases
     steps:
     - uses: actions/checkout@v4
       with:
