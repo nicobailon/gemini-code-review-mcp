@@ -698,6 +698,7 @@ def generate_code_review_context(
                 scope=scope,
                 phase_number=phase_number,
                 task_number=task_number,
+                task_list=None,  # No task list for this internal helper
                 temperature=temperature,
                 include_claude_memory=include_claude_memory,
                 include_cursor_rules=include_cursor_rules,

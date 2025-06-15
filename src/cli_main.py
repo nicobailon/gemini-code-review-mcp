@@ -209,9 +209,12 @@ def create_argument_parser():
   your-project/
   └── ... (your source code)
 
-📋 TASK LIST DISCOVERY:
-  # Auto-selects most recent tasks-*.md file
+📋 TASK LIST DISCOVERY (Opt-in):
+  # General review mode (default - no task discovery)
   generate-code-review .
+  
+  # Enable task-driven review (auto-selects most recent tasks-*.md file)
+  generate-code-review . --task-list
   
   # Use specific task list
   generate-code-review . --task-list tasks-auth-system.md
@@ -269,7 +272,7 @@ def create_argument_parser():
     )
     parser.add_argument(
         "--task-list",
-        help="Specify which task list file to use (e.g., 'tasks-feature-x.md')",
+        help="Enable task-driven review mode and optionally specify which task list file to use (e.g., 'tasks-feature-x.md'). Without this flag, general review mode is used.",
     )
     parser.add_argument(
         "--default-prompt", help="Custom default prompt when no task list exists"

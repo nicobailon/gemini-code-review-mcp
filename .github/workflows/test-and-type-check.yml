@@ -1,4 +1,5 @@
 name: Test and Type Check
+
 on:
   push:
     branches: [ main, master, develop ]

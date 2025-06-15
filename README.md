@@ -358,17 +358,17 @@ generate-meta-prompt --stream
 
 The tool operates in one of three modes:
 
-1. **📝 Task-Driven Mode**: When `--task-list` flag is used
+1. **🔍 General Review Mode**: Default mode (no `--task-list` flag)
+   - Comprehensive code quality analysis
+   - Focuses on best practices and improvements
+   - Best for: Maintenance, refactoring, or exploratory reviews
+
+2. **📝 Task-Driven Mode**: When `--task-list` flag is used (opt-in)
    - Enable with: `generate-code-review . --task-list tasks-feature.md`
    - Or auto-select latest: `generate-code-review . --task-list`
    - Contextualizes review based on your current development phase
    - Tracks progress against planned tasks
    - Best for: Active development with defined milestones
-
-2. **🔍 General Review Mode**: Default mode (no flags)
-   - Comprehensive code quality analysis
-   - Focuses on best practices and improvements
-   - Best for: Maintenance, refactoring, or exploratory reviews
 
 3. **🐙 GitHub PR Mode**: When `--github-pr-url` is provided
    - Analyzes specific pull request changes

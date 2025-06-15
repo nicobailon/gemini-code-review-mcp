@@ -80,6 +80,27 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def _create_minimal_task_data(number: str, description: str) -> TaskData:
+    """Create minimal task data structure for non-task-driven reviews.
+    
+    Args:
+        number: Phase number or review type (e.g., "PR Review", "General Review")
+        description: Description of the review context
+        
+    Returns:
+        Minimal TaskData dictionary
+    """
+    return {
+        "total_phases": 0,
+        "current_phase_number": number,
+        "current_phase_description": description,
+        "previous_phase_completed": "",
+        "next_phase": "",
+        "subtasks_completed": [],
+        "phases": [],
+    }
+
+
 def extract_clean_prompt_content(auto_prompt_content: str) -> str:
     """
     Extract clean prompt content from auto-generated prompt response.
@@ -582,17 +603,10 @@ Working examples:
         prd_summary = "GitHub Pull Request Code Review"
         
         # Create minimal task data for template
-        task_data_dict: TaskData = {
-            "total_phases": 0,
-            "current_phase_number": "PR Review",
-            "current_phase_description": "Pull Request code review",
-            "previous_phase_completed": "",
-            "next_phase": "",
-            "subtasks_completed": [],
-            "phases": [],
-        }
-        task_data = task_data_dict
-    else:
+        task_data = _create_minimal_task_data("PR Review", "Pull Request code review")
+    elif config.task_list:
+        # User explicitly requested task-driven review with --task-list flag
+        logger.info("Task-driven review mode enabled via --task-list flag")
         # Task list based review - find and parse task files
         # Use FileFinder service to find project files
         from pathlib import Path
@@ -625,23 +639,30 @@ Working examples:
                 # Generate summary from task list
                 prd_summary = generate_prd_summary_from_task_list(task_data)
         else:
-            # No task list - use default prompt
-            if config.default_prompt:
-                prd_summary = config.default_prompt
-            else:
-                prd_summary = model_config["defaults"]["default_prompt"]
+            # Task list was explicitly requested but not found
+            if config.task_list.strip():  # Non-empty task list name
+                raise ConfigurationError(
+                    f"Task list file '{config.task_list}' not found in project.\n"
+                    f"Please check that the file exists in the tasks/ directory."
+                )
+            else:  # Empty string provided
+                raise ConfigurationError(
+                    "Empty task list name provided with --task-list flag.\n"
+                    "Please specify a task list file name or omit the flag entirely."
+                )
+    else:
+        # General review mode (no --task-list flag provided)
+        logger.info("General review mode - task-list discovery skipped (--task-list flag not provided)")
+        # Use default prompt without task discovery
+        if config.default_prompt:
+            prd_summary = config.default_prompt
+        else:
+            prd_summary = model_config["defaults"]["default_prompt"]
 
-            # Create minimal task data for template
-            task_data_dict: TaskData = {
-                "total_phases": 0,
-                "current_phase_number": "General Review",
-                "current_phase_description": "Code review without specific task context",
-                "previous_phase_completed": "",
-                "next_phase": "",
-                "subtasks_completed": [],
-                "phases": [],
-            }
-            task_data = task_data_dict
+        # Create minimal task data for template
+        task_data = _create_minimal_task_data(
+            "General Review", "Code review without specific task context"
+        )
 
     # At this point, task_data is guaranteed to be non-None
     assert task_data is not None, "task_data should be initialized"
