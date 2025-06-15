@@ -187,6 +187,28 @@ pyright src/
 - Pull the latest master to your local repository
 - Celebrate your contribution! 🎉
 
+## Release Process
+
+### Manual Release Process
+
+We use a manual release process to ensure quality and control. Only maintainers can publish releases.
+
+1. **Check Release Readiness**
+   ```bash
+   ./scripts/check-release-readiness.sh
+   ```
+
+2. **Follow Release Guide**
+   - See [MANUAL_RELEASE_GUIDE.md](MANUAL_RELEASE_GUIDE.md) for detailed instructions
+   - Use [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) to track progress
+
+3. **Use Release Script** (Recommended)
+   ```bash
+   ./scripts/release.sh
+   ```
+
+The automated PyPI publishing workflow has been disabled. All releases must be done manually by maintainers to ensure proper testing and version control.
+
 ## Questions or Need Help?
 
 - Open an issue for bugs or feature requests

@@ -442,6 +442,17 @@ pytest -v -m integration
 - **Error handling**: Tests graceful degradation with invalid inputs
 - **Temperature testing**: Verifies model parameter effects
 
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
+
+### Release Process
+
+This project uses a manual release process. For maintainers:
+- Run `./scripts/check-release-readiness.sh` to verify readiness
+- Follow [MANUAL_RELEASE_GUIDE.md](MANUAL_RELEASE_GUIDE.md) for detailed steps
+- Or use `./scripts/release.sh` for guided release process
+
 ## 📏 License
 
 MIT License - see [LICENSE](LICENSE) file for details.
