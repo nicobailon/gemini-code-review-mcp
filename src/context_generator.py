@@ -571,58 +571,77 @@ Working examples:
     # Load model config for default prompt
     model_config = load_model_config()
 
-    # Use FileFinder service to find project files
-    from pathlib import Path
-
-    container = get_production_container()
-    file_finder = container.file_finder
-
-    project_files = file_finder.find_project_files(
-        Path(config.project_path), config.task_list
-    )
-
-    # Extract file paths
-    prd_file = str(project_files.prd_file) if project_files.prd_file else None
-    task_file = (
-        str(project_files.task_list_file) if project_files.task_list_file else None
-    )
-
     # Handle different scenarios
     prd_summary = None
     task_data: Optional[TaskData] = None
 
-    if task_file:
-        # We have a task list - read and parse it
-        with open(task_file, "r", encoding="utf-8") as f:
-            task_content = f.read()
-        task_data = parse_task_list(task_content)
-
-        if prd_file:
-            # We have both PRD and task list - use PRD summary
-            with open(prd_file, "r", encoding="utf-8") as f:
-                prd_content = f.read()
-            prd_summary = extract_prd_summary(prd_content)
-        else:
-            # Generate summary from task list
-            prd_summary = generate_prd_summary_from_task_list(task_data)
-    else:
-        # No task list - use default prompt
-        if config.default_prompt:
-            prd_summary = config.default_prompt
-        else:
-            prd_summary = model_config["defaults"]["default_prompt"]
-
+    # Skip task list discovery for GitHub PR reviews
+    if current_mode == "github_pr":
+        # For GitHub PR reviews, don't look for task lists
+        # Use a simple default prompt for PR context
+        prd_summary = "GitHub Pull Request Code Review"
+        
         # Create minimal task data for template
         task_data_dict: TaskData = {
             "total_phases": 0,
-            "current_phase_number": "General Review",
-            "current_phase_description": "Code review without specific task context",
+            "current_phase_number": "PR Review",
+            "current_phase_description": "Pull Request code review",
             "previous_phase_completed": "",
             "next_phase": "",
             "subtasks_completed": [],
             "phases": [],
         }
         task_data = task_data_dict
+    else:
+        # Task list based review - find and parse task files
+        # Use FileFinder service to find project files
+        from pathlib import Path
+
+        container = get_production_container()
+        file_finder = container.file_finder
+
+        project_files = file_finder.find_project_files(
+            Path(config.project_path), config.task_list
+        )
+
+        # Extract file paths
+        prd_file = str(project_files.prd_file) if project_files.prd_file else None
+        task_file = (
+            str(project_files.task_list_file) if project_files.task_list_file else None
+        )
+
+        if task_file:
+            # We have a task list - read and parse it
+            with open(task_file, "r", encoding="utf-8") as f:
+                task_content = f.read()
+            task_data = parse_task_list(task_content)
+
+            if prd_file:
+                # We have both PRD and task list - use PRD summary
+                with open(prd_file, "r", encoding="utf-8") as f:
+                    prd_content = f.read()
+                prd_summary = extract_prd_summary(prd_content)
+            else:
+                # Generate summary from task list
+                prd_summary = generate_prd_summary_from_task_list(task_data)
+        else:
+            # No task list - use default prompt
+            if config.default_prompt:
+                prd_summary = config.default_prompt
+            else:
+                prd_summary = model_config["defaults"]["default_prompt"]
+
+            # Create minimal task data for template
+            task_data_dict: TaskData = {
+                "total_phases": 0,
+                "current_phase_number": "General Review",
+                "current_phase_description": "Code review without specific task context",
+                "previous_phase_completed": "",
+                "next_phase": "",
+                "subtasks_completed": [],
+                "phases": [],
+            }
+            task_data = task_data_dict
 
     # At this point, task_data is guaranteed to be non-None
     assert task_data is not None, "task_data should be initialized"
