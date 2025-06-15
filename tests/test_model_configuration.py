@@ -38,7 +38,10 @@ class TestModelConfigurationLoading:
                     "gemini-2.5-pro-preview-06-05",
                     "gemini-2.5-flash-preview-05-20",
                 ],
-                "thinking_mode_supported": ["gemini-2.5-pro-preview-06-05", "gemini-2.5-flash-preview-05-20"],
+                "thinking_mode_supported": [
+                    "gemini-2.5-pro-preview-06-05",
+                    "gemini-2.5-flash-preview-05-20",
+                ],
             },
             "defaults": {
                 "model": "gemini-2.0-flash",
@@ -554,7 +557,9 @@ class TestConfigurationValidation:
 
     def test_malformed_model_aliases_handling(self):
         """Test handling of malformed model aliases section."""
-        malformed_config: Dict[str, Union[str, Dict[str, List[str]], Dict[str, str]]] = {
+        malformed_config: Dict[
+            str, Union[str, Dict[str, List[str]], Dict[str, str]]
+        ] = {
             "model_aliases": "this should be a dict, not a string",
             "model_capabilities": {
                 "url_context_supported": [],
@@ -618,29 +623,29 @@ class TestConfigurationValidation:
 
 class TestThinkingBudgetConfiguration:
     """Test thinking budget configuration in model config."""
-    
+
     def test_thinking_budget_in_model_config(self):
         """Test that model config can include thinking budget settings."""
         config = load_model_config()
-        
+
         # Check that thinking mode supported models are defined
         assert "thinking_mode_supported" in config["model_capabilities"]
         thinking_models = config["model_capabilities"]["thinking_mode_supported"]
         assert isinstance(thinking_models, list)
-        
+
         # Check known thinking mode models
         assert "gemini-2.5-flash-preview-05-20" in thinking_models
         assert "gemini-2.5-pro-preview-06-05" in thinking_models
-        
+
     def test_model_supports_thinking_budget(self):
         """Test checking if a model supports thinking budget."""
         config = load_model_config()
         thinking_supported = config["model_capabilities"]["thinking_mode_supported"]
-        
+
         # Models that support thinking budget
         assert "gemini-2.5-flash-preview-05-20" in thinking_supported
         assert "gemini-2.5-pro-preview-06-05" in thinking_supported
-        
+
         # Models that don't support thinking budget (yet)
         assert "gemini-2.0-flash" not in thinking_supported
         assert "gemini-1.5-pro" not in thinking_supported

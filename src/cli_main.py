@@ -24,7 +24,7 @@ except ImportError:
 
 # Load environment variables from .env file (optional)
 try:
-    from dotenv import load_dotenv  # type: ignore
+    from dotenv import load_dotenv
 
     load_dotenv()
 except ImportError:
@@ -209,9 +209,12 @@ def create_argument_parser():
   your-project/
   └── ... (your source code)
 
-📋 TASK LIST DISCOVERY:
-  # Auto-selects most recent tasks-*.md file
+📋 TASK LIST DISCOVERY (Opt-in):
+  # General review mode (default - no task discovery)
   generate-code-review .
+  
+  # Enable task-driven review (auto-selects most recent tasks-*.md file)
+  generate-code-review . --task-list
   
   # Use specific task list
   generate-code-review . --task-list tasks-auth-system.md
@@ -269,7 +272,7 @@ def create_argument_parser():
     )
     parser.add_argument(
         "--task-list",
-        help="Specify which task list file to use (e.g., 'tasks-feature-x.md')",
+        help="Enable task-driven review mode and optionally specify which task list file to use (e.g., 'tasks-feature-x.md'). Without this flag, general review mode is used.",
     )
     parser.add_argument(
         "--default-prompt", help="Custom default prompt when no task list exists"
@@ -314,7 +317,7 @@ def create_argument_parser():
         action="store_true",
         help="Include Cursor rules files (.cursorrules and .cursor/rules/*.mdc)",
     )
-    
+
     # File-based context generation arguments
     parser.add_argument(
         "--files",
@@ -327,7 +330,7 @@ def create_argument_parser():
         type=str,
         help="Custom instructions for file-based context generation",
     )
-    
+
     # Thinking budget and URL context parameters
     parser.add_argument(
         "--thinking-budget",
@@ -518,6 +521,14 @@ def detect_execution_mode():
 
 def cli_main():
     """CLI entry point for generate-code-review command."""
+    # Configure logging for CLI context
+    try:
+        from .logging_config import setup_cli_logging
+    except ImportError:
+        from logging_config import setup_cli_logging
+    
+    setup_cli_logging()
+    
     # Show execution mode for clarity in development
     mode = detect_execution_mode()
     if mode == "development":
@@ -682,10 +693,13 @@ Working examples:
         # Check if file-based context generation is requested
         if args.files:
             try:
-                from .file_context_generator import generate_file_context_data, save_file_context
+                from .file_context_generator import (
+                    generate_file_context_data,
+                    save_file_context,
+                )
                 from .file_context_types import FileContextConfig, FileSelection
                 from .file_selector import parse_file_selection
-                
+
                 # Parse file selections
                 file_selections: List[FileSelection] = []
                 for file_spec in args.files:
@@ -693,9 +707,12 @@ Working examples:
                         selection = parse_file_selection(file_spec)
                         file_selections.append(selection)
                     except ValueError as e:
-                        print(f"Error parsing file selection '{file_spec}': {e}", file=sys.stderr)
+                        print(
+                            f"Error parsing file selection '{file_spec}': {e}",
+                            file=sys.stderr,
+                        )
                         sys.exit(1)
-                
+
                 # Create configuration
                 config = FileContextConfig(
                     file_selections=file_selections,
@@ -706,51 +723,56 @@ Working examples:
                     auto_meta_prompt=args.auto_prompt,
                     temperature=temperature,
                     text_output=False,  # CLI saves to file
-                    output_path=args.output
+                    output_path=args.output,
                 )
-                
+
                 # Generate context
                 result = generate_file_context_data(config)
-                
+
                 # Save to file
                 output_path = save_file_context(result, args.output, args.project_path)
-                
+
                 print(f"\n🎉 File-based context generation completed!")
                 print(f"📄 Context file: {output_path}")
-                print(f"📊 Included {len(result.included_files)} files, {result.total_tokens} estimated tokens")
-                
+                print(
+                    f"📊 Included {len(result.included_files)} files, {result.total_tokens} estimated tokens"
+                )
+
                 if result.excluded_files:
                     print(f"⚠️  {len(result.excluded_files)} files excluded:")
                     for path, reason in result.excluded_files[:5]:  # Show first 5
                         print(f"   - {path}: {reason}")
                     if len(result.excluded_files) > 5:
                         print(f"   ... and {len(result.excluded_files) - 5} more")
-                
+
                 # Run Gemini review if requested
                 if enable_gemini:
                     print("\n🔄 Sending to Gemini for AI code review...")
                     from .gemini_api_client import send_to_gemini_for_review
-                    
+
                     gemini_path = send_to_gemini_for_review(
-                        result.content, 
-                        args.project_path, 
-                        temperature
+                        result.content, args.project_path, temperature
                     )
-                    
+
                     if gemini_path:
-                        print(f"✅ AI code review completed: {os.path.basename(gemini_path)}")
+                        print(
+                            f"✅ AI code review completed: {os.path.basename(gemini_path)}"
+                        )
                     else:
                         print("⚠️  AI code review failed or was skipped")
-                
+
                 return  # Exit after file-based workflow
-                
+
             except ImportError as e:
-                print(f"Error: File context generation modules not available: {e}", file=sys.stderr)
+                print(
+                    f"Error: File context generation modules not available: {e}",
+                    file=sys.stderr,
+                )
                 sys.exit(1)
             except Exception as e:
                 print(f"Error in file-based context generation: {e}", file=sys.stderr)
                 sys.exit(1)
-        
+
         # Standard workflow (existing functionality)
         output_path, gemini_path = generate_code_review_context_main(
             project_path=args.project_path,

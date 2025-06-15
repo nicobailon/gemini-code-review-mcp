@@ -6,7 +6,7 @@ This module defines shared configuration types used across the codebase.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Union, List
+from typing import List, Optional, Union
 
 # Central configuration defaults
 DEFAULT_INCLUDE_CLAUDE_MEMORY = False

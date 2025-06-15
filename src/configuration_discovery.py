@@ -631,7 +631,7 @@ def discover_modern_cursor_rules(project_path: str) -> List[Dict[str, Any]]:
                 continue
 
         # Sort by precedence (lower numbers first)
-        rules.sort(key=lambda r: r["precedence"])  # type: ignore
+        rules.sort(key=lambda r: r["precedence"])
 
     except Exception as e:
         logger.warning(f"Unexpected error discovering modern cursor rules: {e}")
