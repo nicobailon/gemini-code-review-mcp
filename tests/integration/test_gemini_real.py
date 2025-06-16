@@ -10,8 +10,8 @@ from typing import Optional
 
 import pytest
 
-from gemini_code_review_mcp.gemini_api_client import GEMINI_AVAILABLE, send_to_gemini_for_review
-from gemini_code_review_mcp.model_config_manager import load_model_config
+from gemini_code_review_mcp.services.gemini_api_client import GEMINI_AVAILABLE, send_to_gemini_for_review
+from gemini_code_review_mcp.helpers.model_config_manager import load_model_config
 
 
 @pytest.mark.integration

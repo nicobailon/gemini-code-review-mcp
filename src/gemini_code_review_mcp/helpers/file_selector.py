@@ -19,27 +19,15 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-try:
-    from .file_context_types import (
-        FileContentData,
-        FileNotFoundError,
-        FileSelection,
-        FileSelectionInput,
-        InvalidLineRangeError,
-        LineRange,
-        normalize_file_selection,
-    )
-except ImportError:
-    # Fall back to absolute imports for testing
-    from ..file_context_types import (
-        FileContentData,
-        FileNotFoundError,
-        FileSelection,
-        FileSelectionInput,
-        InvalidLineRangeError,
-        LineRange,
-        normalize_file_selection,
-    )
+from ..file_context_types import (
+    FileContentData,
+    FileNotFoundError,
+    FileSelection,
+    FileSelectionInput,
+    InvalidLineRangeError,
+    LineRange,
+    normalize_file_selection,
+)
 
 
 def parse_file_selection(selection_str: str) -> FileSelection:

@@ -22,13 +22,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-try:
-    from ..config_types import DEFAULT_INCLUDE_CLAUDE_MEMORY, DEFAULT_INCLUDE_CURSOR_RULES
-except ImportError:
-    try:
-        from .config_types import DEFAULT_INCLUDE_CLAUDE_MEMORY, DEFAULT_INCLUDE_CURSOR_RULES
-    except ImportError:
-        from config_types import DEFAULT_INCLUDE_CLAUDE_MEMORY, DEFAULT_INCLUDE_CURSOR_RULES
+from ..config_types import DEFAULT_INCLUDE_CLAUDE_MEMORY, DEFAULT_INCLUDE_CURSOR_RULES
 
 logger = logging.getLogger(__name__)
 
