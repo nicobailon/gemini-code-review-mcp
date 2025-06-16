@@ -2,7 +2,7 @@
 
 import os
 from datetime import datetime
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, cast
 
 from ..config_types import CodeReviewConfig
 from ..services.context_generator_enhanced import (
@@ -31,7 +31,7 @@ async def generate_multiphase_review(
     per_file_token_limit: int = 10_000,
     output_format: str = "structured",
     phases_to_process: Optional[List[int]] = None,
-) -> Union[str, Dict[str, Union[str, List[Dict[str, str]]]]]:
+) -> Any:
     """
     Generate multi-phase code review with explicit control over phases.
     
@@ -127,9 +127,13 @@ async def generate_multiphase_review(
             }
         
         # Get phase results
-        phase_results = process_and_output_multi_phase_review(
+        phase_results_raw = process_and_output_multi_phase_review(
             config, base_data, multi_phase_context, return_phase_results=True
         )
+        
+        # Since return_phase_results=True, we know this returns List[PhaseResult]
+        from ..services.context_generator_enhanced import PhaseResult
+        phase_results = cast(List[PhaseResult], phase_results_raw)
         
         # Filter phases if requested
         if phases_to_process:

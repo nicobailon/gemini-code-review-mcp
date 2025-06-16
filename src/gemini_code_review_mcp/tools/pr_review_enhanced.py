@@ -1,6 +1,5 @@
 """Enhanced GitHub PR review tool with multi-phase support."""
 
-import datetime
 import os
 from typing import List, Optional, Union
 
@@ -11,7 +10,6 @@ from ..services.context_generator_enhanced import (
     generate_phase_template_data,
 )
 from ..services.template_formatter import format_review_template
-from ..services.gemini_api_client import send_to_gemini_for_review
 
 
 async def generate_pr_review(
@@ -132,7 +130,11 @@ async def generate_pr_review(
                     "",
                 ]
                 
-                for i, (phase, (context_path, review_path)) in enumerate(zip(multi_phase_context.phases, results)):
+                for phase, result_tuple in zip(multi_phase_context.phases, results):
+                    if isinstance(result_tuple, tuple) and len(result_tuple) == 2:
+                        context_path, review_path = result_tuple
+                    else:
+                        continue
                     summary_lines.extend([
                         f"## Phase {phase.phase_number}: {phase.name}",
                         f"Files: {len(phase.included_files)}",

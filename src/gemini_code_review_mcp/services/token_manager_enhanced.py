@@ -123,6 +123,11 @@ class ReviewPhase:
     token_count: int
     token_limit: int
     
+    @property
+    def file_count(self) -> int:
+        """Get the number of files in this phase."""
+        return len(self.included_files)
+    
     def to_metadata_markdown(self) -> str:
         """Generate phase metadata in markdown."""
         lines = [
