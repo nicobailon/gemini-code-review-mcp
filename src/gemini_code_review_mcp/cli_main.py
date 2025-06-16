@@ -891,10 +891,15 @@ Working examples:
             )
 
         print("\n🎉 Code review process completed!")
-        files_generated = [os.path.basename(output_path)]
+        files_generated: List[str] = []
+        if output_path:
+            files_generated.append(os.path.basename(output_path))
         if gemini_path:
             files_generated.append(os.path.basename(gemini_path))
-        print(f"📄 Files generated: {', '.join(files_generated)}")
+        if files_generated:
+            print(f"📄 Files generated: {', '.join(files_generated)}")
+        else:
+            print("📄 No output files generated")
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

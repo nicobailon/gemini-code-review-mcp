@@ -2,7 +2,7 @@
 
 import os
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union, cast
 
 from ..config_types import CodeReviewConfig
 from ..services.context_generator_enhanced import (
@@ -171,9 +171,21 @@ Provide specific, actionable feedback with code examples where appropriate."""
             # Handle multi-phase
             if multi_phase_context and review_mode != "single":
                 # Multi-phase review - get PhaseResult objects for text output
-                phase_results = process_and_output_multi_phase_review(
-                    config, base_data, multi_phase_context, return_phase_results=text_output
-                )
+                if text_output:
+                    # When text_output=True, we need PhaseResult objects
+                    from ..services.context_generator_enhanced import PhaseResult
+                    phase_results_raw = process_and_output_multi_phase_review(
+                        config, base_data, multi_phase_context, return_phase_results=True
+                    )
+                    # Cast to List[PhaseResult] since we know return_phase_results=True
+                    phase_results: List[PhaseResult] = cast(List[PhaseResult], phase_results_raw)
+                else:
+                    # For file output, we get tuples
+                    phase_results_raw = process_and_output_multi_phase_review(
+                        config, base_data, multi_phase_context, return_phase_results=False
+                    )
+                    # Cast to List[Tuple] for file output
+                    phase_file_results = cast(List[Tuple[str, Optional[str]]], phase_results_raw)
                 
                 if text_output:
                     try:
@@ -263,8 +275,8 @@ Provide specific, actionable feedback with code examples where appropriate."""
                         import traceback
                         return f"ERROR: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
                 else:
-                    # When not text output, phase_results are tuples
-                    return f"Multi-phase AI review completed: {len(phase_results)} phases generated"
+                    # When not text output, phase_file_results are tuples
+                    return f"Multi-phase AI review completed: {len(phase_file_results)} phases generated"
             else:
                 # Single phase review
                 from ..services.context_generator import (
@@ -273,7 +285,7 @@ Provide specific, actionable feedback with code examples where appropriate."""
                 )
                 
                 template_data = generate_review_context_data(config)
-                context_path, review_path = process_and_output_review(config, template_data)
+                _, review_path = process_and_output_review(config, template_data)
                 
                 if text_output and review_path:
                     with open(review_path, 'r', encoding='utf-8') as f:

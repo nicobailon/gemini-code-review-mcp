@@ -17,13 +17,14 @@ from ..models.review_context import ReviewContext
 from ..models.review_mode import ReviewMode
 from ..models.task_info import TaskInfo
 from ..models.converters import review_context_to_dict
+from .task_list_parser import TaskData as ParserTaskData
 from .context_generator import (
-    _handle_task_list_mode,
-    _extract_prd_summary,
-    _process_review_scope,
-    _discover_configurations,
-    _gather_changes,
-    _convert_to_file_info,
+    handle_task_list_mode,
+    extract_prd_summary,
+    process_review_scope,
+    discover_configurations,
+    gather_changes,
+    convert_to_file_info,
     create_minimal_task_data,
 )
 from .context_builder import (
@@ -36,7 +37,6 @@ from .token_manager_enhanced import (
     MultiPhaseContext,
     ReviewPhase,
     generate_multi_phase_summary,
-    ContentInclusionMode,
 )
 from ..helpers.git_utils import generate_file_tree
 from ..helpers.model_config_manager import load_model_config
@@ -56,15 +56,8 @@ class PhaseResult:
     review_file_path: Optional[str] = None
 
 
-class TaskData(TypedDict, total=False):
-    """Type definition for task data."""
-    current_phase_number: str
-    current_phase_description: str
-    previous_phase_completed: str
-    next_phase: str
-    subtasks_completed: List[str]
-    total_phases: int
-    phases: List[Dict[str, Union[str, List[Dict[str, str]]]]]
+# Use TaskData from task_list_parser to avoid type conflicts
+TaskData = ParserTaskData
 
 
 class DiscoveredConfigurations(TypedDict):
@@ -125,8 +118,8 @@ def generate_context_data_multi_phase(config: CodeReviewConfig) -> Tuple[BaseTem
         prd_summary = "GitHub Pull Request Code Review"
         task_data = create_minimal_task_data("PR Review", "Pull Request code review")
     elif config.task_list:
-        task_data = _handle_task_list_mode(config)
-        prd_summary = _extract_prd_summary(config, task_data)
+        task_data = handle_task_list_mode(config)
+        prd_summary = extract_prd_summary(config, task_data)
     else:
         logger.info("General review mode - task-list discovery skipped")
         prd_summary = config.default_prompt or model_config["defaults"]["default_prompt"]
@@ -137,16 +130,16 @@ def generate_context_data_multi_phase(config: CodeReviewConfig) -> Tuple[BaseTem
     assert task_data is not None, "task_data should be initialized"
     
     # Step 3: Process scope-based review logic
-    effective_scope = _process_review_scope(config, task_data)
+    effective_scope = process_review_scope(config, task_data)
     
     # Step 4: Discover configuration files
-    configurations = _discover_configurations(config)
+    configurations = discover_configurations(config)
     
     # Step 5: Gather git changes or PR data
-    changed_files, pr_data = _gather_changes(config, review_mode)
+    changed_files, pr_data = gather_changes(config, review_mode)
     
     # Step 6: Apply multi-phase token management
-    file_infos = _convert_to_file_info(changed_files)
+    file_infos = convert_to_file_info(changed_files)
     
     # Get current model from environment or config
     # Default to Gemini Flash 2.0 for cost efficiency

@@ -20,7 +20,7 @@ import platform
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 from ..config_types import DEFAULT_INCLUDE_CLAUDE_MEMORY, DEFAULT_INCLUDE_CURSOR_RULES
 
@@ -626,7 +626,7 @@ class ConfigurationDiscovery:
             }
         }
         
-        tasks: List[Tuple[str, asyncio.Task]] = []
+        tasks: List[Tuple[str, asyncio.Task[Any]]] = []
         
         if include_claude_memory:
             # Create async tasks for Claude memory discovery

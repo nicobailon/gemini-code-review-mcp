@@ -160,8 +160,8 @@ def generate_review_context_data(config: CodeReviewConfig) -> Dict[str, Any]:
         task_data = create_minimal_task_data("PR Review", "Pull Request code review")
     elif config.task_list:
         # Task-driven review explicitly requested
-        task_data = _handle_task_list_mode(config)
-        prd_summary = _extract_prd_summary(config, task_data)
+        task_data = handle_task_list_mode(config)
+        prd_summary = extract_prd_summary(config, task_data)
     else:
         # General review mode
         logger.info("General review mode - task-list discovery skipped")
@@ -174,13 +174,13 @@ def generate_review_context_data(config: CodeReviewConfig) -> Dict[str, Any]:
     assert task_data is not None, "task_data should be initialized"
 
     # Step 3: Process scope-based review logic
-    effective_scope = _process_review_scope(config, task_data)
+    effective_scope = process_review_scope(config, task_data)
 
     # Step 4: Discover configuration files
-    configurations = _discover_configurations(config)
+    configurations = discover_configurations(config)
 
     # Step 5: Gather git changes or PR data
-    changed_files, pr_data = _gather_changes(config, review_mode)
+    changed_files, pr_data = gather_changes(config, review_mode)
 
     # Step 6: Build comprehensive template data
     template_data = _build_template_data(
@@ -197,7 +197,7 @@ def generate_review_context_data(config: CodeReviewConfig) -> Dict[str, Any]:
     return template_data
 
 
-def _handle_task_list_mode(config: CodeReviewConfig) -> TaskData:
+def handle_task_list_mode(config: CodeReviewConfig) -> TaskData:
     """Handle task list discovery and parsing.
     
     Args:
@@ -242,7 +242,7 @@ def _handle_task_list_mode(config: CodeReviewConfig) -> TaskData:
     return parse_task_list(task_content)
 
 
-def _extract_prd_summary(config: CodeReviewConfig, task_data: TaskData) -> str:
+def extract_prd_summary(config: CodeReviewConfig, task_data: TaskData) -> str:
     """Extract or generate PRD summary.
     
     Args:
@@ -273,7 +273,7 @@ def _extract_prd_summary(config: CodeReviewConfig, task_data: TaskData) -> str:
         return generate_prd_summary_from_task_list(task_data)
 
 
-def _process_review_scope(config: CodeReviewConfig, task_data: TaskData) -> str:
+def process_review_scope(config: CodeReviewConfig, task_data: TaskData) -> str:
     """Process and potentially adjust review scope based on task data.
     
     Args:
@@ -472,7 +472,7 @@ def _update_task_data_for_phase(
     })
 
 
-def _discover_configurations(config: CodeReviewConfig) -> DiscoveredConfigurations:
+def discover_configurations(config: CodeReviewConfig) -> DiscoveredConfigurations:
     """Discover configuration files based on config flags.
     
     Args:
@@ -521,7 +521,7 @@ def _discover_configurations(config: CodeReviewConfig) -> DiscoveredConfiguratio
     return configurations
 
 
-def _gather_changes(
+def gather_changes(
     config: CodeReviewConfig, review_mode: str
 ) -> Tuple[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
     """Gather git changes or PR data based on review mode.
@@ -582,7 +582,7 @@ def _gather_changes(
     return changed_files, pr_data
 
 
-def _convert_to_file_info(changed_files: List[Dict[str, Any]]) -> List[FileInfo]:
+def convert_to_file_info(changed_files: List[Dict[str, Any]]) -> List[FileInfo]:
     """Convert changed files to FileInfo objects for token management."""
     file_infos = []
     for file_data in changed_files:
@@ -629,7 +629,7 @@ def _build_template_data(
     file_tree = generate_file_tree(config.project_path)
 
     # Apply token management to changed files
-    file_infos = _convert_to_file_info(changed_files)
+    file_infos = convert_to_file_info(changed_files)
     
     # Get current model from environment or config
     model_config = load_model_config()

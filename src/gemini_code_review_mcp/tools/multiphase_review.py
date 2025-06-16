@@ -2,7 +2,7 @@
 
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Any, List, Optional, Union, cast
 
 from ..config_types import CodeReviewConfig
 from ..services.context_generator_enhanced import (
@@ -144,7 +144,7 @@ async def generate_multiphase_review(
         
         # Build structured output
         if output_format == "structured":
-            phases_data = []
+            phases_data: List[dict[str, Any]] = []
             for phase_result in phase_results:
                 phase_data = {
                     "phase_number": phase_result.phase_number,

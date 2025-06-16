@@ -1,7 +1,7 @@
 """Validation utilities for code review configurations and parameters."""
 
 import re
-from typing import List, Optional
+from typing import List
 
 from ..config_types import CodeReviewConfig
 from ..errors import ConfigurationError
