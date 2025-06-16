@@ -59,9 +59,15 @@ class GitHubPRStrategy(ReviewStrategy):
 
         # Validate GitHub token is available and valid
         try:
-            if not validate_github_token():
+            import os
+            token = os.getenv("GITHUB_TOKEN")
+            if token and not validate_github_token(token):
                 logger.warning(
                     "GitHub token validation failed. PR analysis may be limited."
+                )
+            elif not token:
+                logger.warning(
+                    "GITHUB_TOKEN not set. PR analysis may be limited."
                 )
         except Exception as e:
             logger.warning(f"Could not validate GitHub token: {e}")

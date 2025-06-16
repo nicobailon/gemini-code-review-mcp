@@ -16,9 +16,9 @@ logger = logging.getLogger(__name__)
 # Try to import official token counter
 try:
     from .token_counter_official import count_tokens as official_count_tokens
-    OFFICIAL_COUNTER_AVAILABLE = True
+    official_counter_available = True
 except ImportError:
-    OFFICIAL_COUNTER_AVAILABLE = False
+    official_counter_available = False
     official_count_tokens = None
 
 # Model-specific token limits based on benchmark data
@@ -143,7 +143,7 @@ def estimate_tokens(text: str, file_path: Optional[str] = None, model_name: Opti
         return 0
     
     # Try official tokenizer first if available
-    if OFFICIAL_COUNTER_AVAILABLE and model_name:
+    if official_counter_available and model_name and official_count_tokens:
         try:
             count, is_exact = official_count_tokens(text, file_path, model_name)
             if is_exact:
@@ -217,22 +217,24 @@ def get_token_limit(model_name: str, strategy: str, override: Optional[int] = No
         logger.warning(f"Unknown model '{model_name}', using default limits")
         model_config = MODEL_TOKEN_LIMITS["default"]
     
-    base_limit = model_config["default"]
+    base_limit = int(model_config["default"])
     
     # Apply strategy
     strategy_config = CONTEXT_STRATEGIES.get(strategy, CONTEXT_STRATEGIES["balanced"])
     if strategy_config["multiplier"] is None:
         logger.warning("Using unlimited context strategy - may exceed model limits")
-        return float('inf')  # Unlimited
+        return 999_999_999  # Effectively unlimited for practical purposes
     
-    calculated_limit = int(base_limit * strategy_config["multiplier"])
-    min_tokens = strategy_config.get("min_tokens", 0)
+    multiplier = float(strategy_config["multiplier"])
+    calculated_limit = int(base_limit * multiplier)
+    min_tokens = int(strategy_config.get("min_tokens", 0) or 0)
     
     final_limit = max(calculated_limit, min_tokens)
     
     # Ensure we don't exceed model max
-    if final_limit > model_config["max"]:
-        final_limit = model_config["max"]
+    model_max = int(model_config["max"])
+    if final_limit > model_max:
+        final_limit = model_max
         logger.warning(f"Capping token limit to model maximum: {final_limit:,}")
     
     logger.info(f"Token limit for {model_name} with {strategy} strategy: {final_limit:,}")

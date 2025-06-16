@@ -135,9 +135,9 @@ def estimate_tokens_heuristic(text: str, file_path: Optional[str] = None) -> int
 # Optional: Gemini API integration for exact counts
 try:
     import google.generativeai as genai
-    GEMINI_AVAILABLE = True
+    gemini_available = True
 except ImportError:
-    GEMINI_AVAILABLE = False
+    gemini_available = False
     logger.debug("Google Generative AI SDK not available for exact token counting")
 
 
@@ -155,7 +155,7 @@ def count_tokens_exact(text: str, model_name: str = "gemini-1.5-flash") -> Optio
     Returns:
         Exact token count or None if API unavailable
     """
-    if not GEMINI_AVAILABLE:
+    if not gemini_available:
         return None
     
     try:
@@ -165,6 +165,8 @@ def count_tokens_exact(text: str, model_name: str = "gemini-1.5-flash") -> Optio
             logger.debug("GEMINI_API_KEY not set, falling back to estimation")
             return None
         
+        # genai is guaranteed to be available here due to gemini_available check
+        import google.generativeai as genai
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(model_name)
         

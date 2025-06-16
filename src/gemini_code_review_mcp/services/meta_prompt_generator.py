@@ -67,12 +67,12 @@ def _get_generate_meta_prompt() -> Any:
     global _generate_meta_prompt
     if _generate_meta_prompt is None:
         try:
-            from server import generate_meta_prompt
+            from ..helpers.meta_prompt import generate_meta_prompt
 
             _generate_meta_prompt = generate_meta_prompt
         except ImportError:
             try:
-                from server import generate_meta_prompt
+                from gemini_code_review_mcp.helpers.meta_prompt import generate_meta_prompt
 
                 _generate_meta_prompt = generate_meta_prompt
             except (ImportError, SystemExit):

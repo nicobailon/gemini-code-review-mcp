@@ -341,14 +341,15 @@ def determine_inclusion_mode(
         return ContentInclusionMode.FULL
     
     # If we have plenty of tokens and it's high priority, include full
-    if remaining_tokens > entry.tokens_if_full * 2 and entry.priority_score > 150:
+    tokens_if_full = entry.tokens_if_full or 0
+    if remaining_tokens > tokens_if_full * 2 and entry.priority_score > 150:
         return ContentInclusionMode.FULL
     
     # Phase-specific rules
     if entry.category == phase_focus:
-        if remaining_tokens > entry.tokens_if_full:
+        if remaining_tokens > tokens_if_full:
             return ContentInclusionMode.FULL
-        elif remaining_tokens > entry.tokens_if_full * 0.5:
+        elif remaining_tokens > tokens_if_full * 0.5:
             return ContentInclusionMode.SMART_DIFF
         else:
             return ContentInclusionMode.STRUCTURE_ONLY
@@ -364,7 +365,7 @@ def determine_inclusion_mode(
         return ContentInclusionMode.SUMMARY_ONLY
     
     # Default based on available tokens
-    if remaining_tokens > entry.tokens_if_full * 0.3:
+    if remaining_tokens > tokens_if_full * 0.3:
         return ContentInclusionMode.SMART_DIFF
     else:
         return ContentInclusionMode.STRUCTURE_ONLY
@@ -446,7 +447,7 @@ class MultiPhaseContextBuilder:
         manifest = build_change_manifest(files)
         
         # Calculate total tokens needed for all files
-        total_tokens_needed = sum(e.tokens_if_full for e in manifest.entries)
+        total_tokens_needed = sum(e.tokens_if_full or 0 for e in manifest.entries)
         
         # Reserve tokens for manifest and metadata
         manifest_tokens = estimate_tokens(manifest.to_markdown())

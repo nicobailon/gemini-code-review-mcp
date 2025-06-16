@@ -298,3 +298,6 @@ Provide specific, actionable feedback with code examples where appropriate."""
     
     except Exception as e:
         return f"ERROR: {str(e)}"
+    
+    # This should never be reached due to the validation at the beginning
+    return "ERROR: No valid input provided"

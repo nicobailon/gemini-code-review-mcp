@@ -16,10 +16,10 @@ logger = logging.getLogger(__name__)
 try:
     from vertexai.generative_models import GenerativeModel
     import vertexai
-    OFFICIAL_TOKENIZER_AVAILABLE = True
+    official_tokenizer_available = True
     logger.info("Official Vertex AI tokenizer available")
 except ImportError:
-    OFFICIAL_TOKENIZER_AVAILABLE = False
+    official_tokenizer_available = False
     logger.warning("Official tokenizer not available. Install google-cloud-aiplatform>=1.57.0")
     GenerativeModel = None
 
@@ -53,7 +53,7 @@ def get_cached_model(model_name: str):
     Returns:
         GenerativeModel instance or None if unavailable
     """
-    if not OFFICIAL_TOKENIZER_AVAILABLE:
+    if not official_tokenizer_available:
         return None
     
     try:
@@ -168,7 +168,7 @@ def batch_count_tokens(
     results = {}
     
     # Try to use official tokenizer for batch if available
-    if not force_heuristic and OFFICIAL_TOKENIZER_AVAILABLE:
+    if not force_heuristic and official_tokenizer_available:
         model = get_cached_model(model_name)
         if model:
             try:
@@ -200,12 +200,12 @@ def get_tokenizer_info() -> Dict[str, any]:
         Dict with tokenizer availability and version info
     """
     info = {
-        "official_available": OFFICIAL_TOKENIZER_AVAILABLE,
+        "official_available": official_tokenizer_available,
         "fallback": "heuristic",
         "recommendation": ""
     }
     
-    if OFFICIAL_TOKENIZER_AVAILABLE:
+    if official_tokenizer_available:
         info["recommendation"] = "Using official Vertex AI tokenizer for exact counts"
         try:
             import google.cloud.aiplatform
@@ -235,7 +235,7 @@ def verify_token_counting_accuracy(
     Returns:
         Statistics about accuracy comparison
     """
-    if not OFFICIAL_TOKENIZER_AVAILABLE:
+    if not official_tokenizer_available:
         return {"error": "Official tokenizer not available for comparison"}
     
     results = []
