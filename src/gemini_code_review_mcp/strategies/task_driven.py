@@ -11,7 +11,7 @@ from ..interfaces import (
     ProductionGitClient,
 )
 from ..models import ReviewContext, ReviewMode, TaskInfo
-from ..progress import print_info, progress
+from ..helpers.progress import print_info, progress
 from ..services import FileFinder
 from .base import ReviewStrategy
 

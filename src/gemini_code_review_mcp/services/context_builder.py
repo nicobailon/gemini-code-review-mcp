@@ -148,10 +148,10 @@ def _discover_project_configurations_uncached(
     try:
         # Import configuration modules (relative imports for same package)
         # Use relative imports since we're in the same package
-        from .configuration_discovery_unified import discover_all_configurations
-        from .claude_memory_parser import parse_claude_memory_with_imports
-        from .configuration_context import ClaudeMemoryFile, CursorRule
-        from .cursor_rules_parser import parse_cursor_rules_directory
+        from ..helpers.configuration_discovery_unified import discover_all_configurations
+        from ..helpers.claude_memory_parser import parse_claude_memory_with_imports
+        from ..configuration_context import ClaudeMemoryFile, CursorRule
+        from ..helpers.cursor_rules_parser import parse_cursor_rules_directory
 
         claude_memory_files: List[Any] = []
         cursor_rules: List[Any] = []

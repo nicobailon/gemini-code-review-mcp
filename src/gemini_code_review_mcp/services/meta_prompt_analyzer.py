@@ -53,9 +53,9 @@ def analyze_project_for_meta_prompt(
         # Discover project configuration (CLAUDE.md/cursor rules)
         try:
             try:
-                from ..context_builder import discover_project_configurations
+                from .context_builder import discover_project_configurations
             except ImportError:
-                from ..context_builder import discover_project_configurations
+                from .context_builder import discover_project_configurations
 
             config_data = discover_project_configurations(project_path)
 
@@ -271,7 +271,7 @@ def generate_meta_prompt_from_analysis(
                 template_used = "environment"
             else:
                 # Load the default meta-prompt template
-                from ..model_config_manager import get_meta_prompt_template
+                from ..helpers.model_config_manager import get_meta_prompt_template
 
                 template = get_meta_prompt_template("default")
                 if not template:

@@ -5,10 +5,10 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
 from ..config_types import CodeReviewConfig
-from ..context_builder import discover_project_configurations
-from ..context_generator import format_review_template, generate_review_context_data
-from ..gemini_api_client import send_to_gemini_for_review
-from ..model_config_manager import get_meta_prompt_template
+from ..services.context_builder import discover_project_configurations
+from ..services.context_generator import format_review_template, generate_review_context_data
+from ..services.gemini_api_client import send_to_gemini_for_review
+from .model_config_manager import get_meta_prompt_template
 
 
 async def generate_meta_prompt(
