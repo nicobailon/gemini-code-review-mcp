@@ -8,7 +8,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from gemini_code_review_mcp.config_types import CodeReviewConfig
-from gemini_code_review_mcp.context_generator import generate_review_context_data, _create_minimal_task_data
+from gemini_code_review_mcp.services.context_generator import generate_review_context_data
+from gemini_code_review_mcp.services.task_list_parser import create_minimal_task_data
 from gemini_code_review_mcp.errors import ConfigurationError
 
 

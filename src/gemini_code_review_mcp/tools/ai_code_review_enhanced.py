@@ -170,15 +170,17 @@ Provide specific, actionable feedback with code examples where appropriate."""
             
             # Handle multi-phase
             if multi_phase_context and review_mode != "single":
-                # Multi-phase review - get PhaseResult objects for text output
+                # Multi-phase review - handle both text and file output
+                from ..services.context_generator_enhanced import PhaseResult
+                
                 if text_output:
                     # When text_output=True, we need PhaseResult objects
-                    from ..services.context_generator_enhanced import PhaseResult
                     phase_results_raw = process_and_output_multi_phase_review(
                         config, base_data, multi_phase_context, return_phase_results=True
                     )
                     # Cast to List[PhaseResult] since we know return_phase_results=True
                     phase_results: List[PhaseResult] = cast(List[PhaseResult], phase_results_raw)
+                    phase_file_results: List[Tuple[str, Optional[str]]] = []  # Initialize empty for type safety
                 else:
                     # For file output, we get tuples
                     phase_results_raw = process_and_output_multi_phase_review(
@@ -186,6 +188,7 @@ Provide specific, actionable feedback with code examples where appropriate."""
                     )
                     # Cast to List[Tuple] for file output
                     phase_file_results = cast(List[Tuple[str, Optional[str]]], phase_results_raw)
+                    phase_results: List[PhaseResult] = []  # Initialize empty for type safety
                 
                 if text_output:
                     try:

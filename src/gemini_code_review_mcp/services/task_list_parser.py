@@ -34,36 +34,6 @@ GEMINI_AVAILABLE = genai is not None
 logger = logging.getLogger(__name__)
 
 
-class TaskData(TypedDict):
-    """Task data structure for template rendering."""
-    total_phases: int
-    current_phase_number: str
-    current_phase_description: str
-    previous_phase_completed: str
-    next_phase: str
-    subtasks_completed: List[str]
-    phases: List[Dict[str, Any]]
-
-
-def create_minimal_task_data(number: str, description: str) -> TaskData:
-    """Create minimal task data structure for non-task-driven reviews.
-    
-    Args:
-        number: Phase number or review type (e.g., "PR Review", "General Review")
-        description: Description of the review context
-        
-    Returns:
-        Minimal TaskData dictionary
-    """
-    return {
-        "total_phases": 0,
-        "current_phase_number": number,
-        "current_phase_description": description,
-        "previous_phase_completed": "",
-        "next_phase": "",
-        "subtasks_completed": [],
-        "phases": [],
-    }
 
 
 # Type definitions for task list data structures
@@ -97,6 +67,27 @@ class TaskData(TypedDict):
     previous_phase_completed: str
     next_phase: str
     subtasks_completed: List[str]
+
+
+def create_minimal_task_data(number: str, description: str) -> TaskData:
+    """Create minimal task data structure for non-task-driven reviews.
+    
+    Args:
+        number: Phase number or review type (e.g., "PR Review", "General Review")
+        description: Description of the review context
+        
+    Returns:
+        Minimal TaskData dictionary
+    """
+    return {
+        "total_phases": 0,
+        "current_phase_number": number,
+        "current_phase_description": description,
+        "previous_phase_completed": "",
+        "next_phase": "",
+        "subtasks_completed": [],
+        "phases": [],
+    }
 
 
 def is_phase_data(obj: Any) -> TypeGuard[PhaseData]:

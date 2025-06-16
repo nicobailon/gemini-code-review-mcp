@@ -21,7 +21,6 @@ try:
     from ..models.review_mode import ReviewMode
     from ..models.task_info import TaskInfo
     from ..models.converters import review_context_to_dict
-    from ..configuration_context import ClaudeMemoryFile, CursorRule
     from .context_builder import (
         DiscoveredConfigurations,
         discover_project_configurations_with_flags,
@@ -35,7 +34,7 @@ try:
     from .task_list_parser import (
         PhaseData,
         TaskData,
-        extract_prd_summary,
+        extract_prd_summary as extract_prd_summary_from_content,
         generate_prd_summary_from_task_list,
         parse_task_list,
         create_minimal_task_data,
@@ -59,7 +58,6 @@ except ImportError:
     from ..models.review_mode import ReviewMode
     from ..models.task_info import TaskInfo
     from ..models.converters import review_context_to_dict
-    from ..configuration_context import ClaudeMemoryFile, CursorRule
     from .context_builder import (
         DiscoveredConfigurations,
         discover_project_configurations_with_flags,
@@ -73,7 +71,7 @@ except ImportError:
     from .task_list_parser import (
         PhaseData,
         TaskData,
-        extract_prd_summary,
+        extract_prd_summary as extract_prd_summary_from_content,
         generate_prd_summary_from_task_list,
         parse_task_list,
         create_minimal_task_data,
@@ -92,13 +90,12 @@ except ImportError:
 
 # Import GitHub PR integration (optional)
 try:
-    from .github_pr_integration import get_complete_pr_analysis, parse_github_pr_url
+    from .github_pr_integration import get_complete_pr_analysis
 except ImportError:
     try:
-        from .github_pr_integration import get_complete_pr_analysis, parse_github_pr_url
+        from .github_pr_integration import get_complete_pr_analysis
     except ImportError:
         print("⚠️  GitHub PR integration not available")
-        parse_github_pr_url = None
         get_complete_pr_analysis = None
 
 logger = logging.getLogger(__name__)
@@ -216,6 +213,9 @@ def handle_task_list_mode(config: CodeReviewConfig) -> TaskData:
     container = get_production_container()
     file_finder = container.file_finder
 
+    if not config.project_path:
+        raise ConfigurationError("Project path is required for task list discovery")
+
     project_files = file_finder.find_project_files(
         Path(config.project_path), config.task_list
     )
@@ -224,7 +224,7 @@ def handle_task_list_mode(config: CodeReviewConfig) -> TaskData:
 
     if not task_file:
         # Task list was explicitly requested but not found
-        if config.task_list.strip():  # Non-empty task list name
+        if config.task_list and config.task_list.strip():  # Non-empty task list name
             raise ConfigurationError(
                 f"Task list file '{config.task_list}' not found in project.\n"
                 f"Please check that the file exists in the tasks/ directory."
@@ -257,6 +257,9 @@ def extract_prd_summary(config: CodeReviewConfig, task_data: TaskData) -> str:
     container = get_production_container()
     file_finder = container.file_finder
 
+    if not config.project_path:
+        raise ConfigurationError("Project path is required for PRD summary extraction")
+
     project_files = file_finder.find_project_files(
         Path(config.project_path), config.task_list
     )
@@ -267,7 +270,7 @@ def extract_prd_summary(config: CodeReviewConfig, task_data: TaskData) -> str:
         # We have a PRD file - extract summary
         with open(prd_file, "r", encoding="utf-8") as f:
             prd_content = f.read()
-        return extract_prd_summary(prd_content)
+        return extract_prd_summary_from_content(prd_content)
     else:
         # Generate summary from task list
         return generate_prd_summary_from_task_list(task_data)
@@ -489,6 +492,9 @@ def discover_configurations(config: CodeReviewConfig) -> DiscoveredConfiguration
 
     if config_types:
         print(f"🔍 Discovering {' and '.join(config_types)}...")
+        if not config.project_path:
+            raise ConfigurationError("Project path is required for configuration discovery")
+        
         configurations = discover_project_configurations_with_flags(
             config.project_path,
             config.include_claude_memory,
@@ -550,6 +556,9 @@ def gather_changes(
 
             # Convert PR file changes to our expected format
             for file_change in pr_analysis["file_changes"]["changed_files"]:
+                if not config.project_path:
+                    raise ConfigurationError("Project path is required for PR analysis")
+                
                 changed_files.append({
                     "path": os.path.join(config.project_path, file_change["path"]),
                     "status": f"PR-{file_change['status']}",
@@ -574,9 +583,13 @@ def gather_changes(
         except Exception as e:
             print(f"❌ Failed to fetch PR data: {e}")
             # Fallback to local git changes
+            if not config.project_path:
+                raise ConfigurationError("Project path is required for git changes")
             changed_files = get_changed_files(config.project_path)
     else:
         # Task list based mode (default)
+        if not config.project_path:
+            raise ConfigurationError("Project path is required for git changes")
         changed_files = get_changed_files(config.project_path)
 
     return changed_files, pr_data
@@ -626,6 +639,8 @@ def _build_template_data(
         Complete template data dictionary
     """
     # Generate file tree
+    if not config.project_path:
+        raise ConfigurationError("Project path is required for file tree generation")
     file_tree = generate_file_tree(config.project_path)
 
     # Apply token management to changed files

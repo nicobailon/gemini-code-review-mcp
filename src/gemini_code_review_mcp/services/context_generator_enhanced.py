@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple, TypedDict, Union
 
 from ..config_types import CodeReviewConfig
+from ..errors import ConfigurationError
 from ..models.review_context import ReviewContext
 from ..models.review_mode import ReviewMode
 from ..models.task_info import TaskInfo
@@ -171,6 +172,8 @@ def generate_context_data_multi_phase(config: CodeReviewConfig) -> Tuple[BaseTem
         print(f"\n✅ Single phase review: All {len(result)} files fit within token limits")
     
     # Build base template data (common to all phases)
+    if not config.project_path:
+        raise ConfigurationError("Project path is required for file tree generation")
     file_tree = generate_file_tree(config.project_path)
     
     # Get configuration content
@@ -254,6 +257,9 @@ def generate_phase_template_data(
             
             # Generate metaprompt for this specific phase
             # Include phase information in the metaprompt generation
+            if not config.project_path:
+                raise ConfigurationError("Project path is required for meta prompt generation")
+            
             meta_result = generate_optimized_meta_prompt(
                 project_path=config.project_path,
                 scope=config.scope,
