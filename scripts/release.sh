@@ -1,215 +1,152 @@
 #!/bin/bash
+# Main release script for gemini-code-review-mcp
 
-# Release script for gemini-code-review-mcp
-# This script guides you through the manual release process
+set -e
 
-set -e  # Exit on any error
+# Source shared utilities
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/release-utils.sh"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Configuration
+PACKAGE_NAME="gemini-code-review-mcp"
 
-# Helper functions
-print_header() {
-    echo -e "\n${BLUE}==== $1 ====${NC}\n"
-}
+print_header "Release Script for $PACKAGE_NAME"
 
-print_success() {
-    echo -e "${GREEN}✓ $1${NC}"
-}
+# 1. Run release readiness check
+print_header "Running Release Checks"
 
-print_error() {
-    echo -e "${RED}✗ $1${NC}"
-}
-
-print_warning() {
-    echo -e "${YELLOW}⚠ $1${NC}"
-}
-
-confirm() {
-    read -p "$1 (y/n): " -n 1 -r
-    echo
-    [[ $REPLY =~ ^[Yy]$ ]]
-}
-
-# Check prerequisites
-print_header "Checking Prerequisites"
-
-# Check if we're in the right directory
-if [ ! -f "pyproject.toml" ]; then
-    print_error "pyproject.toml not found. Are you in the project root?"
+if ! "$SCRIPT_DIR/release-check.sh"; then
+    print_error "Release checks failed. Please fix issues before proceeding."
     exit 1
 fi
 
-# Check git status
-if ! git diff-index --quiet HEAD --; then
-    print_error "You have uncommitted changes. Please commit or stash them first."
-    exit 1
+# 2. Get version information
+CURRENT_VERSION=$(get_current_version)
+print_info "Preparing to release version: $CURRENT_VERSION"
+
+# 3. Confirm release
+if ! confirm "Do you want to proceed with releasing v$CURRENT_VERSION?"; then
+    print_info "Release cancelled."
+    exit 0
 fi
 
-# Check current branch
-CURRENT_BRANCH=$(git branch --show-current)
-if [ "$CURRENT_BRANCH" != "master" ]; then
-    print_warning "You're not on master branch (current: $CURRENT_BRANCH)"
-    if ! confirm "Do you want to switch to master?"; then
-        exit 1
-    fi
-    git checkout master
-fi
+# 4. Build the package
+print_header "Building Package"
 
-# Pull latest changes
-print_header "Updating from Remote"
-git pull origin master
-
-# Get current version
-CURRENT_VERSION=$(grep -Po 'version = "\K[^"]+' pyproject.toml)
-print_success "Current version: $CURRENT_VERSION"
-
-# Prompt for new version
-print_header "Version Management"
-echo "Current version: $CURRENT_VERSION"
-echo "Semantic versioning reminder:"
-echo "  - Patch (x.y.Z): Bug fixes"
-echo "  - Minor (x.Y.z): New features (backwards compatible)"
-echo "  - Major (X.y.z): Breaking changes"
-echo
-read -p "Enter new version: " NEW_VERSION
-
-if [ -z "$NEW_VERSION" ]; then
-    print_error "Version cannot be empty"
-    exit 1
-fi
-
-# Check if version already exists on PyPI
-print_header "Checking PyPI"
-if pip index versions gemini-code-review-mcp 2>/dev/null | grep -q "$NEW_VERSION"; then
-    print_error "Version $NEW_VERSION already exists on PyPI!"
-    exit 1
-fi
-print_success "Version $NEW_VERSION is available"
-
-# Run tests
-print_header "Running Tests"
-if confirm "Run tests before proceeding?"; then
-    python -m pytest tests/
-    print_success "Tests passed"
-fi
-
-# Update version in pyproject.toml
-print_header "Updating Version"
-sed -i.bak "s/version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" pyproject.toml
-rm pyproject.toml.bak
-print_success "Updated version in pyproject.toml"
-
-# Commit version bump
-git add pyproject.toml
-git commit -m "chore: bump version to $NEW_VERSION"
-print_success "Committed version bump"
+# Clean previous builds
+rm -rf dist/ build/ *.egg-info
 
 # Build the package
-print_header "Building Package"
-rm -rf dist/ build/ *.egg-info
-python -m build
-print_success "Package built successfully"
+print_info "Running build..."
+if python -m build; then
+    print_success "Package built successfully"
+else
+    print_error "Build failed"
+    exit 1
+fi
 
-# List build artifacts
-echo -e "\nBuild artifacts:"
-ls -la dist/
+# 5. Test the built package
+print_header "Testing Built Package"
 
-# Test the package
-if confirm "Test the built package?"; then
-    print_header "Testing Package"
-    python -m venv test-env
-    source test-env/bin/activate
-    pip install dist/*.whl
-    generate-code-review --help
+# Create a temporary virtual environment
+TEMP_ENV=$(mktemp -d)
+print_info "Creating test environment in $TEMP_ENV"
+
+python -m venv "$TEMP_ENV/venv"
+source "$TEMP_ENV/venv/bin/activate"
+
+# Install the built package
+print_info "Installing built package..."
+pip install dist/*.whl
+
+# Run a smoke test
+print_info "Running smoke test..."
+if python -c "import gemini_code_review_mcp; print(f'Version: {gemini_code_review_mcp.__version__}')"; then
+    print_success "Package imports successfully"
+else
+    print_error "Package import failed"
     deactivate
-    rm -rf test-env
-    print_success "Package test successful"
+    rm -rf "$TEMP_ENV"
+    exit 1
 fi
 
-# Push version bump
-print_header "Pushing Changes"
-if confirm "Push version bump to master?"; then
-    git push origin master
-    print_success "Pushed to master"
-else
-    print_warning "Remember to push changes before creating release!"
-fi
+# Test CLI commands
+for cmd in gemini-code-review-mcp generate-code-review; do
+    if command -v "$cmd" >/dev/null; then
+        print_success "CLI command '$cmd' is available"
+    else
+        print_error "CLI command '$cmd' not found"
+    fi
+done
 
-# Upload to PyPI
+deactivate
+rm -rf "$TEMP_ENV"
+
+# 6. Upload to PyPI
 print_header "PyPI Upload"
-echo "Ready to upload to PyPI."
-echo -e "${YELLOW}Make sure you have your PyPI token ready!${NC}"
-echo
 
-if confirm "Upload to PyPI now?"; then
-    if [ -f ~/.pypirc ]; then
-        print_success "Found ~/.pypirc"
-        python -m twine upload dist/*
-    else
-        print_warning "No ~/.pypirc found. You'll need to enter credentials."
-        echo "Username: __token__"
-        echo "Password: <your-pypi-token>"
-        python -m twine upload dist/*
-    fi
-    print_success "Uploaded to PyPI"
-else
-    print_warning "Skipping PyPI upload. You can run later:"
-    echo "  python -m twine upload dist/*"
+print_warning "About to upload to PyPI. This action cannot be undone!"
+if ! confirm "Upload to PyPI?"; then
+    print_info "Upload cancelled. Package files are in dist/"
+    exit 0
 fi
 
-# Create git tag and GitHub release
-print_header "GitHub Release"
-if confirm "Create GitHub release?"; then
-    # Create and push tag
-    git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
-    git push origin "v$NEW_VERSION"
-    print_success "Created and pushed tag v$NEW_VERSION"
-    
-    # Get previous tag for changelog
-    PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
-    
-    # Create release notes
-    RELEASE_NOTES="## What's Changed
-
-"
-    if [ -n "$PREVIOUS_TAG" ]; then
-        RELEASE_NOTES+="### Commits since $PREVIOUS_TAG
-
-"
-        RELEASE_NOTES+=$(git log --pretty=format:"- %s" "$PREVIOUS_TAG"..HEAD)
-        RELEASE_NOTES+="
-
-**Full Changelog**: https://github.com/nicobailon/gemini-code-review-mcp/compare/$PREVIOUS_TAG...v$NEW_VERSION"
-    else
-        RELEASE_NOTES+="Initial release"
-    fi
-    
-    # Create GitHub release
-    gh release create "v$NEW_VERSION" \
-        --title "Release v$NEW_VERSION" \
-        --notes "$RELEASE_NOTES" \
-        dist/*.tar.gz dist/*.whl
-    
-    print_success "Created GitHub release"
+print_info "Uploading to PyPI..."
+if python -m twine upload dist/*; then
+    print_success "Package uploaded successfully!"
 else
-    print_warning "Skipping GitHub release. You can create it later:"
-    echo "  git tag -a v$NEW_VERSION -m \"Release v$NEW_VERSION\""
-    echo "  git push origin v$NEW_VERSION"
-    echo "  gh release create v$NEW_VERSION"
+    print_error "Upload failed"
+    exit 1
 fi
 
-# Final verification
-print_header "Release Complete!"
-echo -e "${GREEN}Successfully released version $NEW_VERSION${NC}"
+# 7. Create Git tag
+print_header "Git Tagging"
+
+TAG_NAME="v$CURRENT_VERSION"
+if git tag -l "$TAG_NAME" | grep -q "$TAG_NAME"; then
+    print_warning "Tag $TAG_NAME already exists"
+else
+    print_info "Creating tag $TAG_NAME"
+    git tag -a "$TAG_NAME" -m "Release version $CURRENT_VERSION"
+    
+    if confirm "Push tag to remote?"; then
+        git push origin "$TAG_NAME"
+        print_success "Tag pushed to remote"
+    fi
+fi
+
+# 8. Create GitHub release (if gh CLI is available)
+if command_exists gh; then
+    print_header "GitHub Release"
+    
+    if confirm "Create GitHub release?"; then
+        # Extract changelog for this version
+        CHANGELOG_FILE=$(mktemp)
+        awk "/^## $CURRENT_VERSION/{flag=1; next} /^## /{flag=0} flag" CHANGELOG.md > "$CHANGELOG_FILE"
+        
+        gh release create "$TAG_NAME" \
+            --title "Release v$CURRENT_VERSION" \
+            --notes-file "$CHANGELOG_FILE" \
+            dist/*
+        
+        rm "$CHANGELOG_FILE"
+        print_success "GitHub release created"
+    fi
+else
+    print_info "GitHub CLI (gh) not found - skipping GitHub release"
+    print_info "You can create a release manually at:"
+    print_info "https://github.com/YOUR_USERNAME/$PACKAGE_NAME/releases/new"
+fi
+
+# 9. Final steps
+print_header "Release Complete! 🎉"
+
+print_success "Version $CURRENT_VERSION has been released!"
 echo
-echo "Verification steps:"
-echo "  1. Check PyPI: https://pypi.org/project/gemini-code-review-mcp/$NEW_VERSION/"
-echo "  2. Check GitHub: https://github.com/nicobailon/gemini-code-review-mcp/releases/tag/v$NEW_VERSION"
-echo "  3. Test installation: pip install gemini-code-review-mcp==$NEW_VERSION"
+echo "Next steps:"
+echo "  1. Verify the package on PyPI: https://pypi.org/project/$PACKAGE_NAME/"
+echo "  2. Test installation: pip install $PACKAGE_NAME==$CURRENT_VERSION"
+echo "  3. Update version in pyproject.toml for next development cycle"
+echo "  4. Create a new changelog section for the next version"
 echo
-echo "If something went wrong, see MANUAL_RELEASE_GUIDE.md for rollback procedures."
+print_info "Thank you for releasing $PACKAGE_NAME!"

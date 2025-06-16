@@ -49,13 +49,13 @@
   "reportIndexIssue": "error",
   "reportReturnType": "error",
   "include": [
-    "src",
+    "src/gemini_code_review_mcp",
     "tests",
     "scripts"
   ],
   "executionEnvironments": [
     {
-      "root": "src",
+      "root": "src/gemini_code_review_mcp",
       "pythonVersion": "3.13",
       "extraPaths": []
     },

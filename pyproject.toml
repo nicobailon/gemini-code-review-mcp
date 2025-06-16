@@ -17,7 +17,7 @@ exclude = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src"]
+packages = ["src/gemini_code_review_mcp"]
 exclude = [
   "test-env",
   "test_venv", 
@@ -53,6 +53,7 @@ classifiers = [
 dependencies = [
     "fastmcp>=0.1.0",
     "google-genai>=0.1.0",
+    "google-cloud-aiplatform>=1.57.0",  # For official token counting
     "python-dotenv>=1.0.0",
     "requests>=2.25.0",
 ]
@@ -78,14 +79,14 @@ yaml = [
 
 [project.scripts]
 # MCP Server
-gemini-code-review-mcp = "src.server:main"
+gemini-code-review-mcp = "gemini_code_review_mcp.server:main"
 # CLI Tools
-generate-code-review = "src.cli_main:main"
-generate-meta-prompt = "src.meta_prompt_generator:main"
-generate-file-context = "src.cli_generate_file_context:main"
-gemini-code-review-init = "src.cli.init_command:main"
+generate-code-review = "gemini_code_review_mcp.cli_main:main"
+generate-meta-prompt = "gemini_code_review_mcp.meta_prompt_generator:main"
+generate-file-context = "gemini_code_review_mcp.cli_generate_file_context:main"
+gemini-code-review-init = "gemini_code_review_mcp.cli.init_command:main"
 # Semantic shortcuts (when installed)
-code-review = "src.cli_main:main"
+code-review = "gemini_code_review_mcp.cli_main:main"
 
 [dependency-groups]
 dev = [

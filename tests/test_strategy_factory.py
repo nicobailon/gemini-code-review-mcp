@@ -1,10 +1,10 @@
 import pytest
 
-from src.dependencies import DependencyContainer
-from src.errors import ConfigurationError
-from src.models import ReviewMode
-from src.strategies import GeneralStrategy, GitHubPRStrategy, TaskDrivenStrategy
-from src.strategies.factory import StrategyFactory
+from gemini_code_review_mcp.dependencies import DependencyContainer
+from gemini_code_review_mcp.errors import ConfigurationError
+from gemini_code_review_mcp.models import ReviewMode
+from gemini_code_review_mcp.strategies import GeneralStrategy, GitHubPRStrategy, TaskDrivenStrategy
+from gemini_code_review_mcp.strategies.factory import StrategyFactory
 
 
 class TestStrategyFactory:
@@ -60,7 +60,7 @@ class TestStrategyFactory:
         strategy = factory.create_strategy(ReviewMode.GENERAL_REVIEW)
         assert isinstance(strategy, GeneralStrategy)
         # Should use cached production implementations
-        from src.interfaces import CachedFileSystem, CachedGitClient, ProductionFileSystem, ProductionGitClient
+        from gemini_code_review_mcp.interfaces import CachedFileSystem, CachedGitClient, ProductionFileSystem, ProductionGitClient
 
         assert isinstance(strategy.fs, CachedFileSystem)
         assert isinstance(strategy.fs._fs, ProductionFileSystem)

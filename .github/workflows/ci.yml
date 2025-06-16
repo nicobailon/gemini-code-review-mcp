@@ -46,4 +46,4 @@ jobs:
     - name: Check package
       run: |
         pip install dist/*.whl
-        python -c "from src.server import generate_code_review_context; print('✓ Import successful')"
+        python -c "from gemini_code_review_mcp.services.generate_code_review_context import generate_code_review_context_main; print('✓ Import successful')"

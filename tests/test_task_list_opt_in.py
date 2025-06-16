@@ -7,9 +7,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.config_types import CodeReviewConfig
-from src.context_generator import generate_review_context_data, _create_minimal_task_data
-from src.errors import ConfigurationError
+from gemini_code_review_mcp.config_types import CodeReviewConfig
+from gemini_code_review_mcp.services.context_generator import generate_review_context_data
+from gemini_code_review_mcp.services.task_list_parser import create_minimal_task_data
+from gemini_code_review_mcp.errors import ConfigurationError
 
 
 class TestTaskListOptInBehavior:
@@ -37,10 +38,10 @@ class TestTaskListOptInBehavior:
         import shutil
         shutil.rmtree(self.temp_dir)
 
-    @patch('src.context_generator.get_changed_files')
-    @patch('src.context_generator.generate_file_tree')
-    @patch('src.context_generator.discover_project_configurations_with_flags')
-    @patch('src.context_generator.load_model_config')
+    @patch('gemini_code_review_mcp.services.context_generator.get_changed_files')
+    @patch('gemini_code_review_mcp.services.context_generator.generate_file_tree')
+    @patch('gemini_code_review_mcp.services.context_generator.discover_project_configurations_with_flags')
+    @patch('gemini_code_review_mcp.helpers.model_config_manager.load_model_config')
     def test_no_task_list_flag_skips_discovery(
         self, 
         mock_load_model,
@@ -80,10 +81,10 @@ class TestTaskListOptInBehavior:
         # Verify PRD summary uses default prompt
         assert result["prd_summary"] == "Review the code changes"
 
-    @patch('src.context_generator.get_changed_files')
-    @patch('src.context_generator.generate_file_tree')
-    @patch('src.context_generator.discover_project_configurations_with_flags')
-    @patch('src.context_generator.load_model_config')
+    @patch('gemini_code_review_mcp.services.context_generator.get_changed_files')
+    @patch('gemini_code_review_mcp.services.context_generator.generate_file_tree')
+    @patch('gemini_code_review_mcp.services.context_generator.discover_project_configurations_with_flags')
+    @patch('gemini_code_review_mcp.helpers.model_config_manager.load_model_config')
     def test_task_list_flag_with_empty_string_no_discovery(
         self,
         mock_load_model,
@@ -120,10 +121,10 @@ class TestTaskListOptInBehavior:
         assert result["current_phase_description"] == "Code review without specific task context"
         assert result["total_phases"] == 0
 
-    @patch('src.context_generator.get_changed_files')
-    @patch('src.context_generator.generate_file_tree')
-    @patch('src.context_generator.discover_project_configurations_with_flags')
-    @patch('src.context_generator.load_model_config')
+    @patch('gemini_code_review_mcp.services.context_generator.get_changed_files')
+    @patch('gemini_code_review_mcp.services.context_generator.generate_file_tree')
+    @patch('gemini_code_review_mcp.services.context_generator.discover_project_configurations_with_flags')
+    @patch('gemini_code_review_mcp.helpers.model_config_manager.load_model_config')
     def test_task_list_flag_with_nonexistent_file_raises_error(
         self,
         mock_load_model,
@@ -159,10 +160,10 @@ class TestTaskListOptInBehavior:
         assert "Task list file 'tasks-nonexistent.md' not found" in str(exc_info.value)
         assert "tasks/ directory" in str(exc_info.value)
 
-    @patch('src.context_generator.get_changed_files')
-    @patch('src.context_generator.generate_file_tree')
-    @patch('src.context_generator.discover_project_configurations_with_flags')
-    @patch('src.context_generator.load_model_config')
+    @patch('gemini_code_review_mcp.services.context_generator.get_changed_files')
+    @patch('gemini_code_review_mcp.services.context_generator.generate_file_tree')
+    @patch('gemini_code_review_mcp.services.context_generator.discover_project_configurations_with_flags')
+    @patch('gemini_code_review_mcp.helpers.model_config_manager.load_model_config')
     def test_task_list_flag_without_value_discovers_tasks(
         self,
         mock_load_model,
@@ -202,10 +203,10 @@ class TestTaskListOptInBehavior:
             assert len(result["phases"]) == 2
         assert result["current_phase_number"] == "2.0"  # Most recent phase (completed)
 
-    @patch('src.context_generator.get_changed_files')
-    @patch('src.context_generator.generate_file_tree')
-    @patch('src.context_generator.discover_project_configurations_with_flags')
-    @patch('src.context_generator.load_model_config')
+    @patch('gemini_code_review_mcp.services.context_generator.get_changed_files')
+    @patch('gemini_code_review_mcp.services.context_generator.generate_file_tree')
+    @patch('gemini_code_review_mcp.services.context_generator.discover_project_configurations_with_flags')
+    @patch('gemini_code_review_mcp.helpers.model_config_manager.load_model_config')
     def test_task_list_flag_with_specific_file(
         self,
         mock_load_model,

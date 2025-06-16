@@ -33,7 +33,7 @@ class TestClaudeMemoryParser(unittest.TestCase):
 
     def test_parse_claude_md_file_extracts_content(self):
         """Test basic CLAUDE.md file parsing extracts content correctly."""
-        from claude_memory_parser import parse_claude_md_file
+        from gemini_code_review_mcp.helpers.claude_memory_parser import parse_claude_md_file
 
         # Create test CLAUDE.md file
         claude_file = os.path.join(self.project_root, "CLAUDE.md")
@@ -62,7 +62,7 @@ Use functional programming patterns where possible.
 
     def test_parse_claude_md_file_handles_missing_file(self):
         """Test parsing handles missing CLAUDE.md files gracefully."""
-        from claude_memory_parser import parse_claude_md_file
+        from gemini_code_review_mcp.helpers.claude_memory_parser import parse_claude_md_file
 
         nonexistent_file = os.path.join(self.project_root, "nonexistent.md")
 
@@ -71,7 +71,7 @@ Use functional programming patterns where possible.
 
     def test_parse_claude_md_file_handles_binary_files(self):
         """Test parsing handles binary files gracefully."""
-        from claude_memory_parser import parse_claude_md_file
+        from gemini_code_review_mcp.helpers.claude_memory_parser import parse_claude_md_file
 
         # Create binary file with .md extension
         binary_file = os.path.join(self.project_root, "binary.md")
@@ -83,7 +83,7 @@ Use functional programming patterns where possible.
 
     def test_detect_import_syntax_in_content(self):
         """Test detection of @path/to/import syntax in content."""
-        from claude_memory_parser import detect_imports
+        from gemini_code_review_mcp.helpers.claude_memory_parser import detect_imports
 
         content = """# Main Memory
 
@@ -110,7 +110,7 @@ Final content.
 
     def test_detect_import_syntax_with_whitespace(self):
         """Test detection handles whitespace around import statements."""
-        from claude_memory_parser import detect_imports
+        from gemini_code_review_mcp.helpers.claude_memory_parser import detect_imports
 
         content = """
         @  path/to/file1.md  
@@ -129,7 +129,7 @@ Final content.
 
     def test_detect_import_syntax_ignores_false_positives(self):
         """Test detection ignores false positives like email addresses."""
-        from claude_memory_parser import detect_imports
+        from gemini_code_review_mcp.helpers.claude_memory_parser import detect_imports
 
         content = """# Memory File
 
@@ -149,7 +149,7 @@ Twitter: @username
 
     def test_resolve_relative_path_imports(self):
         """Test resolution of relative path imports."""
-        from claude_memory_parser import resolve_import_path
+        from gemini_code_review_mcp.helpers.claude_memory_parser import resolve_import_path
 
         base_file = os.path.join(self.project_root, "sub", "current.md")
 
@@ -170,7 +170,7 @@ Twitter: @username
 
     def test_resolve_absolute_path_imports(self):
         """Test resolution of absolute path imports."""
-        from claude_memory_parser import resolve_import_path
+        from gemini_code_review_mcp.helpers.claude_memory_parser import resolve_import_path
 
         base_file = os.path.join(self.project_root, "current.md")
 
@@ -192,7 +192,7 @@ Twitter: @username
 
     def test_resolve_home_directory_imports(self):
         """Test resolution of home directory imports (~/.claude/)."""
-        from claude_memory_parser import resolve_import_path
+        from gemini_code_review_mcp.helpers.claude_memory_parser import resolve_import_path
 
         base_file = os.path.join(self.project_root, "current.md")
         fake_home = "/fake/home"
@@ -207,7 +207,7 @@ Twitter: @username
 
     def test_resolve_import_with_full_parsing(self):
         """Test full import resolution with file parsing."""
-        from claude_memory_parser import resolve_imports
+        from gemini_code_review_mcp.helpers.claude_memory_parser import resolve_imports
 
         # Create main file with imports
         main_file = os.path.join(self.project_root, "main.md")
@@ -270,7 +270,7 @@ class TestImportRecursionProtection(unittest.TestCase):
 
     def test_recursion_protection_max_5_hops(self):
         """Test that import resolution stops at maximum 5 hops."""
-        from claude_memory_parser import resolve_imports_with_recursion_protection
+        from gemini_code_review_mcp.helpers.claude_memory_parser import resolve_imports_with_recursion_protection
 
         # Create chain of imports: file1 -> file2 -> file3 -> file4 -> file5 -> file6
         files: List[str] = []
@@ -302,7 +302,7 @@ class TestImportRecursionProtection(unittest.TestCase):
 
     def test_circular_reference_detection(self):
         """Test detection and prevention of circular references."""
-        from claude_memory_parser import resolve_imports_with_recursion_protection
+        from gemini_code_review_mcp.helpers.claude_memory_parser import resolve_imports_with_recursion_protection
 
         # Create circular imports: file1 -> file2 -> file3 -> file1
         file1 = os.path.join(self.project_root, "file1.md")
@@ -333,7 +333,7 @@ class TestImportRecursionProtection(unittest.TestCase):
 
     def test_complex_import_graph_with_shared_dependencies(self):
         """Test complex import graph where multiple files import the same dependency."""
-        from claude_memory_parser import resolve_imports_with_recursion_protection
+        from gemini_code_review_mcp.helpers.claude_memory_parser import resolve_imports_with_recursion_protection
 
         # Create structure:
         # main.md -> [config.md, utils.md]
@@ -373,7 +373,7 @@ class TestImportRecursionProtection(unittest.TestCase):
 
     def test_self_reference_detection(self):
         """Test detection of files that try to import themselves."""
-        from claude_memory_parser import resolve_imports_with_recursion_protection
+        from gemini_code_review_mcp.helpers.claude_memory_parser import resolve_imports_with_recursion_protection
 
         # Create file that imports itself
         self_ref_file = os.path.join(self.project_root, "self_ref.md")
@@ -403,7 +403,7 @@ class TestImportErrorHandling(unittest.TestCase):
 
     def test_handle_missing_imported_files(self):
         """Test handling of missing imported files."""
-        from claude_memory_parser import resolve_imports_with_error_handling
+        from gemini_code_review_mcp.helpers.claude_memory_parser import resolve_imports_with_error_handling
 
         # Create main file that imports nonexistent files
         main_file = os.path.join(self.project_root, "main.md")
@@ -429,7 +429,7 @@ class TestImportErrorHandling(unittest.TestCase):
 
     def test_handle_permission_denied_files(self):
         """Test handling of files with permission restrictions."""
-        from claude_memory_parser import resolve_imports_with_error_handling
+        from gemini_code_review_mcp.helpers.claude_memory_parser import resolve_imports_with_error_handling
 
         # Create main file and restricted imported file
         main_file = os.path.join(self.project_root, "main.md")
@@ -468,7 +468,7 @@ class TestImportErrorHandling(unittest.TestCase):
 
     def test_handle_malformed_imported_files(self):
         """Test handling of malformed imported files."""
-        from claude_memory_parser import resolve_imports_with_error_handling
+        from gemini_code_review_mcp.helpers.claude_memory_parser import resolve_imports_with_error_handling
 
         # Create main file and malformed imported file
         main_file = os.path.join(self.project_root, "main.md")
@@ -495,7 +495,7 @@ class TestImportErrorHandling(unittest.TestCase):
 
     def test_graceful_degradation_with_partial_imports(self):
         """Test that partial import resolution works even when some imports fail."""
-        from claude_memory_parser import resolve_imports_with_error_handling
+        from gemini_code_review_mcp.helpers.claude_memory_parser import resolve_imports_with_error_handling
 
         # Create main file with mix of valid and invalid imports
         main_file = os.path.join(self.project_root, "main.md")
@@ -541,7 +541,7 @@ class TestHomeDirectoryImports(unittest.TestCase):
 
     def test_resolve_tilde_imports(self):
         """Test resolution of ~/ imports to user home directory."""
-        from claude_memory_parser import resolve_imports_with_error_handling
+        from gemini_code_review_mcp.helpers.claude_memory_parser import resolve_imports_with_error_handling
 
         # Create project file with home directory import
         main_file = os.path.join(self.project_root, "main.md")
@@ -567,7 +567,7 @@ class TestHomeDirectoryImports(unittest.TestCase):
 
     def test_nested_home_directory_imports(self):
         """Test nested imports from home directory files."""
-        from claude_memory_parser import resolve_imports_with_error_handling
+        from gemini_code_review_mcp.helpers.claude_memory_parser import resolve_imports_with_error_handling
 
         # Create project file importing from home
         main_file = os.path.join(self.project_root, "main.md")
@@ -619,7 +619,7 @@ class TestIntegratedClaudeMemoryParser(unittest.TestCase):
 
     def test_full_claude_memory_parsing_pipeline(self):
         """Test complete Claude memory parsing with all features enabled."""
-        from claude_memory_parser import parse_claude_memory_with_imports
+        from gemini_code_review_mcp.helpers.claude_memory_parser import parse_claude_memory_with_imports
 
         # Create complex project structure
         main_file = os.path.join(self.project_root, "CLAUDE.md")

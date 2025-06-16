@@ -1,13 +1,13 @@
 import pytest
 
-from src.config_types import CodeReviewConfig
-from src.dependencies import DependencyContainer
-from src.errors import ConfigurationError
-from src.models import ReviewMode
-from src.orchestrator import ReviewOrchestrator, StrategyRegistry
-from src.orchestrator.init_strategies import initialize_strategies
-from src.strategies import GeneralStrategy, GitHubPRStrategy, TaskDrivenStrategy
-from src.strategies.factory import StrategyFactory
+from gemini_code_review_mcp.config_types import CodeReviewConfig
+from gemini_code_review_mcp.dependencies import DependencyContainer
+from gemini_code_review_mcp.errors import ConfigurationError
+from gemini_code_review_mcp.models import ReviewMode
+from gemini_code_review_mcp.orchestrator import ReviewOrchestrator, StrategyRegistry
+from gemini_code_review_mcp.orchestrator.init_strategies import initialize_strategies
+from gemini_code_review_mcp.strategies import GeneralStrategy, GitHubPRStrategy, TaskDrivenStrategy
+from gemini_code_review_mcp.strategies.factory import StrategyFactory
 
 
 class TestStrategyRegistry:
@@ -72,8 +72,8 @@ class TestReviewOrchestrator:
 
     def test_execute_with_initialized_strategies(self):
         # Initialize the global registry with strategies
-        from src.orchestrator import strategy_registry
-        from src.orchestrator.init_strategies import initialize_strategies
+        from gemini_code_review_mcp.orchestrator import strategy_registry
+        from gemini_code_review_mcp.orchestrator.init_strategies import initialize_strategies
 
         initialize_strategies()
         orchestrator = ReviewOrchestrator(strategy_registry)

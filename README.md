@@ -6,7 +6,7 @@
 [![MCP](https://img.shields.io/badge/MCP-Compatible-green)](https://github.com/anthropics/mcp)
 [![Gemini](https://img.shields.io/badge/Gemini-API-orange)](https://ai.google.dev)
 
-![Gemini Code Review MCP](gemini-code-review-mcp.jpg)
+![Gemini Code Review MCP](docs/assets/gemini-code-review-mcp.jpg)
 
 > 🚀 **AI-powered code reviews that understand your project's context and development progress**
 
@@ -84,6 +84,7 @@ If the MCP tools aren't working:
 | **`generate_ai_code_review`** | Complete AI code review | `project_path`, `model`, `scope` |
 | **`generate_pr_review`** | GitHub PR analysis | `github_pr_url`, `project_path` |
 | **`ask_gemini`** | Generate context and get AI response | `user_instructions`, `file_selections` |
+| **`generate_multiphase_review`** | Multi-phase review with explicit control | `output_format`, `phases_to_process` |
 
 <details>
 <summary>📖 Detailed Tool Examples</summary>
@@ -153,6 +154,49 @@ If the MCP tools aren't working:
     user_instructions: "Explain the security implications of the current authentication approach",
     include_claude_memory: true  // Includes project guidelines
   }
+}
+```
+
+### 4. `generate_multiphase_review`
+Provides explicit control over multi-phase reviews for large codebases.
+
+#### Example - Structured Output:
+```json
+{
+  tool_name: "generate_multiphase_review",
+  arguments: {
+    project_path: "/path/to/project",
+    output_format: "structured",  // Returns detailed phase metadata
+    phases_to_process: [1, 3]     // Only process phases 1 and 3
+  }
+}
+```
+
+Returns:
+```json
+{
+  "summary": {
+    "status": "multi_phase",
+    "total_phases": 3,
+    "phases_processed": 2,
+    "total_files": 150,
+    "total_tokens": 160000,
+    "model": "gemini-2.0-flash",
+    "strategy": "balanced"
+  },
+  "phases": [
+    {
+      "phase_number": 1,
+      "phase_name": "Critical Changes",
+      "file_count": 65,
+      "token_count": 53842,
+      "utilization": "99.9%",
+      "has_review": true,
+      "review": "..."
+    }
+  ],
+  "manifest": "...",
+  "metadata": {...}
 }
 ```
 
@@ -299,6 +343,7 @@ Configuration precedence: CLI flags > Environment variables > pyproject.toml > B
 - 🏗️ **Project Scaffolding** - Initialize projects with recommended structure via `gemini-code-review-init`
 - 🚀 **Performance Optimized** - Built-in caching layer for faster repeated operations
 - 🎨 **Clear Mode Indication** - Explicit feedback about Task-Driven vs General Review modes
+- 📂 **Multi-Phase Reviews** - Automatically splits large changesets that exceed token limits into logical phases
 
 ## 🖥️ CLI Usage
 
@@ -375,6 +420,65 @@ The tool operates in one of three modes:
    - Includes PR context and discussions
    - Best for: Code review workflows
 
+### Multi-Phase Review System
+
+The tool automatically handles large changesets that exceed model token limits by intelligently splitting them into phases:
+
+#### How It Works
+
+When your changes exceed the token limit (varies by model, typically 60K-192K tokens):
+
+1. **Automatic Detection**: The system detects when content exceeds limits
+2. **Smart Splitting**: Files are categorized and split into logical phases:
+   - **Phase 1 (Critical)**: Core source code files, main logic
+   - **Phase 2 (Supporting)**: Tests, utilities, secondary features  
+   - **Phase 3 (Documentation)**: Documentation, configs, assets
+3. **Complete Manifest**: Every phase includes a full list of all changed files
+4. **Context Preservation**: Each phase includes project guidelines and task context
+
+#### Review Mode Options
+
+Control multi-phase behavior with `--review-mode`:
+
+```bash
+# Default: Automatic multi-phase when needed
+generate-code-review . --review-mode multi-phase
+
+# Force single file (may truncate for large changes)
+generate-code-review . --review-mode single
+
+# Overview only (just the change manifest)
+generate-code-review . --review-mode overview-only
+```
+
+#### Example Output
+
+For a large changeset (e.g., 200+ files):
+
+```
+Phase 1 of 3: Core Source Code (32 files)
+- Includes: src/*.py, core modules
+- Context: Full diffs for critical files
+- Output: code-review-2024-12-15-phase-1.md
+
+Phase 2 of 3: Tests & Utilities (45 files)  
+- Includes: tests/*, utils/*, helpers/*
+- Context: Smart diffs (changes only)
+- Output: code-review-2024-12-15-phase-2.md
+
+Phase 3 of 3: Documentation (18 files)
+- Includes: *.md, configs, assets
+- Context: Structure + key changes
+- Output: code-review-2024-12-15-phase-3.md
+```
+
+#### Benefits
+
+- **No Lost Changes**: All files are reviewed, nothing is silently dropped
+- **Token Efficient**: Smart content inclusion based on file importance
+- **Logical Grouping**: Related files are reviewed together
+- **Complete Context**: Every phase knows about all changes via the manifest
+
 ### Supported File Formats
 
 - 📋 **Task Lists**: `/tasks/tasks-*.md` - Track development phases
@@ -386,6 +490,47 @@ The tool operates in one of three modes:
 - **Missing API key?** → Get one at [ai.google.dev](https://ai.google.dev/gemini-api/docs/api-key)
 - **MCP not working?** → Run `claude mcp list` to verify installation
 - **Old version cached?** → Run `uv cache clean`
+
+## 🔄 Multi-Phase Reviews
+
+The tool automatically detects when your codebase or PR exceeds token limits and intelligently splits the review into multiple phases:
+
+### How It Works
+1. **Automatic Detection**: When changes exceed ~60,000 tokens (for `gemini-2.0-flash`), multi-phase mode activates
+2. **Smart Categorization**: Files are grouped by priority and type (critical changes, supporting changes, documentation)
+3. **Complete Context**: Each phase includes a manifest of all changes for cross-reference
+4. **Comprehensive Analysis**: AI reviews each phase with awareness of the full changeset
+
+### Example Multi-Phase Output
+```
+📊 Multi-Phase Review Generated
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Model: gemini-2.0-flash
+Total files: 150
+Review phases: 3
+Total tokens: 160,000
+
+Phase 1: Critical Changes (65 files, 53,842 tokens)
+Phase 2: Supporting Changes (28 files, 53,877 tokens)  
+Phase 3: Documentation & Assets (36 files, 50,233 tokens)
+```
+
+### Using the Dedicated Multi-Phase Tool
+For explicit control over multi-phase reviews, use `generate_multiphase_review`:
+
+```python
+# Get structured data about phases
+result = generate_multiphase_review(
+    project_path="/path/to/project",
+    output_format="structured",
+    phases_to_process=[1, 3]  # Only review phases 1 and 3
+)
+
+# Access phase details
+for phase in result["phases"]:
+    print(f"Phase {phase['phase_number']}: {phase['file_count']} files")
+    print(f"Token utilization: {phase['utilization']}")
+```
 
 ## 📦 Development
 

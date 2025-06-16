@@ -26,7 +26,7 @@ class TestGitHubPRUrlParsing:
     def test_parse_github_pr_url_valid_standard_format(self):
         """Test parsing standard GitHub PR URL format."""
         # Import will fail initially - that's expected in TDD
-        from github_pr_integration import parse_github_pr_url
+        from gemini_code_review_mcp.services.github_pr_integration import parse_github_pr_url
 
         url = "https://github.com/owner/repo/pull/123"
         result = parse_github_pr_url(url)
@@ -38,7 +38,7 @@ class TestGitHubPRUrlParsing:
 
     def test_parse_github_pr_url_with_trailing_slash(self):
         """Test parsing GitHub PR URL with trailing slash."""
-        from github_pr_integration import parse_github_pr_url
+        from gemini_code_review_mcp.services.github_pr_integration import parse_github_pr_url
 
         url = "https://github.com/microsoft/vscode/pull/456/"
         result = parse_github_pr_url(url)
@@ -49,7 +49,7 @@ class TestGitHubPRUrlParsing:
 
     def test_parse_github_pr_url_with_query_params(self):
         """Test parsing GitHub PR URL with query parameters."""
-        from github_pr_integration import parse_github_pr_url
+        from gemini_code_review_mcp.services.github_pr_integration import parse_github_pr_url
 
         url = "https://github.com/facebook/react/pull/789?tab=files"
         result = parse_github_pr_url(url)
@@ -60,7 +60,7 @@ class TestGitHubPRUrlParsing:
 
     def test_parse_github_pr_url_github_enterprise(self):
         """Test parsing GitHub Enterprise URL."""
-        from github_pr_integration import parse_github_pr_url
+        from gemini_code_review_mcp.services.github_pr_integration import parse_github_pr_url
 
         url = "https://github.company.com/team/project/pull/42"
         result = parse_github_pr_url(url)
@@ -72,7 +72,7 @@ class TestGitHubPRUrlParsing:
 
     def test_parse_github_pr_url_invalid_format_raises_error(self):
         """Test that invalid URL format raises ValueError."""
-        from github_pr_integration import parse_github_pr_url
+        from gemini_code_review_mcp.services.github_pr_integration import parse_github_pr_url
 
         invalid_urls = [
             "https://github.com/owner/repo/issues/123",  # Issue, not PR
@@ -89,7 +89,7 @@ class TestGitHubPRUrlParsing:
 
     def test_parse_github_pr_url_empty_or_none_raises_error(self):
         """Test that empty or None URL raises ValueError."""
-        from github_pr_integration import parse_github_pr_url
+        from gemini_code_review_mcp.services.github_pr_integration import parse_github_pr_url
 
         with pytest.raises(ValueError, match="URL cannot be empty"):
             parse_github_pr_url("")
@@ -103,7 +103,7 @@ class TestGitHubAPIIntegration:
 
     def test_fetch_pr_data_success(self):
         """Test successful PR data retrieval from GitHub API."""
-        from github_pr_integration import fetch_pr_data
+        from gemini_code_review_mcp.services.github_pr_integration import fetch_pr_data
 
         # Mock data based on real GitHub API response structure
         # (based on https://github.com/nicobailon/gemini-code-review-mcp/pull/3)
@@ -142,7 +142,7 @@ class TestGitHubAPIIntegration:
 
     def test_fetch_pr_data_with_authentication_header(self):
         """Test that authentication token is properly included in request."""
-        from github_pr_integration import fetch_pr_data
+        from gemini_code_review_mcp.services.github_pr_integration import fetch_pr_data
 
         with patch("requests.get") as mock_get:
             mock_response = MagicMock()
@@ -174,7 +174,7 @@ class TestGitHubAPIIntegration:
 
     def test_fetch_pr_data_handles_404_not_found(self):
         """Test handling when PR is not found (404 error)."""
-        from github_pr_integration import fetch_pr_data
+        from gemini_code_review_mcp.services.github_pr_integration import fetch_pr_data
 
         with patch("requests.get") as mock_get:
             mock_response = MagicMock()
@@ -187,7 +187,7 @@ class TestGitHubAPIIntegration:
 
     def test_fetch_pr_data_handles_403_forbidden(self):
         """Test handling when access is forbidden (403 error)."""
-        from github_pr_integration import fetch_pr_data
+        from gemini_code_review_mcp.services.github_pr_integration import fetch_pr_data
 
         with patch("requests.get") as mock_get:
             mock_response = MagicMock()
@@ -200,7 +200,7 @@ class TestGitHubAPIIntegration:
 
     def test_fetch_pr_data_handles_rate_limiting(self):
         """Test handling of GitHub API rate limiting."""
-        from github_pr_integration import fetch_pr_data
+        from gemini_code_review_mcp.services.github_pr_integration import fetch_pr_data
 
         with patch("requests.get") as mock_get:
             mock_response = MagicMock()
@@ -214,7 +214,7 @@ class TestGitHubAPIIntegration:
 
     def test_fetch_pr_data_handles_network_timeout(self):
         """Test handling of network timeout errors."""
-        from github_pr_integration import fetch_pr_data
+        from gemini_code_review_mcp.services.github_pr_integration import fetch_pr_data
 
         with patch("requests.get") as mock_get:
             import requests
@@ -226,7 +226,7 @@ class TestGitHubAPIIntegration:
 
     def test_fetch_pr_data_handles_connection_error(self):
         """Test handling of network connection errors."""
-        from github_pr_integration import fetch_pr_data
+        from gemini_code_review_mcp.services.github_pr_integration import fetch_pr_data
 
         with patch("requests.get") as mock_get:
             import requests
@@ -242,7 +242,7 @@ class TestPRFileChanges:
 
     def test_get_pr_file_changes_success(self):
         """Test successful retrieval of PR file changes."""
-        from github_pr_integration import get_pr_file_changes
+        from gemini_code_review_mcp.services.github_pr_integration import get_pr_file_changes
 
         # Mock API response for PR files
         mock_files_data = [
@@ -308,7 +308,7 @@ class TestPRFileChanges:
 
     def test_get_pr_file_changes_includes_statistics(self):
         """Test that file changes include summary statistics."""
-        from github_pr_integration import get_pr_file_changes
+        from gemini_code_review_mcp.services.github_pr_integration import get_pr_file_changes
 
         mock_files_data = [
             {
@@ -352,7 +352,7 @@ class TestPRFileChanges:
 
     def test_get_pr_file_changes_handles_binary_files(self):
         """Test handling of binary files in PR changes."""
-        from github_pr_integration import get_pr_file_changes
+        from gemini_code_review_mcp.services.github_pr_integration import get_pr_file_changes
 
         mock_files_data = [
             {
@@ -379,7 +379,7 @@ class TestPRFileChanges:
 
     def test_get_pr_file_changes_handles_api_errors(self):
         """Test error handling for PR files API failures."""
-        from github_pr_integration import get_pr_file_changes
+        from gemini_code_review_mcp.services.github_pr_integration import get_pr_file_changes
 
         with patch("requests.get") as mock_get:
             mock_response = MagicMock()
@@ -396,7 +396,7 @@ class TestAuthenticationHandling:
 
     def test_validate_github_token_valid_token(self):
         """Test validation of valid GitHub token."""
-        from github_pr_integration import validate_github_token
+        from gemini_code_review_mcp.services.github_pr_integration import validate_github_token
 
         with patch("requests.get") as mock_get:
             mock_response = MagicMock()
@@ -414,7 +414,7 @@ class TestAuthenticationHandling:
 
     def test_validate_github_token_invalid_token(self):
         """Test validation of invalid GitHub token."""
-        from github_pr_integration import validate_github_token
+        from gemini_code_review_mcp.services.github_pr_integration import validate_github_token
 
         with patch("requests.get") as mock_get:
             mock_response = MagicMock()
@@ -427,7 +427,7 @@ class TestAuthenticationHandling:
 
     def test_get_github_token_from_environment(self):
         """Test retrieving GitHub token from environment variables."""
-        from github_pr_integration import get_github_token
+        from gemini_code_review_mcp.services.github_pr_integration import get_github_token
 
         with patch.dict(os.environ, {"GITHUB_TOKEN": "env_token_123"}):
             token = get_github_token()
@@ -435,7 +435,7 @@ class TestAuthenticationHandling:
 
     def test_get_github_token_from_git_config(self):
         """Test retrieving GitHub token from git config."""
-        from github_pr_integration import get_github_token
+        from gemini_code_review_mcp.services.github_pr_integration import get_github_token
 
         with patch.dict(os.environ, {}, clear=True):  # Clear env vars
             with patch("subprocess.run") as mock_run:
@@ -447,7 +447,7 @@ class TestAuthenticationHandling:
 
     def test_get_github_token_no_token_found(self):
         """Test behavior when no GitHub token is found."""
-        from github_pr_integration import get_github_token
+        from gemini_code_review_mcp.services.github_pr_integration import get_github_token
 
         with patch.dict(os.environ, {}, clear=True):  # Clear env vars
             with patch("subprocess.run") as mock_run:
@@ -462,7 +462,7 @@ class TestErrorHandlingAndEdgeCases:
 
     def test_github_enterprise_url_handling(self):
         """Test proper handling of GitHub Enterprise URLs."""
-        from github_pr_integration import fetch_pr_data, parse_github_pr_url
+        from gemini_code_review_mcp.services.github_pr_integration import fetch_pr_data, parse_github_pr_url
 
         enterprise_url = "https://github.mycompany.com/team/project/pull/42"
         parsed = parse_github_pr_url(enterprise_url)
@@ -499,7 +499,7 @@ class TestErrorHandlingAndEdgeCases:
 
     def test_large_pr_handling(self):
         """Test handling of PRs with many file changes."""
-        from github_pr_integration import get_pr_file_changes
+        from gemini_code_review_mcp.services.github_pr_integration import get_pr_file_changes
 
         # Mock large PR with 100+ files
         mock_files: List[Dict[str, Any]] = []
@@ -528,7 +528,7 @@ class TestErrorHandlingAndEdgeCases:
 
     def test_special_characters_in_filenames(self):
         """Test handling of files with special characters in names."""
-        from github_pr_integration import get_pr_file_changes
+        from gemini_code_review_mcp.services.github_pr_integration import get_pr_file_changes
 
         mock_files_data = [
             {
@@ -576,7 +576,7 @@ class TestIntegrationScenarios:
 
     def test_complete_pr_analysis_workflow(self):
         """Test complete workflow of analyzing a GitHub PR."""
-        from github_pr_integration import (
+        from gemini_code_review_mcp.services.github_pr_integration import (
             fetch_pr_data,
             get_pr_file_changes,
             parse_github_pr_url,
@@ -651,7 +651,7 @@ class TestThinkingBudgetIntegration:
 
     def test_pr_context_with_thinking_budget_param(self):
         """Test that PR context generation can accept thinking_budget parameter."""
-        from src.config_types import CodeReviewConfig
+        from gemini_code_review_mcp.config_types import CodeReviewConfig
 
         # Create config with thinking_budget
         config = CodeReviewConfig(

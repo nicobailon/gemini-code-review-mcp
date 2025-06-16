@@ -1,12 +1,12 @@
 import pytest
 
-from src.dependencies import (
+from gemini_code_review_mcp.dependencies import (
     DependencyContainer,
     get_container,
     get_production_container,
     get_test_container,
 )
-from src.interfaces import (
+from gemini_code_review_mcp.interfaces import (
     CachedFileSystem,
     CachedGitClient,
     InMemoryFileSystem,
@@ -14,7 +14,7 @@ from src.interfaces import (
     ProductionFileSystem,
     ProductionGitClient,
 )
-from src.services import FileFinder
+from gemini_code_review_mcp.services import FileFinder
 
 
 class TestDependencyContainer:

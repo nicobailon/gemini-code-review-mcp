@@ -7,9 +7,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.config.loader import ConfigurationLoader, get_configuration_loader
-from src.config_types import CodeReviewConfig
-from src.errors import ConfigurationError
+from gemini_code_review_mcp.config.loader import ConfigurationLoader, get_configuration_loader
+from gemini_code_review_mcp.config_types import CodeReviewConfig
+from gemini_code_review_mcp.errors import ConfigurationError
 
 
 class TestConfigurationLoader:
@@ -93,8 +93,8 @@ class TestConfigurationLoader:
             value = self.loader.get_value("default_prompt")
             assert value == "Custom prompt"
 
-    @patch("src.config.loader.Path.exists")
-    @patch("src.config.loader.Path.read_text")
+    @patch("pathlib.Path.exists")
+    @patch("pathlib.Path.read_text")
     def test_load_pyproject_config(self, mock_read_text, mock_exists):
         """Test loading configuration from pyproject.toml."""
         mock_exists.return_value = True
@@ -107,7 +107,7 @@ enable_cache = false
         assert config == {"temperature": 0.7, "enable_cache": False}
         mock_read_text.assert_called_once()
 
-    @patch("src.config.loader.Path.exists")
+    @patch("pathlib.Path.exists")
     def test_load_pyproject_config_not_exists(self, mock_exists):
         """Test behavior when pyproject.toml doesn't exist."""
         mock_exists.return_value = False
@@ -115,8 +115,8 @@ enable_cache = false
         config = self.loader.load_pyproject_config()
         assert config == {}
 
-    @patch("src.config.loader.Path.exists")
-    @patch("src.config.loader.Path.read_text", side_effect=IOError("File not found"))
+    @patch("pathlib.Path.exists")
+    @patch("pathlib.Path.read_text", side_effect=IOError("File not found"))
     def test_load_pyproject_config_error(self, mock_read_text, mock_exists):
         """Test error handling when loading pyproject.toml fails."""
         mock_exists.return_value = True

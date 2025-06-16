@@ -11,14 +11,14 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.file_context_generator import (
+from gemini_code_review_mcp.file_context_generator import (
     build_file_selection_summary,
     format_file_context_template,
     generate_file_context_data,
     read_selected_files,
     save_file_context,
 )
-from src.file_context_types import (
+from gemini_code_review_mcp.file_context_types import (
     FileContentData,
     FileContextConfig,
     FileContextResult,
@@ -123,8 +123,8 @@ class TestGenerateFileContextData:
             assert "large.py" in result.excluded_files[0][0]
             assert "token limit" in result.excluded_files[0][1]
 
-    @patch("src.file_context_generator.discover_project_configurations_with_flags")
-    @patch("src.file_context_generator.format_configuration_context_for_ai")
+    @patch("gemini_code_review_mcp.services.file_context_generator.discover_project_configurations_with_flags")
+    @patch("gemini_code_review_mcp.services.file_context_generator.format_configuration_context_for_ai")
     def test_generate_with_configurations(
         self, mock_format: Mock, mock_discover: Mock
     ) -> None:
@@ -160,7 +160,7 @@ class TestGenerateFileContextData:
             assert result.configuration_content == "Formatted configuration content"
             assert "<configuration_context>" in result.content
 
-    @patch("src.file_context_generator.generate_optimized_meta_prompt")
+    @patch("gemini_code_review_mcp.services.file_context_generator.generate_optimized_meta_prompt")
     def test_generate_with_auto_meta_prompt(self, mock_meta_prompt: Mock) -> None:
         """Test auto meta-prompt generation."""
         mock_meta_prompt.return_value = {

@@ -9,8 +9,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.cache.sqlite_cache import CacheEntry, CacheManager, get_cache_manager
-from src.errors import CacheError
+from gemini_code_review_mcp.cache.sqlite_cache import CacheEntry, CacheManager, get_cache_manager
+from gemini_code_review_mcp.errors import CacheError
 
 
 class TestCacheEntry:
@@ -322,9 +322,9 @@ class TestGlobalCacheManager:
     def test_get_cache_manager_params(self, tmp_path):
         """Test get_cache_manager with custom parameters."""
         # Reset global
-        import src.cache.sqlite_cache
+        import gemini_code_review_mcp.cache.sqlite_cache
 
-        src.cache.sqlite_cache._cache_manager = None
+        gemini_code_review_mcp.cache.sqlite_cache._cache_manager = None
 
         cache_dir = tmp_path / "custom_cache"
         manager = get_cache_manager(cache_dir=cache_dir, ttl=600)

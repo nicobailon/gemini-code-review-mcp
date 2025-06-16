@@ -1,29 +1,62 @@
+# Virtual environments
 venv/
+.venv/
+src/venv/
 test-env/
+
+# Python cache and bytecode
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .pytest_cache/
-.coverage
-*.egg-info/
-*.dist-info/
+.mypy_cache/
+.ruff_cache/
+
+# Build and distribution
 dist/
 build/
-.DS_Store
+*.egg-info/
+*.dist-info/
+
+# Coverage reports
+.coverage
+htmlcov/
+
+# Environment and config files
+.env
+*.lock
+
+# IDE and editor directories
 .vscode/
 .idea/
+.cursor/
+.cursorrules
+.claude/
+
+# OS files
+.DS_Store
+
+# Logs
 *.log
-.env
+
+# Generated review files
 review-context-*.md
 code-review-*.md
-/*.md
+pr-review-*.md
+gemini-response-*.md
+
+# Tasks directory (for generated files)
+/tasks/*.md
+
+# Codereview directory
+/codereview/*.md
+
+# Keep important markdown files
 !README.md
 !CONTRIBUTING.md
 !CHANGELOG.md
-/tasks/*.md
-/codereview/*.md
-/tasks/*.dist-info/
-.cursor/
-.cursorrules
-uv.lock
+!RELEASE_CHECKLIST.md
+!MANUAL_RELEASE_GUIDE.md
+!DEPRECATION_NOTES.md
+!CLAUDE.md

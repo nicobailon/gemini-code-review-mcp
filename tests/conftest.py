@@ -243,9 +243,9 @@ def reset_module_state():
     """Reset module-level state between tests."""
     # Store modules that might have state
     modules_to_reset = [
-        "src.server",
-        "src.generate_code_review_context",
-        "src.ai_code_review",
+        "gemini_code_review_mcp.server",
+        "gemini_code_review_mcp.services.generate_code_review_context",
+        "gemini_code_review_mcp.tools.ai_code_review",
     ]
 
     # Store original module state

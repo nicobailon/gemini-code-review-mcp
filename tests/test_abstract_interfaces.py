@@ -4,8 +4,8 @@ from abc import ABC
 
 import pytest
 
-from src.interfaces import FileSystem, GitClient
-from src.strategies.base import ReviewStrategy
+from gemini_code_review_mcp.interfaces import FileSystem, GitClient
+from gemini_code_review_mcp.strategies.base import ReviewStrategy
 
 
 class TestAbstractInterfaces:
