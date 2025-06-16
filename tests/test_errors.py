@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.errors import (
+from gemini_code_review_mcp.errors import (
     ERROR_MESSAGES,
     ConfigurationError,
     ContextBuildError,
@@ -109,8 +109,8 @@ class TestErrorUsageInStrategies:
     """Test that strategies properly use the error types."""
 
     def test_configuration_errors_are_raised(self):
-        from src.config_types import CodeReviewConfig
-        from src.strategies import GeneralStrategy, GitHubPRStrategy, TaskDrivenStrategy
+        from gemini_code_review_mcp.config_types import CodeReviewConfig
+        from gemini_code_review_mcp.strategies import GeneralStrategy, GitHubPRStrategy, TaskDrivenStrategy
 
         # Task-driven strategy
         strategy = TaskDrivenStrategy()

@@ -2,7 +2,7 @@ from typing import get_type_hints
 
 import pytest
 
-from src.models import ReviewContext, ReviewMode, TaskInfo
+from gemini_code_review_mcp.models import ReviewContext, ReviewMode, TaskInfo
 
 
 class TestReviewMode:

@@ -3,8 +3,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.interfaces import InMemoryFileSystem
-from src.services import FileFinder, ProjectFiles
+from gemini_code_review_mcp.interfaces import InMemoryFileSystem
+from gemini_code_review_mcp.services import FileFinder, ProjectFiles
 
 
 class TestFileFinder:

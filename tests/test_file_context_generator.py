@@ -11,14 +11,14 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.file_context_generator import (
+from gemini_code_review_mcp.file_context_generator import (
     build_file_selection_summary,
     format_file_context_template,
     generate_file_context_data,
     read_selected_files,
     save_file_context,
 )
-from src.file_context_types import (
+from gemini_code_review_mcp.file_context_types import (
     FileContentData,
     FileContextConfig,
     FileContextResult,

@@ -32,7 +32,7 @@ class TestClaudeMemoryFileDiscovery(unittest.TestCase):
 
     def test_discover_claude_md_files_returns_empty_list_when_no_files_exist(self):
         """Test that discovery returns empty list when no CLAUDE.md files exist."""
-        from configuration_discovery import discover_claude_md_files
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_claude_md_files
 
         result = discover_claude_md_files(self.project_root)
 
@@ -41,7 +41,7 @@ class TestClaudeMemoryFileDiscovery(unittest.TestCase):
 
     def test_discover_claude_md_files_finds_project_root_file(self):
         """Test discovery of CLAUDE.md in project root directory."""
-        from configuration_discovery import discover_claude_md_files
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_claude_md_files
 
         # Create CLAUDE.md in project root
         claude_file = os.path.join(self.project_root, "CLAUDE.md")
@@ -61,7 +61,7 @@ class TestClaudeMemoryFileDiscovery(unittest.TestCase):
 
     def test_discover_claude_md_files_finds_nested_directory_files(self):
         """Test discovery of CLAUDE.md files in nested project directories."""
-        from configuration_discovery import discover_claude_md_files
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_claude_md_files
 
         # Create nested directories with CLAUDE.md files
         subdir1 = os.path.join(self.project_root, "subproject1")
@@ -92,7 +92,7 @@ class TestClaudeMemoryFileDiscovery(unittest.TestCase):
 
     def test_discover_claude_md_files_hierarchical_traversal_from_subdirectory(self):
         """Test hierarchical traversal when starting from a subdirectory."""
-        from configuration_discovery import discover_claude_md_files
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_claude_md_files
 
         # Create hierarchy: root/CLAUDE.md, root/sub/CLAUDE.md, root/sub/subsub/
         root_claude = os.path.join(self.project_root, "CLAUDE.md")
@@ -125,7 +125,7 @@ class TestClaudeMemoryFileDiscovery(unittest.TestCase):
 
     def test_discover_claude_md_files_handles_invalid_directory_path(self):
         """Test discovery handles invalid directory paths gracefully."""
-        from configuration_discovery import discover_claude_md_files
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_claude_md_files
 
         with self.assertRaises(ValueError) as context:
             discover_claude_md_files("/nonexistent/directory/path")
@@ -134,7 +134,7 @@ class TestClaudeMemoryFileDiscovery(unittest.TestCase):
 
     def test_discover_claude_md_files_handles_file_permission_errors(self):
         """Test discovery handles file permission errors gracefully."""
-        from configuration_discovery import discover_claude_md_files
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_claude_md_files
 
         # Create CLAUDE.md with restricted permissions (Unix-like systems)
         claude_file = os.path.join(self.project_root, "CLAUDE.md")
@@ -159,7 +159,7 @@ class TestClaudeMemoryFileDiscovery(unittest.TestCase):
 
     def test_discover_claude_md_files_returns_content_with_file_info(self):
         """Test that discovery returns complete file information."""
-        from configuration_discovery import discover_claude_md_files
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_claude_md_files
 
         claude_file = os.path.join(self.project_root, "CLAUDE.md")
         test_content = "# Test Memory\n\nSome test content\nwith multiple lines"
@@ -183,7 +183,7 @@ class TestClaudeMemoryFileDiscovery(unittest.TestCase):
 
     def test_discover_claude_md_files_skips_malformed_files(self):
         """Test that discovery handles malformed CLAUDE.md files gracefully."""
-        from configuration_discovery import discover_claude_md_files
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_claude_md_files
 
         # Create a valid file
         valid_file = os.path.join(self.project_root, "CLAUDE.md")
@@ -224,7 +224,7 @@ class TestUserLevelConfigurationDiscovery(unittest.TestCase):
 
     def test_discover_user_level_claude_md_when_exists(self):
         """Test discovery of user-level CLAUDE.md file when it exists."""
-        from configuration_discovery import discover_user_level_claude_md
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_user_level_claude_md
 
         # Create ~/.claude/CLAUDE.md in fake home directory
         claude_dir = os.path.join(self.fake_user_home, ".claude")
@@ -244,7 +244,7 @@ class TestUserLevelConfigurationDiscovery(unittest.TestCase):
 
     def test_discover_user_level_claude_md_when_not_exists(self):
         """Test discovery returns None when user-level CLAUDE.md doesn't exist."""
-        from configuration_discovery import discover_user_level_claude_md
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_user_level_claude_md
 
         result = discover_user_level_claude_md(user_home_override=self.fake_user_home)
 
@@ -252,7 +252,7 @@ class TestUserLevelConfigurationDiscovery(unittest.TestCase):
 
     def test_discover_user_level_claude_md_handles_permission_errors(self):
         """Test discovery handles permission errors gracefully."""
-        from configuration_discovery import discover_user_level_claude_md
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_user_level_claude_md
 
         # Create ~/.claude/CLAUDE.md with restricted permissions
         claude_dir = os.path.join(self.fake_user_home, ".claude")
@@ -280,7 +280,7 @@ class TestUserLevelConfigurationDiscovery(unittest.TestCase):
 
     def test_discover_user_level_claude_md_handles_malformed_content(self):
         """Test discovery handles malformed user-level CLAUDE.md files."""
-        from configuration_discovery import discover_user_level_claude_md
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_user_level_claude_md
 
         # Create ~/.claude/CLAUDE.md with binary content
         claude_dir = os.path.join(self.fake_user_home, ".claude")
@@ -296,7 +296,7 @@ class TestUserLevelConfigurationDiscovery(unittest.TestCase):
 
     def test_discover_user_level_claude_md_with_real_home_directory(self):
         """Test discovery uses real home directory when no override provided."""
-        from configuration_discovery import discover_user_level_claude_md
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_user_level_claude_md
 
         # This test should not crash even if real ~/.claude/CLAUDE.md doesn't exist
         result = discover_user_level_claude_md()
@@ -332,7 +332,7 @@ class TestEnterpriseLevelConfigurationDiscovery(unittest.TestCase):
 
     def test_discover_enterprise_level_claude_md_when_exists(self):
         """Test discovery of enterprise-level CLAUDE.md file when it exists."""
-        from configuration_discovery import discover_enterprise_level_claude_md
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_enterprise_level_claude_md
 
         # Create enterprise CLAUDE.md file
         enterprise_claude_file = os.path.join(self.fake_enterprise_dir, "CLAUDE.md")
@@ -354,7 +354,7 @@ class TestEnterpriseLevelConfigurationDiscovery(unittest.TestCase):
 
     def test_discover_enterprise_level_claude_md_when_not_exists(self):
         """Test discovery returns None when enterprise-level CLAUDE.md doesn't exist."""
-        from configuration_discovery import discover_enterprise_level_claude_md
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_enterprise_level_claude_md
 
         result = discover_enterprise_level_claude_md(
             enterprise_dir_override=self.fake_enterprise_dir
@@ -364,7 +364,7 @@ class TestEnterpriseLevelConfigurationDiscovery(unittest.TestCase):
 
     def test_discover_enterprise_level_claude_md_handles_permission_errors(self):
         """Test discovery handles permission errors gracefully."""
-        from configuration_discovery import discover_enterprise_level_claude_md
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_enterprise_level_claude_md
 
         # Create enterprise CLAUDE.md with restricted permissions
         enterprise_claude_file = os.path.join(self.fake_enterprise_dir, "CLAUDE.md")
@@ -390,7 +390,7 @@ class TestEnterpriseLevelConfigurationDiscovery(unittest.TestCase):
 
     def test_discover_enterprise_level_claude_md_handles_malformed_content(self):
         """Test discovery handles malformed enterprise-level CLAUDE.md files."""
-        from configuration_discovery import discover_enterprise_level_claude_md
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_enterprise_level_claude_md
 
         # Create enterprise CLAUDE.md with binary content
         enterprise_claude_file = os.path.join(self.fake_enterprise_dir, "CLAUDE.md")
@@ -406,7 +406,7 @@ class TestEnterpriseLevelConfigurationDiscovery(unittest.TestCase):
 
     def test_get_platform_specific_enterprise_directories_returns_correct_paths(self):
         """Test that platform-specific enterprise directories are returned correctly."""
-        from configuration_discovery import get_platform_specific_enterprise_directories
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import get_platform_specific_enterprise_directories
 
         directories = get_platform_specific_enterprise_directories()
 
@@ -427,7 +427,7 @@ class TestEnterpriseLevelConfigurationDiscovery(unittest.TestCase):
 
     def test_discover_enterprise_level_claude_md_with_real_platform_directories(self):
         """Test discovery uses real platform directories when no override provided."""
-        from configuration_discovery import discover_enterprise_level_claude_md
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_enterprise_level_claude_md
 
         # This test should not crash even if real enterprise directories don't exist
         result = discover_enterprise_level_claude_md()
@@ -466,7 +466,7 @@ class TestComprehensiveConfigurationDiscovery(unittest.TestCase):
 
     def test_discover_all_claude_md_files_combines_all_levels(self):
         """Test that discovery combines project, user, and enterprise CLAUDE.md files."""
-        from configuration_discovery import discover_all_claude_md_files
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_all_claude_md_files
 
         # Create project-level CLAUDE.md
         project_claude = os.path.join(self.project_root, "CLAUDE.md")
@@ -508,7 +508,7 @@ class TestComprehensiveConfigurationDiscovery(unittest.TestCase):
 
     def test_discover_all_claude_md_files_handles_missing_enterprise_config(self):
         """Test discovery works when enterprise-level config doesn't exist."""
-        from configuration_discovery import discover_all_claude_md_files
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_all_claude_md_files
 
         # Create only project and user configs
         project_claude = os.path.join(self.project_root, "CLAUDE.md")
@@ -554,7 +554,7 @@ class TestIntegratedConfigurationDiscovery(unittest.TestCase):
 
     def test_discover_all_claude_md_files_combines_project_and_user(self):
         """Test that discovery combines both project and user-level CLAUDE.md files."""
-        from configuration_discovery import discover_all_claude_md_files
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_all_claude_md_files
 
         # Create project-level CLAUDE.md
         project_claude = os.path.join(self.project_root, "CLAUDE.md")
@@ -587,7 +587,7 @@ class TestIntegratedConfigurationDiscovery(unittest.TestCase):
 
     def test_discover_all_claude_md_files_handles_missing_user_config(self):
         """Test discovery works when user-level config doesn't exist."""
-        from configuration_discovery import discover_all_claude_md_files
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_all_claude_md_files
 
         # Create only project-level CLAUDE.md
         project_claude = os.path.join(self.project_root, "CLAUDE.md")
@@ -605,7 +605,7 @@ class TestIntegratedConfigurationDiscovery(unittest.TestCase):
 
     def test_discover_all_claude_md_files_handles_missing_project_config(self):
         """Test discovery works when project-level config doesn't exist."""
-        from configuration_discovery import discover_all_claude_md_files
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_all_claude_md_files
 
         # Create only user-level CLAUDE.md
         claude_dir = os.path.join(self.fake_user_home, ".claude")
@@ -638,7 +638,7 @@ class TestConfigurationDiscoveryInterface(unittest.TestCase):
 
     def test_discover_configuration_files_returns_structured_data(self):
         """Test that main discovery function returns properly structured data."""
-        from configuration_discovery import discover_configuration_files
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_configuration_files
 
         result = discover_configuration_files(self.project_root)
 
@@ -648,7 +648,7 @@ class TestConfigurationDiscoveryInterface(unittest.TestCase):
 
     def test_discover_configuration_files_integrates_claude_md_discovery(self):
         """Test that main function integrates CLAUDE.md file discovery."""
-        from configuration_discovery import discover_configuration_files
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_configuration_files
 
         # Create test CLAUDE.md file
         claude_file = os.path.join(self.project_root, "CLAUDE.md")
@@ -668,7 +668,7 @@ class TestConfigurationDiscoveryInterface(unittest.TestCase):
 
     def test_discover_configuration_files_integrates_user_level_discovery(self):
         """Test that main function integrates user-level configuration discovery."""
-        from configuration_discovery import discover_configuration_files
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_configuration_files
 
         # Create temporary user directory with CLAUDE.md
         user_temp_dir = tempfile.TemporaryDirectory()
@@ -699,7 +699,7 @@ class TestConfigurationDiscoveryInterface(unittest.TestCase):
 
     def test_discover_configuration_files_integrates_enterprise_level_discovery(self):
         """Test that main function integrates enterprise-level configuration discovery."""
-        from configuration_discovery import discover_configuration_files
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_configuration_files
 
         # Create temporary enterprise directory with CLAUDE.md
         enterprise_temp_dir = tempfile.TemporaryDirectory()
@@ -741,7 +741,7 @@ class TestCursorRulesDiscovery(unittest.TestCase):
 
     def test_discover_legacy_cursorrules_file_when_exists(self):
         """Test discovery of legacy .cursorrules file when it exists."""
-        from configuration_discovery import discover_legacy_cursorrules
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_legacy_cursorrules
 
         # Create legacy .cursorrules file
         cursorrules_file = os.path.join(self.project_root, ".cursorrules")
@@ -760,7 +760,7 @@ class TestCursorRulesDiscovery(unittest.TestCase):
 
     def test_discover_legacy_cursorrules_file_when_not_exists(self):
         """Test discovery returns None when legacy .cursorrules doesn't exist."""
-        from configuration_discovery import discover_legacy_cursorrules
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_legacy_cursorrules
 
         result = discover_legacy_cursorrules(self.project_root)
 
@@ -768,7 +768,7 @@ class TestCursorRulesDiscovery(unittest.TestCase):
 
     def test_discover_modern_cursor_rules_finds_mdc_files(self):
         """Test discovery of modern .cursor/rules/*.mdc files."""
-        from configuration_discovery import discover_modern_cursor_rules
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_modern_cursor_rules
 
         # Create .cursor/rules directory with MDC files
         cursor_rules_dir = os.path.join(self.project_root, ".cursor", "rules")
@@ -824,7 +824,7 @@ Use describe and it blocks."""
 
     def test_discover_modern_cursor_rules_handles_malformed_mdc(self):
         """Test discovery handles malformed MDC files gracefully."""
-        from configuration_discovery import discover_modern_cursor_rules
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_modern_cursor_rules
 
         cursor_rules_dir = os.path.join(self.project_root, ".cursor", "rules")
         os.makedirs(cursor_rules_dir)
@@ -854,7 +854,7 @@ Valid content"""
 
     def test_discover_modern_cursor_rules_extracts_precedence_from_filename(self):
         """Test precedence extraction from numbered filenames."""
-        from configuration_discovery import discover_modern_cursor_rules
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_modern_cursor_rules
 
         cursor_rules_dir = os.path.join(self.project_root, ".cursor", "rules")
         os.makedirs(cursor_rules_dir)
@@ -895,7 +895,7 @@ Content"""
 
     def test_discover_modern_cursor_rules_handles_no_cursor_directory(self):
         """Test discovery when .cursor directory doesn't exist."""
-        from configuration_discovery import discover_modern_cursor_rules
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_modern_cursor_rules
 
         result = discover_modern_cursor_rules(self.project_root)
 
@@ -904,7 +904,7 @@ Content"""
 
     def test_discover_cursor_rules_combines_legacy_and_modern(self):
         """Test that discovery combines both legacy and modern Cursor rules."""
-        from configuration_discovery import discover_cursor_rules
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_cursor_rules
 
         # Create legacy .cursorrules file
         cursorrules_file = os.path.join(self.project_root, ".cursorrules")
@@ -940,7 +940,7 @@ Modern content"""
 
     def test_parse_mdc_frontmatter_extracts_metadata_correctly(self):
         """Test MDC frontmatter parsing extracts metadata correctly."""
-        from configuration_discovery import parse_mdc_frontmatter
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import parse_mdc_frontmatter
 
         mdc_content = """---
 description: Test rule
@@ -966,7 +966,7 @@ Multiple lines of content."""
 
     def test_parse_mdc_frontmatter_handles_missing_frontmatter(self):
         """Test MDC parsing handles content without frontmatter."""
-        from configuration_discovery import parse_mdc_frontmatter
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import parse_mdc_frontmatter
 
         content_without_frontmatter = """# Just Content
 No frontmatter here.
@@ -979,7 +979,7 @@ Just plain content."""
 
     def test_determine_rule_type_from_metadata(self):
         """Test rule type determination from metadata."""
-        from configuration_discovery import determine_rule_type_from_metadata
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import determine_rule_type_from_metadata
 
         # Test always apply rules
         metadata_always = {"alwaysApply": True}
@@ -997,7 +997,7 @@ Just plain content."""
 
     def test_discover_modern_cursor_rules_finds_nested_directories(self):
         """Test discovery of MDC files in nested subdirectories (monorepo support)."""
-        from configuration_discovery import discover_modern_cursor_rules
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_modern_cursor_rules
 
         # Create nested directory structure
         cursor_rules_dir = os.path.join(self.project_root, ".cursor", "rules")
@@ -1075,7 +1075,7 @@ Use TypeScript strict mode."""
 
     def test_discover_modern_cursor_rules_handles_deeply_nested_directories(self):
         """Test discovery in deeply nested directory structures."""
-        from configuration_discovery import discover_modern_cursor_rules
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_modern_cursor_rules
 
         # Create deeply nested structure
         deep_dir = os.path.join(
@@ -1106,7 +1106,7 @@ Implement proper JWT validation."""
 
     def test_discover_modern_cursor_rules_ignores_non_mdc_files_in_subdirs(self):
         """Test that non-MDC files in subdirectories are ignored."""
-        from configuration_discovery import discover_modern_cursor_rules
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_modern_cursor_rules
 
         # Create subdirectory with mixed file types
         subdir = os.path.join(self.project_root, ".cursor", "rules", "config")
@@ -1141,7 +1141,7 @@ Config content"""
 
     def test_discover_modern_cursor_rules_handles_empty_subdirectories(self):
         """Test discovery handles empty subdirectories gracefully."""
-        from configuration_discovery import discover_modern_cursor_rules
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_modern_cursor_rules
 
         # Create empty subdirectories
         empty_dirs = [
@@ -1185,7 +1185,7 @@ class TestFileSystemTraversal(unittest.TestCase):
 
     def test_traverse_directories_stops_at_filesystem_root(self):
         """Test that directory traversal stops at filesystem root."""
-        from configuration_discovery import discover_claude_md_files
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_claude_md_files
 
         # Create a deep directory structure
         deep_dir = os.path.join(self.project_root, "a", "b", "c", "d", "e")
@@ -1199,7 +1199,7 @@ class TestFileSystemTraversal(unittest.TestCase):
 
     def test_traverse_directories_handles_symlinks_safely(self):
         """Test that directory traversal handles symlinks safely."""
-        from configuration_discovery import discover_claude_md_files
+        from gemini_code_review_mcp.helpers.configuration_discovery_unified import discover_claude_md_files
 
         # Create a subdirectory and a symlink pointing to parent (potential infinite loop)
         subdir = os.path.join(self.project_root, "subdir")

@@ -4,12 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from src.config_types import CodeReviewConfig
-from src.errors import ConfigurationError
-from src.interfaces import InMemoryFileSystem, InMemoryGitClient
-from src.models import ReviewMode
-from src.services import FileFinder
-from src.strategies import GeneralStrategy, GitHubPRStrategy, TaskDrivenStrategy
+from gemini_code_review_mcp.config_types import CodeReviewConfig
+from gemini_code_review_mcp.errors import ConfigurationError
+from gemini_code_review_mcp.interfaces import InMemoryFileSystem, InMemoryGitClient
+from gemini_code_review_mcp.models import ReviewMode
+from gemini_code_review_mcp.services import FileFinder
+from gemini_code_review_mcp.strategies import GeneralStrategy, GitHubPRStrategy, TaskDrivenStrategy
 
 
 class TestStrategyEdgeCases:
@@ -45,7 +45,7 @@ class TestStrategyEdgeCases:
         # Mock the file finder to return a non-existent PRD
         class MockFileFinder:
             def find_project_files(self, *args, **kwargs):
-                from src.services import ProjectFiles
+                from gemini_code_review_mcp.services import ProjectFiles
 
                 return ProjectFiles(
                     prd_file=prd_path,  # Non-existent
@@ -93,7 +93,7 @@ class TestStrategyEdgeCases:
         )
 
         # Setup git with branch comparison
-        from src.interfaces import GitFileChange
+        from gemini_code_review_mcp.interfaces import GitFileChange
 
         self.git.setup_repo(
             "/project",

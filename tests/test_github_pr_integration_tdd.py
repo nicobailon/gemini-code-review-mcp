@@ -651,7 +651,7 @@ class TestThinkingBudgetIntegration:
 
     def test_pr_context_with_thinking_budget_param(self):
         """Test that PR context generation can accept thinking_budget parameter."""
-        from src.config_types import CodeReviewConfig
+        from gemini_code_review_mcp.config_types import CodeReviewConfig
 
         # Create config with thinking_budget
         config = CodeReviewConfig(

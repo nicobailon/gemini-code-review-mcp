@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from src.interfaces import (
+from gemini_code_review_mcp.interfaces import (
     GitCommit,
     GitFileChange,
     InMemoryFileSystem,

@@ -7,9 +7,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.config.loader import ConfigurationLoader, get_configuration_loader
-from src.config_types import CodeReviewConfig
-from src.errors import ConfigurationError
+from gemini_code_review_mcp.config.loader import ConfigurationLoader, get_configuration_loader
+from gemini_code_review_mcp.config_types import CodeReviewConfig
+from gemini_code_review_mcp.errors import ConfigurationError
 
 
 class TestConfigurationLoader:

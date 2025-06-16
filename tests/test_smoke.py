@@ -16,8 +16,8 @@ def test_package_imports():
     """Test that all main modules can be imported"""
     # Import modules to verify they load without errors
     try:
-        import src.generate_code_review_context  # type: ignore
-        import src.server  # type: ignore
+        import gemini_code_review_mcp.generate_code_review_context  # type: ignore
+        import gemini_code_review_mcp.server  # type: ignore
 
         # Verify the modules have expected attributes to satisfy linter
         server_module: Any = src.server
@@ -32,7 +32,7 @@ def test_package_imports():
 
 def test_model_config_loading():
     """Test model configuration loading works"""
-    from src.model_config_manager import load_model_config  # type: ignore
+    from gemini_code_review_mcp.model_config_manager import load_model_config  # type: ignore
 
     config: dict[str, Any] = load_model_config()
     assert isinstance(config, dict)
@@ -66,7 +66,7 @@ def test_entry_points_defined():
 @patch("src.gemini_api_client.GEMINI_AVAILABLE", False)
 def test_graceful_fallback_no_gemini():
     """Test that the system works without Gemini API available"""
-    from src.gemini_api_client import send_to_gemini_for_review  # type: ignore
+    from gemini_code_review_mcp.gemini_api_client import send_to_gemini_for_review  # type: ignore
 
     result: Any = send_to_gemini_for_review("test content", "/tmp", 0.5)
     assert result is None  # Should gracefully return None without Gemini
@@ -75,7 +75,7 @@ def test_graceful_fallback_no_gemini():
 def test_cli_help_functions():
     """Test that CLI help functions work without crashes"""
     # Test that we can create argument parsers without errors
-    from src.cli_main import cli_main  # type: ignore
+    from gemini_code_review_mcp.cli_main import cli_main  # type: ignore
 
     # These should not crash when imported
     assert callable(cli_main)
@@ -83,7 +83,7 @@ def test_cli_help_functions():
 
 def test_mcp_server_startup():
     """Test that MCP server can be imported and basic setup works"""
-    from src.server import main as server_main
+    from gemini_code_review_mcp.server import main as server_main
 
     # Should be able to import the main function
     assert callable(server_main)
@@ -101,7 +101,7 @@ def test_environment_variable_handling():
 
 def test_model_alias_resolution():
     """Test that model aliases resolve correctly"""
-    from src.model_config_manager import load_model_config  # type: ignore
+    from gemini_code_review_mcp.model_config_manager import load_model_config  # type: ignore
 
     config: dict[str, Any] = load_model_config()
     aliases = config.get("model_aliases", {})

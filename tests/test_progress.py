@@ -6,7 +6,7 @@ from io import StringIO
 
 import pytest
 
-from src.progress import (
+from gemini_code_review_mcp.progress import (
     MultiStepProgress,
     ProgressIndicator,
     print_error,

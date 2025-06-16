@@ -71,10 +71,10 @@ sys.path.insert(0, 'src')
 
 # Test imports
 try:
-    from src import server
-    from src import generate_code_review_context
-    from src import meta_prompt_generator
-    from src import file_context_generator
+    from gemini_code_review_mcp import server
+    from gemini_code_review_mcp import generate_code_review_context
+    from gemini_code_review_mcp import meta_prompt_generator
+    from gemini_code_review_mcp import file_context_generator
     print("All imports successful")
 except ImportError as e:
     print(f"Import error: {e}")
@@ -288,7 +288,7 @@ class TestFunctionalCompatibility:
 import sys
 sys.path.insert(0, 'src')
 try:
-    from src.server import mcp
+    from gemini_code_review_mcp.server import mcp
     print("Server module loaded successfully")
 except Exception as e:
     print(f"Server startup error: {e}")
@@ -321,7 +321,7 @@ except Exception as e:
 import sys
 sys.path.insert(0, 'src')
 try:
-    from src.server import get_mcp_tools
+    from gemini_code_review_mcp.server import get_mcp_tools
     tools = get_mcp_tools()
     assert isinstance(tools, list), f"Expected list, got {type(tools)}"
     assert len(tools) > 0, "No tools found"

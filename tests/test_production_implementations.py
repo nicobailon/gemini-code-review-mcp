@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from src.interfaces import ProductionFileSystem
+from gemini_code_review_mcp.interfaces import ProductionFileSystem
 
 
 class TestProductionFileSystem:

@@ -14,17 +14,17 @@ import pytest
 
 # Import from the installed package
 try:
-    from src.file_context_types import FileContentData, FileContextResult
+    from gemini_code_review_mcp.file_context_types import FileContentData, FileContextResult
 except ImportError:
     # Fall back to direct imports if package not installed
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-    from src.file_context_types import FileContentData, FileContextResult
+    from gemini_code_review_mcp.file_context_types import FileContentData, FileContextResult
 
 
 def can_access_ask_gemini():
     """Check if we can access ask_gemini for testing."""
     try:
-        from src.server import ask_gemini
+        from gemini_code_review_mcp.server import ask_gemini
         # Try to get the actual function
         if callable(ask_gemini):
             return True
@@ -45,7 +45,7 @@ class TestAskGeminiTool:
     
     def get_ask_gemini_func(self):
         """Get the actual ask_gemini function."""
-        from src.server import ask_gemini
+        from gemini_code_review_mcp.server import ask_gemini
         
         if callable(ask_gemini):
             return ask_gemini

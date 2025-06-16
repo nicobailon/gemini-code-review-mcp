@@ -9,12 +9,12 @@ from pathlib import Path
 
 import pytest
 
-from src.file_context_types import (
+from gemini_code_review_mcp.file_context_types import (
     FileNotFoundError,
     FileSelection,
     InvalidLineRangeError,
 )
-from src.file_selector import (
+from gemini_code_review_mcp.file_selector import (
     estimate_tokens,
     extract_line_ranges,
     format_file_content,

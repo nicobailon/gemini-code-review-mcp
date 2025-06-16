@@ -8,7 +8,7 @@ import tempfile
 from unittest.mock import patch, MagicMock
 import pytest
 
-from src.context_builder import (
+from gemini_code_review_mcp.services.context_builder import (
     discover_project_configurations_with_flags,
     generate_enhanced_review_context,
     discover_project_configurations,

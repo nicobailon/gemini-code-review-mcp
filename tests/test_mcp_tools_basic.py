@@ -83,7 +83,7 @@ class TestMCPToolsBasic:
         """Test that thinking_budget parameter is accepted by tools."""
         import inspect
 
-        from src.server import (
+        from gemini_code_review_mcp.server import (
             generate_ai_code_review,
             generate_code_review_context,
             generate_meta_prompt,
@@ -122,7 +122,7 @@ class TestMCPToolsBasic:
         """Test that url_context parameter is accepted by tools."""
         import inspect
 
-        from src.server import (
+        from gemini_code_review_mcp.server import (
             generate_ai_code_review,
             generate_code_review_context,
             generate_file_context,
@@ -164,7 +164,7 @@ class TestMCPToolsBasic:
         """Test that new parameters have defaults (backward compatibility)."""
         import inspect
 
-        from src.server import generate_ai_code_review
+        from gemini_code_review_mcp.server import generate_ai_code_review
 
         # Get the actual function from FunctionTool object
         try:
@@ -181,7 +181,7 @@ class TestMCPToolsBasic:
 
     def test_correct_mcp_tools_are_exposed(self):
         """Test that correct MCP tools are exposed."""
-        from src.server import get_mcp_tools
+        from gemini_code_review_mcp.server import get_mcp_tools
 
         tools = get_mcp_tools()
         # still exposed
@@ -196,7 +196,7 @@ class TestMCPToolsBasic:
     @pytest.mark.asyncio
     async def test_mcp_tools_list_matches_registry(self):
         """Test that get_mcp_tools() matches the actual MCP registry."""
-        from src.server import get_mcp_tools, mcp
+        from gemini_code_review_mcp.server import get_mcp_tools, mcp
 
         # Get the list from get_mcp_tools()
         reported_tools = get_mcp_tools()

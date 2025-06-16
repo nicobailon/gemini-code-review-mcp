@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from src.cli.init_command import create_argument_parser, init_project
+from gemini_code_review_mcp.cli.init_command import create_argument_parser, init_project
 
 
 class TestInitCommand:

@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.cache import CacheManager
-from src.interfaces import (
+from gemini_code_review_mcp.cache import CacheManager
+from gemini_code_review_mcp.interfaces import (
     AsyncFileSystemWrapper,
     AsyncGitClientWrapper,
     CachedFileSystem,

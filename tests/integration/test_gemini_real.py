@@ -10,8 +10,8 @@ from typing import Optional
 
 import pytest
 
-from src.gemini_api_client import GEMINI_AVAILABLE, send_to_gemini_for_review
-from src.model_config_manager import load_model_config
+from gemini_code_review_mcp.gemini_api_client import GEMINI_AVAILABLE, send_to_gemini_for_review
+from gemini_code_review_mcp.model_config_manager import load_model_config
 
 
 @pytest.mark.integration
@@ -119,7 +119,7 @@ class TestContextGeneration:
 
     def test_generate_code_review_context_real(self, minimal_project_dir):
         """Test full context generation flow with real project."""
-        from src.generate_code_review_context import generate_code_review_context_main
+        from gemini_code_review_mcp.generate_code_review_context import generate_code_review_context_main
 
         # Generate context (doesn't use API, but prepares for it)
         context = generate_code_review_context_main(
@@ -142,8 +142,8 @@ class TestContextGeneration:
     ):
         """Test meta prompt generation with real API."""
         # First generate context
-        from src.generate_code_review_context import generate_code_review_context_main
-        from src.meta_prompt_generator import generate_meta_prompt
+        from gemini_code_review_mcp.generate_code_review_context import generate_code_review_context_main
+        from gemini_code_review_mcp.meta_prompt_generator import generate_meta_prompt
 
         context = generate_code_review_context_main(
             project_path=str(minimal_project_dir),
@@ -183,7 +183,7 @@ class TestGitHubIntegration:
 
     def test_pr_review_with_real_api(self, integration_test_model):
         """Test PR review with real GitHub data and Gemini API."""
-        from src.server import generate_pr_review
+        from gemini_code_review_mcp.server import generate_pr_review
 
         # Use a small public PR for testing
         result = generate_pr_review(

@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 def test_in_memory_context_generation_exists() -> None:
     """🔴 RED: Test that we have an in-memory context generation function."""
     try:
-        from src.server import generate_context_in_memory  # type: ignore
+        from gemini_code_review_mcp.server import generate_context_in_memory  # type: ignore
 
         assert callable(generate_context_in_memory), "Function should be callable"
     except ImportError:
@@ -27,7 +27,7 @@ def test_in_memory_context_generation_exists() -> None:
 
 def test_in_memory_context_generation_no_files() -> None:
     """🔴 RED: Test that in-memory generation creates NO files."""
-    from src.server import generate_context_in_memory  # type: ignore
+    from gemini_code_review_mcp.server import generate_context_in_memory  # type: ignore
 
     with tempfile.TemporaryDirectory() as temp_dir:
         # Files before
@@ -63,7 +63,7 @@ def test_in_memory_context_generation_no_files() -> None:
 
 def test_in_memory_context_content_quality() -> None:
     """🔴 RED: Test that in-memory generated content has expected structure."""
-    from src.server import generate_context_in_memory  # type: ignore
+    from gemini_code_review_mcp.server import generate_context_in_memory  # type: ignore
 
     with tempfile.TemporaryDirectory() as temp_dir:
         context_content: str = generate_context_in_memory(

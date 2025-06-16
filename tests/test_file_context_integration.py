@@ -16,12 +16,12 @@ from _pytest._py.path import LocalPath
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from src.file_context_generator import generate_file_context_data
-from src.file_context_types import (
+from gemini_code_review_mcp.file_context_generator import generate_file_context_data
+from gemini_code_review_mcp.file_context_types import (
     FileContextConfig,
     FileSelection,
 )
-from src.file_selector import parse_file_selection
+from gemini_code_review_mcp.file_selector import parse_file_selection
 
 
 class TestFileContextIntegration:
@@ -69,7 +69,7 @@ def unused_function():
 
         (test_dir / "test_main.py").write_text(
             """import pytest
-from src.main import main
+from gemini_code_review_mcp.main import main
 
 def test_main():
     assert main() == 0
@@ -329,8 +329,8 @@ def test_main():
 
         # Test the actual implementation functions instead of the MCP wrapper
         # The MCP wrapper adds complexity with imports that makes testing difficult
-        from src.file_context_generator import generate_file_context_data
-        from src.file_context_types import FileContextConfig
+        from gemini_code_review_mcp.file_context_generator import generate_file_context_data
+        from gemini_code_review_mcp.file_context_types import FileContextConfig
 
         config = FileContextConfig(
             file_selections=[

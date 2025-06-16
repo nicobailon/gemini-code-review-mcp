@@ -10,8 +10,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.interfaces import GitFileChange, ProductionGitClient
-from src.progress import progress
+from gemini_code_review_mcp.interfaces import GitFileChange, ProductionGitClient
+from gemini_code_review_mcp.progress import progress
 
 
 class TestProductionGitClientGetChangedFiles:

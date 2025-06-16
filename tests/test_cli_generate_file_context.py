@@ -16,9 +16,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 try:
     from cli_generate_file_context import create_parser, main as cli_main
 except ImportError:
-    # If direct import fails, try from src package
-    from src.cli_generate_file_context import create_parser
-    from src.cli_generate_file_context import main as cli_main
+    # If direct import fails, try from gemini_code_review_mcp package
+    from gemini_code_review_mcp.cli_generate_file_context import create_parser
+    from gemini_code_review_mcp.cli_generate_file_context import main as cli_main
 
 
 class TestGenerateFileContextCLI:

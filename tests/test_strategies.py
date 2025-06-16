@@ -2,12 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from src.config_types import CodeReviewConfig
-from src.errors import ConfigurationError, TaskListError
-from src.interfaces import GitFileChange, InMemoryFileSystem, InMemoryGitClient
-from src.models import ReviewMode, TaskInfo
-from src.services import FileFinder
-from src.strategies import GeneralStrategy, GitHubPRStrategy, TaskDrivenStrategy
+from gemini_code_review_mcp.config_types import CodeReviewConfig
+from gemini_code_review_mcp.errors import ConfigurationError, TaskListError
+from gemini_code_review_mcp.interfaces import GitFileChange, InMemoryFileSystem, InMemoryGitClient
+from gemini_code_review_mcp.models import ReviewMode, TaskInfo
+from gemini_code_review_mcp.services import FileFinder
+from gemini_code_review_mcp.strategies import GeneralStrategy, GitHubPRStrategy, TaskDrivenStrategy
 
 
 class TestTaskDrivenStrategy:

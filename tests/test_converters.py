@@ -1,6 +1,6 @@
 import pytest
 
-from src.models import (
+from gemini_code_review_mcp.models import (
     ReviewContext,
     ReviewMode,
     TaskInfo,
