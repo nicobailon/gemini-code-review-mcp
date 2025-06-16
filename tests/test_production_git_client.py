@@ -166,7 +166,7 @@ class TestProductionGitClientGetChangedFiles:
                 pass
 
         with patch("subprocess.run", return_value=mock_result):
-            with patch("src.interfaces.git_client_impl.progress") as mock_progress:
+            with patch("gemini_code_review_mcp.interfaces.git_client_impl.progress") as mock_progress:
                 # Configure mock to return our tracking indicator
                 mock_indicator = MockProgressIndicator()
                 mock_progress.return_value.__enter__.return_value = mock_indicator

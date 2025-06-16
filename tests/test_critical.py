@@ -16,10 +16,10 @@ class TestCoreImports:
     def test_server_tools_available(self):
         """Test server tools are available (even if FastMCP not installed)"""
         try:
-            import server
+            import gemini_code_review_mcp.server as server
 
             # If import succeeds, should have MCP tools
-            assert hasattr(server, "generate_code_review_context")
+            assert hasattr(server, "generate_pr_review")
             assert hasattr(server, "generate_ai_code_review")
         except SystemExit:
             # FastMCP not available in test environment - that's OK
@@ -28,17 +28,17 @@ class TestCoreImports:
 
     def test_generate_code_review_context_imports(self):
         """Test generate_code_review_context module imports"""
-        import generate_code_review_context
+        import gemini_code_review_mcp.services.generate_code_review_context as generate_code_review_context
 
-        assert hasattr(generate_code_review_context, "main")
+        assert hasattr(generate_code_review_context, "generate_code_review_context_main")
         # load_model_config is now in model_config_manager
-        from model_config_manager import load_model_config
+        from gemini_code_review_mcp.helpers.model_config_manager import load_model_config
 
         assert callable(load_model_config)
 
     def test_ai_code_review_imports(self):
         """Test ai_code_review functionality is available in server"""
-        from server import generate_ai_code_review
+        from gemini_code_review_mcp.server import generate_ai_code_review
 
         # The function might be wrapped in an MCP FunctionTool or be a plain function
         # depending on how the module is loaded
@@ -61,11 +61,11 @@ class TestPackageStructure:
         project_root = Path(__file__).parent.parent
 
         # Core source files
-        assert (project_root / "src" / "server.py").exists()
-        assert (project_root / "src" / "generate_code_review_context.py").exists()
+        assert (project_root / "src" / "gemini_code_review_mcp" / "server.py").exists()
+        assert (project_root / "src" / "gemini_code_review_mcp" / "services" / "generate_code_review_context.py").exists()
         # ai_code_review functionality moved to server.py
-        assert (project_root / "src" / "server.py").exists()
-        assert (project_root / "src" / "model_config.json").exists()
+        assert (project_root / "src" / "gemini_code_review_mcp" / "server.py").exists()
+        assert (project_root / "src" / "gemini_code_review_mcp" / "model_config.json").exists()
 
         # Package configuration
         assert (project_root / "pyproject.toml").exists()
@@ -73,7 +73,7 @@ class TestPackageStructure:
 
     def test_model_config_loads(self):
         """Test that model configuration loads successfully"""
-        from model_config_manager import load_model_config
+        from gemini_code_review_mcp.helpers.model_config_manager import load_model_config
 
         config = load_model_config()
         assert isinstance(config, dict)
@@ -91,7 +91,7 @@ class TestEnvironmentHandling:
         assert os.getenv("NONEXISTENT_VAR", "default") == "default"
 
         # Test model config defaults work
-        from model_config_manager import load_model_config
+        from gemini_code_review_mcp.helpers.model_config_manager import load_model_config
 
         config = load_model_config()
 
@@ -107,7 +107,7 @@ class TestModelConfiguration:
 
     def test_model_aliases_exist(self):
         """Test that model aliases are properly configured"""
-        from model_config_manager import load_model_config
+        from gemini_code_review_mcp.helpers.model_config_manager import load_model_config
 
         config = load_model_config()
         aliases = config.get("model_aliases", {})
@@ -117,7 +117,7 @@ class TestModelConfiguration:
 
     def test_capability_detection(self):
         """Test that model capabilities are defined"""
-        from model_config_manager import load_model_config
+        from gemini_code_review_mcp.helpers.model_config_manager import load_model_config
 
         config = load_model_config()
         capabilities = config.get("model_capabilities", {})
@@ -152,7 +152,7 @@ class TestThinkingBudgetIntegration:
         # Since generate_ai_code_review is defined inside server.py, we need to check
         # if the function signature includes url_context parameter
         # We'll check this by looking at the function definition in the source
-        server_path = os.path.join(os.path.dirname(__file__), "..", "src", "server.py")
+        server_path = os.path.join(os.path.dirname(__file__), "..", "src", "gemini_code_review_mcp", "server.py")
         with open(server_path, "r") as f:
             content = f.read()
 

@@ -79,7 +79,7 @@ fi
 # Type checking (if available)
 if command_exists pyright; then
     echo "Running type checks..."
-    if pyright src/ >/dev/null 2>&1; then
+    if pyright src/gemini_code_review_mcp/ >/dev/null 2>&1; then
         print_success "Type checking passed"
     else
         print_warning "Type checking has issues (non-blocking)"

@@ -37,17 +37,17 @@ jobs:
     
     - name: Run type checking
       run: |
-        pyright src/
+        pyright src/gemini_code_review_mcp/
     
     - name: Run tests with coverage
       run: |
         python -m pytest tests/ \
-          --cov=src/models \
-          --cov=src/interfaces \
-          --cov=src/services \
-          --cov=src/strategies \
-          --cov=src/orchestrator \
-          --cov=src/dependencies \
+          --cov=src/gemini_code_review_mcp/models \
+          --cov=src/gemini_code_review_mcp/interfaces \
+          --cov=src/gemini_code_review_mcp/services \
+          --cov=src/gemini_code_review_mcp/strategies \
+          --cov=src/gemini_code_review_mcp/orchestrator \
+          --cov=src/gemini_code_review_mcp/dependencies \
           --cov-report=term-missing \
           --cov-fail-under=80
     

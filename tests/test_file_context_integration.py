@@ -252,7 +252,7 @@ def test_main():
         # Just check that configuration was attempted
         assert len(result.configuration_content) > 100  # Has substantial content
 
-    @patch("src.file_context_generator.generate_optimized_meta_prompt")
+    @patch("gemini_code_review_mcp.services.file_context_generator.generate_optimized_meta_prompt")
     def test_meta_prompt_generation(
         self, mock_meta_prompt: Any, tmpdir: LocalPath
     ) -> None:
@@ -289,7 +289,7 @@ def test_main():
         cmd = [
             sys.executable,
             "-m",
-            "src.cli_main",
+            "gemini_code_review_mcp.cli_main",
             str(project_dir),
             "--files",
             "src/main.py",

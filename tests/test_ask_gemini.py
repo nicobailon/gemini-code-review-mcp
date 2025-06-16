@@ -56,10 +56,10 @@ class TestAskGeminiTool:
         else:
             raise RuntimeError("Cannot access ask_gemini function")
 
-    @patch('src.server.normalize_file_selections_from_dicts')
-    @patch('src.server.FileContextConfig')
-    @patch('src.server.generate_file_context_data')
-    @patch('src.server.send_to_gemini_for_review')
+    @patch('gemini_code_review_mcp.services.file_context_generator.normalize_file_selections_from_dicts')
+    @patch('gemini_code_review_mcp.services.file_context_generator.FileContextConfig')
+    @patch('gemini_code_review_mcp.services.file_context_generator.generate_file_context_data')
+    @patch('gemini_code_review_mcp.services.gemini_api_client.send_to_gemini_for_review')
     def test_ask_gemini_with_user_instructions_only(
         self, mock_gemini, mock_generate, mock_config_class, mock_normalize
     ):
@@ -97,10 +97,10 @@ class TestAskGeminiTool:
         mock_generate.assert_called_once_with(mock_config)
         mock_gemini.assert_called_once()
 
-    @patch('src.server.normalize_file_selections_from_dicts')
-    @patch('src.server.FileContextConfig')
-    @patch('src.server.generate_file_context_data')
-    @patch('src.server.send_to_gemini_for_review')
+    @patch('gemini_code_review_mcp.services.file_context_generator.normalize_file_selections_from_dicts')
+    @patch('gemini_code_review_mcp.services.file_context_generator.FileContextConfig')
+    @patch('gemini_code_review_mcp.services.file_context_generator.generate_file_context_data')
+    @patch('gemini_code_review_mcp.services.gemini_api_client.send_to_gemini_for_review')
     def test_ask_gemini_with_file_selections(
         self, mock_gemini, mock_generate, mock_config_class, mock_normalize
     ):
@@ -165,10 +165,10 @@ class TestAskGeminiTool:
         # Check the error message
         assert "path" in str(exc_info.value).lower()
 
-    @patch('src.server.normalize_file_selections_from_dicts')
-    @patch('src.server.FileContextConfig')
-    @patch('src.server.generate_file_context_data')
-    @patch('src.server.send_to_gemini_for_review')
+    @patch('gemini_code_review_mcp.services.file_context_generator.normalize_file_selections_from_dicts')
+    @patch('gemini_code_review_mcp.services.file_context_generator.FileContextConfig')
+    @patch('gemini_code_review_mcp.services.file_context_generator.generate_file_context_data')
+    @patch('gemini_code_review_mcp.services.gemini_api_client.send_to_gemini_for_review')
     def test_ask_gemini_with_output_file(
         self, mock_gemini, mock_generate, mock_config_class, mock_normalize
     ):
@@ -204,10 +204,10 @@ class TestAskGeminiTool:
         gemini_call = mock_gemini.call_args
         assert gemini_call.kwargs["return_text"] is False
 
-    @patch('src.server.normalize_file_selections_from_dicts')
-    @patch('src.server.FileContextConfig')
-    @patch('src.server.generate_file_context_data')
-    @patch('src.server.send_to_gemini_for_review')
+    @patch('gemini_code_review_mcp.services.file_context_generator.normalize_file_selections_from_dicts')
+    @patch('gemini_code_review_mcp.services.file_context_generator.FileContextConfig')
+    @patch('gemini_code_review_mcp.services.file_context_generator.generate_file_context_data')
+    @patch('gemini_code_review_mcp.services.gemini_api_client.send_to_gemini_for_review')
     def test_ask_gemini_gemini_failure(
         self, mock_gemini, mock_generate, mock_config_class, mock_normalize
     ):
@@ -249,10 +249,10 @@ class TestAskGeminiTool:
             
             assert str(exc_info.value) == "Unexpected error"
 
-    @patch('src.server.normalize_file_selections_from_dicts')
-    @patch('src.server.FileContextConfig')
-    @patch('src.server.generate_file_context_data')
-    @patch('src.server.send_to_gemini_for_review')
+    @patch('gemini_code_review_mcp.services.file_context_generator.normalize_file_selections_from_dicts')
+    @patch('gemini_code_review_mcp.services.file_context_generator.FileContextConfig')
+    @patch('gemini_code_review_mcp.services.file_context_generator.generate_file_context_data')
+    @patch('gemini_code_review_mcp.services.gemini_api_client.send_to_gemini_for_review')
     def test_ask_gemini_with_all_parameters(
         self, mock_gemini, mock_generate, mock_config_class, mock_normalize
     ):

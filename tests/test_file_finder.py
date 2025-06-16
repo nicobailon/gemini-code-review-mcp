@@ -144,7 +144,7 @@ class TestFileFinder:
         finder = FileFinder(mock_fs)
         
         # Test that _glob_files handles the error gracefully
-        with patch('src.services.file_finder.logger') as mock_logger:
+        with patch('gemini_code_review_mcp.services.file_finder.logger') as mock_logger:
             result = finder._glob_files(Path("/test"), "*.md")
             assert result == []
             mock_logger.error.assert_called_once()
@@ -158,7 +158,7 @@ class TestFileFinder:
         self.fs.write_text(task1, "# Tasks 1")
         self.fs.write_text(task2, "# Tasks 2")
         
-        with patch('src.services.file_finder.logger') as mock_logger:
+        with patch('gemini_code_review_mcp.services.file_finder.logger') as mock_logger:
             result = self.finder.find_project_files(self.project_path)
             # Result should have one of the task files
             assert result.task_list_file in [task1, task2]

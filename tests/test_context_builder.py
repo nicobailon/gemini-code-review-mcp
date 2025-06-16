@@ -74,7 +74,7 @@ def test_generate_enhanced_review_context_respects_flags() -> None:
             f.write("# Claude memory content")
         
         # Mock git_utils to avoid git dependency
-        with patch("src.git_utils.get_changed_files") as mock_git:
+        with patch("gemini_code_review_mcp.helpers.git_utils.get_changed_files") as mock_git:
             mock_git: MagicMock
             mock_git.return_value = []
             

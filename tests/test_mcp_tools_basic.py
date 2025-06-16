@@ -30,7 +30,7 @@ class FastMCPWithToolManager(Protocol):
 @pytest.fixture
 def mock_gemini_client():
     """Mock Gemini API client."""
-    with patch("src.gemini_api_client.send_to_gemini_for_review") as mock:
+    with patch("gemini_code_review_mcp.services.gemini_api_client.send_to_gemini_for_review") as mock:
         mock.return_value = "Mock AI review content"
         yield mock
 
@@ -38,7 +38,7 @@ def mock_gemini_client():
 @pytest.fixture
 def mock_github_pr():
     """Mock GitHub PR integration."""
-    with patch("src.github_pr_integration.get_complete_pr_analysis") as mock:
+    with patch("gemini_code_review_mcp.services.github_pr_integration.get_complete_pr_analysis") as mock:
         mock.return_value = {
             "pr_data": {
                 "title": "Test PR",

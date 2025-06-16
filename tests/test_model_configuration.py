@@ -20,7 +20,7 @@ import pytest
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from model_config_manager import load_model_config
+from gemini_code_review_mcp.helpers.model_config_manager import load_model_config
 
 
 class TestModelConfigurationLoading:
