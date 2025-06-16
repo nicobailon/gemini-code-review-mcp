@@ -137,9 +137,7 @@ def validate_github_pr_url(pr_url: str) -> None:
         # Import here to avoid circular imports
         from .github_pr_integration import parse_github_pr_url
         
-        # Check if GitHub PR integration is available
-        if not parse_github_pr_url:
-            raise ImportError("GitHub PR integration not available")
+        # parse_github_pr_url is available if we reach here
         parse_github_pr_url(pr_url)  # This will raise ValueError if invalid
     except ValueError as e:
         error_msg = f"""Invalid GitHub PR URL: {e}
